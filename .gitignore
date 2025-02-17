@@ -1,0 +1,15 @@
+# Ignore compiled files
+*.o
+*.exe
+*.class
+
+# Ignore build and temp files
+/build/
+/temp/
+/raylib/
+*.log
+
+# Ignore IDE files
+.vscode/
+.idea/
+.DS_Store
