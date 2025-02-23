@@ -6,10 +6,10 @@ int main() {
     InitWindow(800, 600, "2D  Game");
 
     // Creating Samurai.
-    Texture2D samuraiSprite = LoadTexture("");
-    Samurai samurai(samuraiSprite, (Vector2) {400, 300});
+    Samurai samurai((Vector2) {400, 300});
     samurai.loadTextures();
 
+    // Set FPS at 60.
     SetTargetFPS(60);
 
     while (!WindowShouldClose()) {
