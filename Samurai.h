@@ -30,9 +30,6 @@ struct Animation {
     float speed;
     float timeLeft;
     AnimationType type;
-    int frameWidth;
-    int frameHeight;
-    int spriteSheetWidth;
 };
 
 class Samurai {
@@ -45,21 +42,20 @@ class Samurai {
         std::vector<Animation> animations;
         std::vector<Texture2D> sprites;
 
-        Samurai(Texture2D sprite, Vector2 position) {
+        Samurai(Vector2 position) {
             rect = (Rectangle) {position.x, position.y, 64.0f, 64.0f};
             velocity = (Vector2) {0.0f, 0.0f};
-            spriteSheet = sprite;
             direction = RIGHT;
             state = IDLE;
             animations = {
-                {0, 2, 0, 0, 0.1f, 0.1f, REPEATING, 64, 64, 384},
-                {0, 3, 0, 0, 0.1f, 0.1f, REPEATING, 64, 64, 512},
-                {0, 1, 0, 0, 0.1f, 0.1f, REPEATING, 64, 64, 256},
-                {0, 5, 0, 0, 0.1f, 0.1f, REPEATING, 64, 64, 768},
-                {0, 11, 0, 0, 0.1f, 0.1f, REPEATING, 64, 64, 1536},
-                {0, 7, 0, 0, 0.1f, 0.1f, REPEATING, 64, 64, 1024},
-                {0, 1, 0, 0, 0.1f, 0.1f, REPEATING, 64, 64, 256},
-                {0, 7, 0, 0, 0.1f, 0.1f, REPEATING, 64, 64, 1024}
+                {0, 2, 0, 0, 0.1f, 0.1f, REPEATING},
+                {0, 3, 0, 0, 0.1f, 0.1f, REPEATING},
+                {0, 1, 0, 0, 0.1f, 0.1f, REPEATING},
+                {0, 5, 0, 0, 0.1f, 0.1f, REPEATING},
+                {0, 11, 0, 0, 0.1f, 0.1f, REPEATING},
+                {0, 7, 0, 0, 0.1f, 0.1f, REPEATING},
+                {0, 1, 0, 0, 0.1f, 0.1f, REPEATING},
+                {0, 7, 0, 0, 0.1f, 0.1f, REPEATING}
             };
         }
 
@@ -84,19 +80,19 @@ class Samurai {
 
         void updateAnimation() {
             Animation& anim = animations[state];
-            float deltaTime = GetFrameTime();  // Get the time that has passed since last frame
+            float deltaTime = GetFrameTime();  // Get the time that has passed since last frame.
         
-            anim.timeLeft -= deltaTime;  // Reduce the remaining time for the current frame
+            anim.timeLeft -= deltaTime;  // Reduce the remaining time for the current frame.
             if (anim.timeLeft <= 0) {
-                anim.timeLeft = anim.speed;  // Reset the timeLeft to the speed value
+                anim.timeLeft = anim.speed;  // Reset the timeLeft to the speed value.
         
-                anim.currentFrame++;  // Move to the next frame in the animation
+                anim.currentFrame++;  // Move to the next frame in the animation.
         
                 if (anim.currentFrame > anim.lastFrame) {
                     if (anim.type == REPEATING) {
-                        anim.currentFrame = anim.firstFrame;  // Reset to the first frame if it's a repeating animation
+                        anim.currentFrame = anim.firstFrame;  // Reset to the first frame if it's a repeating animation.
                     } else if (anim.type == ONESHOT) {
-                        anim.currentFrame = anim.lastFrame;  // Stay at the last frame for oneshot animations
+                        anim.currentFrame = anim.lastFrame;  // Stay at the last frame for oneshot animations.
                     }
                 }
             }
@@ -108,7 +104,7 @@ class Samurai {
             int frameHeight = sprites[state].height;
         
             return (Rectangle){
-                frameWidth * anim.currentFrame, 0, frameWidth, frameHeight
+                (float)frameWidth * anim.currentFrame, 0, (float)frameWidth, (float)frameHeight
             };
         }
         
@@ -117,19 +113,19 @@ class Samurai {
             Rectangle source = getAnimationFrame();
         
             // Set scale factor (change this to make character bigger)
-            float scale = 2.0f;  // Adjust as needed (e.g., 1.5f for 150% size, 2.0f for double size)
+            float scale = 2.0f;  // Adjust as needed.
         
-            // Define destination rectangle (where and how big the sprite will be drawn)
+            // Define destination rectangle.
             Rectangle dest = {
                 rect.x, rect.y, 
-                rect.width * scale,   // Scale width
-                rect.height * scale   // Scale height
+                rect.width * scale,   // Scale width.
+                rect.height * scale   // Scale height.
             };
         
-            // Flip the sprite if moving left
+            // Flip the sprite if moving left.
             source.width *= direction;  
         
-            // Draw the scaled sprite
+            // Draw the scaled sprite.
             DrawTexturePro(sprites[state], source, dest, {0, 0}, 0.0f, WHITE);
         }
 
@@ -137,7 +133,7 @@ class Samurai {
             velocity.x = 0.0f;
             velocity.y = 0.0f;
         
-            // Handle movement
+            // Handle movement.
             if (IsKeyDown(KEY_A)) {
                 velocity.x = -200.0f;
                 direction = LEFT;
@@ -150,22 +146,22 @@ class Samurai {
                 state = IDLE;
             }
         
-            // Handle attack
+            // Handle attack.
             if (IsKeyDown(KEY_SPACE)) {
                 state = ATTACK;
             }
         
-            // Handle jump
-            if (IsKeyDown(KEY_W)) {  // Assuming "W" for jump
-                if (state != JUMP) {  // Prevent continuous jumping animation
+            // Handle jump.
+            if (IsKeyDown(KEY_W)) { 
+                if (state != JUMP) {  // Prevent continuous jumping animation.
                     state = JUMP;
-                    velocity.y = -300.0f;  // Set a negative value for upward velocity
+                    velocity.y = -300.0f;  // Set a negative value for upward velocity.
                 }
             }
         
             // Handle parry
-            if (IsKeyDown(KEY_E)) {  // Assuming "E" for parry
-                if (state != PARRY) {  // Prevent continuous parry animation
+            if (IsKeyDown(KEY_E)) { 
+                if (state != PARRY) {  // Prevent continuous parry animation.
                     state = PARRY;
                 }
             }
@@ -177,11 +173,11 @@ class Samurai {
             rect.y += velocity.y * GetFrameTime();
         
             // Add gravity effect
-            if (rect.y < 400) { // Assuming ground level is y = 400
-                velocity.y += 500.0f * GetFrameTime();  // Gravity pulls the character down
+            if (rect.y < 400) { // Assuming ground level is y = 400.
+                velocity.y += 500.0f * GetFrameTime();  // Gravity pulls the character down.
             } else {
-                velocity.y = 0.0f;  // Stop falling when on the ground
-                rect.y = 400;  // Keep the character on the ground
+                velocity.y = 0.0f;  // Stop falling when on the ground.
+                rect.y = 400;  // Keep the character on the ground.
             }
         }
 };
