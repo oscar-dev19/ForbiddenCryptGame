@@ -2,6 +2,7 @@
 #include <iostream>
 #include "Samurai.h"
 #include "Goblin.h"
+#include "Werewolf.h"
 
 int main() {
     InitWindow(800, 600, "2D  Game");
@@ -13,6 +14,10 @@ int main() {
     // Creating Goblin.
     Goblin goblin((Vector2) {400, 300});
     goblin.loadTextures();
+
+    // Creating Werewolf.
+    Werewolf werewolf((Vector2 {400, 300}));
+    werewolf.loadTextures();
 
     // Set FPS at 60.
     SetTargetFPS(60);
@@ -27,11 +32,16 @@ int main() {
         goblin.applyVelocity();
         goblin.updateAnimation();
 
+        werewolf.move();
+        werewolf.applyVelocity();
+        werewolf.updateAnimation();
+
         // Drawing.
         BeginDrawing();
         ClearBackground(GREEN);
         samurai.draw();
         goblin.draw();
+        werewolf.draw();
         EndDrawing();
     }
 
