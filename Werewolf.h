@@ -130,26 +130,27 @@ public:
         float moveSpeed = 300.0f;
         velocity.x = 0.0f;
     
+        // Allow movement while jumping without changing state
         if (IsKeyDown(KEY_V)) {
             velocity.x = -moveSpeed;
             direction = LEFT_WOLF;
-            state = WALK_WOLF;
+            if (isOnGround) state = WALK_WOLF;
         } 
         else if (IsKeyDown(KEY_B)) {
             velocity.x = moveSpeed;
             direction = RIGHT_WOLF;
-            state = WALK_WOLF;
+            if (isOnGround) state = WALK_WOLF;
         } 
         else if (isOnGround) {
             state = IDLE_WOLF;
         }
     
-        if (IsKeyPressed(KEY_SPACE) && isOnGround) {
+        if (IsKeyPressed(KEY_G) && isOnGround) {
             velocity.y = JUMP_FORCE;
             state = JUMP_WOLF;
             isOnGround = false;
     
-            // Restart jump animation when pressing space again
+            // Restart jump animation when pressing jump
             animations[JUMP_WOLF].currentFrame = animations[JUMP_WOLF].firstFrame;
         }
     
@@ -165,6 +166,7 @@ public:
             animations[ATTACK_RUN].currentFrame = animations[ATTACK_RUN].firstFrame;
         }
     }
+    
     
 
     void applyVelocity() {
