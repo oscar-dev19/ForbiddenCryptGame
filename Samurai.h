@@ -126,27 +126,34 @@ class Samurai {
         }
 
         void move() {
+            // Default horizontal velocity (will be adjusted for jumping)
+            float moveSpeed = 300.0f;
+        
             velocity.x = 0.0f;
-            
+        
+            // Increase run speed
             if (IsKeyDown(KEY_A)) {
-                velocity.x = -200.0f;
+                velocity.x = -moveSpeed;  // Increased run speed
                 direction = LEFT;
-                if (rect.y >= groundLevel) state = RUN; // Only switch to RUN if on the ground
+                if (rect.y >= groundLevel) state = RUN;
             } else if (IsKeyDown(KEY_D)) {
-                velocity.x = 200.0f;
+                velocity.x = moveSpeed;  // Increased run speed
                 direction = RIGHT;
                 if (rect.y >= groundLevel) state = RUN;
             } else {
-                if (rect.y >= groundLevel) state = IDLE;  // Set to IDLE when no movement keys are pressed
+                if (rect.y >= groundLevel) state = IDLE;
             }
         
             if (IsKeyDown(KEY_SPACE)) {
                 state = ATTACK;
             }
         
-            if (IsKeyDown(KEY_W) && rect.y >= groundLevel) {  
+            if (IsKeyDown(KEY_W) && rect.y >= groundLevel) {
                 state = JUMP;
-                velocity.y = -300.0f;  
+                // Decrease jump distance
+                velocity.y = -250.0f;  // Decreased jump distance
+                // You can still apply a reduced horizontal velocity when jumping:
+                velocity.x *= 0.5f;  // Reduce horizontal speed in the air (air control)
             }
         
             if (IsKeyDown(KEY_E)) { 
@@ -155,14 +162,13 @@ class Samurai {
                 }
             }
         
-            // **Fix: If the character is in the air, keep JUMP animation active**
+            // If character is in the air, keep JUMP animation active
             if (rect.y < groundLevel) {
                 state = JUMP;
             } else if (state == JUMP && rect.y >= groundLevel) {
-                state = IDLE; // Only switch to IDLE if fully landed
+                state = IDLE;
             }
         }
-        
         
         
         void applyVelocity() {
