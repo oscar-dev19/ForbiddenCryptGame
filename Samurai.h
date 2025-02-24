@@ -1,11 +1,13 @@
 #include <raylib.h>
 #include <vector>
 
+// Direction of the Character.
 enum Direction {
     LEFT = -1,
     RIGHT = 1
 };
 
+// States for the Character. (Note: not all will be used).
 enum CurrentState {
     DEAD = 0,
     ATTACK = 1,
@@ -17,27 +19,29 @@ enum CurrentState {
     WALK = 7
 };
 
+// Determines whether an animation is ran once or repeats.
 enum AnimationType {
     REPEATING,
     ONESHOT
 };
 
+// Represents an Animation.
 struct Animation {
-    int firstFrame;
-    int lastFrame;
-    int currentFrame;
-    int offset;
-    float speed;
-    float timeLeft;
-    AnimationType type;
+    int firstFrame; // First Frame of Animation.
+    int lastFrame; // Last Frame of Animation.
+    int currentFrame; // Current Frame Displayed.
+    int offset; // Frame Offset (if needed).
+    float speed; // Speed of Animation.
+    float timeLeft; // Time Left for next frame.
+    AnimationType type; // Type of Animation.
 };
 
 class Samurai {
     public:
         Rectangle rect;
         Vector2 velocity;
-        Texture2D spriteSheet;
-        Direction direction;
+        Texture2D spriteSheet; 
+        Direction direction; 
         CurrentState state;
         std::vector<Animation> animations;
         std::vector<Texture2D> sprites;
@@ -48,28 +52,29 @@ class Samurai {
             velocity = (Vector2) {0.0f, 0.0f};
             direction = RIGHT;
             state = IDLE;
-            groundLevel = position.y; // Store the initial Y position as the ground level
+            groundLevel = position.y; // Store the initial Y position as the ground level.
             animations = {
-                {0, 2, 0, 0, 0.1f, 0.1f, REPEATING},
-                {0, 3, 0, 0, 0.1f, 0.1f, REPEATING},
-                {0, 1, 0, 0, 0.1f, 0.1f, REPEATING},
-                {0, 5, 0, 0, 0.1f, 0.1f, REPEATING},
-                {0, 11, 0, 0, 0.1f, 0.1f, REPEATING},
-                {0, 7, 0, 0, 0.1f, 0.1f, REPEATING},
-                {0, 1, 0, 0, 0.1f, 0.1f, REPEATING},
-                {0, 7, 0, 0, 0.1f, 0.1f, REPEATING}
+                {0, 2, 0, 0, 0.1f, 0.1f, REPEATING}, // Dead.
+                {0, 3, 0, 0, 0.1f, 0.1f, REPEATING}, // Attack.
+                {0, 1, 0, 0, 0.1f, 0.1f, REPEATING}, // Hurt.
+                {0, 5, 0, 0, 0.1f, 0.1f, REPEATING}, // Idle.
+                {0, 11, 0, 0, 0.1f, 0.1f, REPEATING}, // Jump.
+                {0, 7, 0, 0, 0.1f, 0.1f, REPEATING}, // Run.
+                {0, 1, 0, 0, 0.1f, 0.1f, REPEATING}, // Parry
+                {0, 7, 0, 0, 0.1f, 0.1f, REPEATING} // Walk.
             };
         }
 
         ~Samurai() {
             for (auto& sprite : sprites) {
-                UnloadTexture(sprite);
+                UnloadTexture(sprite); // Unload each texture from memory.
             }
         }
 
         void loadTextures() {
             sprites.resize(8);
-
+            
+            // Load Sprite Textures.
             sprites[DEAD] = LoadTexture("assets/Samurai/Dead.png");
             sprites[ATTACK] = LoadTexture("assets/Samurai/Attack_2.png");
             sprites[HURT] = LoadTexture("assets/Samurai/Hurt.png");
@@ -84,12 +89,14 @@ class Samurai {
             Animation& anim = animations[state];
             float deltaTime = GetFrameTime();  
 
+            // Determines if we move to next frame.
             anim.timeLeft -= deltaTime;  
             if (anim.timeLeft <= 0) {
                 anim.timeLeft = anim.speed;  
 
-                anim.currentFrame++;  
+                anim.currentFrame++; // Move to next frame.
 
+                // Loop Animation, Otherwises stop at Last Frame
                 if (anim.currentFrame > anim.lastFrame) {
                     if (anim.type == REPEATING) {
                         anim.currentFrame = anim.firstFrame;  
@@ -102,42 +109,43 @@ class Samurai {
         
         Rectangle getAnimationFrame() const {
             const Animation &anim = animations[state];
+            // Calculate Frame Dimensions.
             int frameWidth = sprites[state].width / (anim.lastFrame + 1);
             int frameHeight = sprites[state].height;
 
-            return (Rectangle){
+            return (Rectangle){ // Return Rectangle for the current frame.
                 (float)frameWidth * anim.currentFrame, 0, (float)frameWidth, (float)frameHeight
             };
         }
         
         void draw() const {
             Rectangle source = getAnimationFrame();
-            float scale = 2.0f;  
+            float scale = 2.0f; // Adjust Character Size.
 
-            Rectangle dest = {
+            Rectangle dest = { // Rectangle for Sprite.
                 rect.x, rect.y, 
                 rect.width * scale,   
                 rect.height * scale   
             };
 
+            // Flip Sprite.
             source.width *= direction;  
 
+            // Draw Sprite.
             DrawTexturePro(sprites[state], source, dest, {0, 0}, 0.0f, WHITE);
         }
 
         void move() {
-            // Default horizontal velocity (will be adjusted for jumping)
+            // Default horizontal velocity.
             float moveSpeed = 300.0f;
-        
             velocity.x = 0.0f;
         
-            // Increase run speed
             if (IsKeyDown(KEY_A)) {
-                velocity.x = -moveSpeed;  // Increased run speed
+                velocity.x = -moveSpeed;  // Adjust Runnning Velocity Right.
                 direction = LEFT;
                 if (rect.y >= groundLevel) state = RUN;
             } else if (IsKeyDown(KEY_D)) {
-                velocity.x = moveSpeed;  // Increased run speed
+                velocity.x = moveSpeed;  // Adjust Running Velocity Left.
                 direction = RIGHT;
                 if (rect.y >= groundLevel) state = RUN;
             } else {
@@ -150,10 +158,8 @@ class Samurai {
         
             if (IsKeyDown(KEY_W) && rect.y >= groundLevel) {
                 state = JUMP;
-                // Decrease jump distance
-                velocity.y = -250.0f;  // Decreased jump distance
-                // You can still apply a reduced horizontal velocity when jumping:
-                velocity.x *= 0.5f;  // Reduce horizontal speed in the air (air control)
+                velocity.y = -250.0f;  // Adjust Velocity-Y Vector.
+                velocity.x *= 0.5f;  // Adjust Velocity-X Vector.
             }
         
             if (IsKeyDown(KEY_E)) { 
@@ -162,7 +168,7 @@ class Samurai {
                 }
             }
         
-            // If character is in the air, keep JUMP animation active
+            // If character is in the air, keep JUMP animation active.
             if (rect.y < groundLevel) {
                 state = JUMP;
             } else if (state == JUMP && rect.y >= groundLevel) {
@@ -170,13 +176,13 @@ class Samurai {
             }
         }
         
-        
         void applyVelocity() {
-            rect.x += velocity.x * GetFrameTime();
-            rect.y += velocity.y * GetFrameTime();
-        
+            rect.x += velocity.x * GetFrameTime(); // Apply Horizontal Velocity.
+            rect.y += velocity.y * GetFrameTime(); // Apply Vertical Velocity.
+            
+            // Characters in the air.
             if (rect.y < groundLevel) { 
-                velocity.y += 500.0f * GetFrameTime();  
+                velocity.y += 500.0f * GetFrameTime(); // Apply Gravity.
             } else {
                 velocity.y = 0.0f;  
                 rect.y = groundLevel;  
