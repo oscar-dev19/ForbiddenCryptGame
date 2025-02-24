@@ -41,12 +41,14 @@ class Samurai {
         CurrentState state;
         std::vector<Animation> animations;
         std::vector<Texture2D> sprites;
+        float groundLevel; // Store the initial ground level
 
         Samurai(Vector2 position) {
             rect = (Rectangle) {position.x, position.y, 64.0f, 64.0f};
             velocity = (Vector2) {0.0f, 0.0f};
             direction = RIGHT;
             state = IDLE;
+            groundLevel = position.y; // Store the initial Y position as the ground level
             animations = {
                 {0, 2, 0, 0, 0.1f, 0.1f, REPEATING},
                 {0, 3, 0, 0, 0.1f, 0.1f, REPEATING},
@@ -80,19 +82,19 @@ class Samurai {
 
         void updateAnimation() {
             Animation& anim = animations[state];
-            float deltaTime = GetFrameTime();  // Get the time that has passed since last frame.
-        
-            anim.timeLeft -= deltaTime;  // Reduce the remaining time for the current frame.
+            float deltaTime = GetFrameTime();  
+
+            anim.timeLeft -= deltaTime;  
             if (anim.timeLeft <= 0) {
-                anim.timeLeft = anim.speed;  // Reset the timeLeft to the speed value.
-        
-                anim.currentFrame++;  // Move to the next frame in the animation.
-        
+                anim.timeLeft = anim.speed;  
+
+                anim.currentFrame++;  
+
                 if (anim.currentFrame > anim.lastFrame) {
                     if (anim.type == REPEATING) {
-                        anim.currentFrame = anim.firstFrame;  // Reset to the first frame if it's a repeating animation.
+                        anim.currentFrame = anim.firstFrame;  
                     } else if (anim.type == ONESHOT) {
-                        anim.currentFrame = anim.lastFrame;  // Stay at the last frame for oneshot animations.
+                        anim.currentFrame = anim.lastFrame;  
                     }
                 }
             }
@@ -102,82 +104,76 @@ class Samurai {
             const Animation &anim = animations[state];
             int frameWidth = sprites[state].width / (anim.lastFrame + 1);
             int frameHeight = sprites[state].height;
-        
+
             return (Rectangle){
                 (float)frameWidth * anim.currentFrame, 0, (float)frameWidth, (float)frameHeight
             };
         }
         
-        
         void draw() const {
             Rectangle source = getAnimationFrame();
-        
-            // Set scale factor (change this to make character bigger)
-            float scale = 2.0f;  // Adjust as needed.
-        
-            // Define destination rectangle.
+            float scale = 2.0f;  
+
             Rectangle dest = {
                 rect.x, rect.y, 
-                rect.width * scale,   // Scale width.
-                rect.height * scale   // Scale height.
+                rect.width * scale,   
+                rect.height * scale   
             };
-        
-            // Flip the sprite if moving left.
+
             source.width *= direction;  
-        
-            // Draw the scaled sprite.
+
             DrawTexturePro(sprites[state], source, dest, {0, 0}, 0.0f, WHITE);
         }
 
         void move() {
             velocity.x = 0.0f;
-            velocity.y = 0.0f;
-        
-            // Handle movement.
+            
             if (IsKeyDown(KEY_A)) {
                 velocity.x = -200.0f;
                 direction = LEFT;
-                state = RUN;
+                if (rect.y >= groundLevel) state = RUN; // Only switch to RUN if on the ground
             } else if (IsKeyDown(KEY_D)) {
                 velocity.x = 200.0f;
                 direction = RIGHT;
-                state = RUN;
+                if (rect.y >= groundLevel) state = RUN;
             } else {
-                state = IDLE;
+                if (rect.y >= groundLevel) state = IDLE;  // Set to IDLE when no movement keys are pressed
             }
         
-            // Handle attack.
             if (IsKeyDown(KEY_SPACE)) {
                 state = ATTACK;
             }
         
-            // Handle jump.
-            if (IsKeyDown(KEY_W)) { 
-                if (state != JUMP) {  // Prevent continuous jumping animation.
-                    state = JUMP;
-                    velocity.y = -300.0f;  // Set a negative value for upward velocity.
-                }
+            if (IsKeyDown(KEY_W) && rect.y >= groundLevel) {  
+                state = JUMP;
+                velocity.y = -300.0f;  
             }
         
-            // Handle parry
             if (IsKeyDown(KEY_E)) { 
-                if (state != PARRY) {  // Prevent continuous parry animation.
+                if (state != PARRY) {  
                     state = PARRY;
                 }
             }
+        
+            // **Fix: If the character is in the air, keep JUMP animation active**
+            if (rect.y < groundLevel) {
+                state = JUMP;
+            } else if (state == JUMP && rect.y >= groundLevel) {
+                state = IDLE; // Only switch to IDLE if fully landed
+            }
         }
+        
         
         
         void applyVelocity() {
             rect.x += velocity.x * GetFrameTime();
             rect.y += velocity.y * GetFrameTime();
         
-            // Add gravity effect
-            if (rect.y < 400) { // Assuming ground level is y = 400.
-                velocity.y += 500.0f * GetFrameTime();  // Gravity pulls the character down.
+            if (rect.y < groundLevel) { 
+                velocity.y += 500.0f * GetFrameTime();  
             } else {
-                velocity.y = 0.0f;  // Stop falling when on the ground.
-                rect.y = 400;  // Keep the character on the ground.
+                velocity.y = 0.0f;  
+                rect.y = groundLevel;  
             }
         }
 };
