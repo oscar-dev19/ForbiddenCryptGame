@@ -3,6 +3,7 @@
 #include "Samurai.h"
 #include "Goblin.h"
 #include "Werewolf.h"
+#include "Wizard.h"
 
 int main() {
     InitWindow(800, 600, "2D  Game");
@@ -18,6 +19,10 @@ int main() {
     // Creating Werewolf.
     Werewolf werewolf((Vector2 {400, 300}));
     werewolf.loadTextures();
+
+    // Creating Wizard.
+    Wizard wizard((Vector2 {400, 300}));
+    wizard.loadTextures();
 
     // Set FPS at 60.
     SetTargetFPS(60);
@@ -36,12 +41,17 @@ int main() {
         werewolf.applyVelocity();
         werewolf.updateAnimation();
 
+        wizard.move();
+        wizard.applyVelocity();
+        wizard.updateAnimation();
+
         // Drawing.
         BeginDrawing();
         ClearBackground(GREEN);
         samurai.draw();
         goblin.draw();
         werewolf.draw();
+        wizard.draw();
         EndDrawing();
     }
 
