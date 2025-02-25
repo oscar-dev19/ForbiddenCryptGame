@@ -1,6 +1,11 @@
 #include <raylib.h>
 #include <vector>
 #include <iostream>
+#include <string>
+#include <filesystem>
+#include <algorithm>  // For sorting files by name
+
+namespace fs = std::filesystem;
 
 enum DirectionDemon {
     LEFT_DEMON = -1,
@@ -24,6 +29,7 @@ struct AnimationDemon {
     int firstFrame, lastFrame, currentFrame;
     float speed, timeLeft;
     AnimationTypeDemon type;
+    std::vector<Texture2D> frames;  // Store the individual textures for frames
 };
 
 class Demon {
@@ -35,7 +41,6 @@ public:
     bool isAttacking = false;
     bool hasFinishedAttack = true;
 
-    Texture2D spriteSheet;  // Single sprite sheet texture
     std::vector<AnimationDemon> animations;
 
     Demon(Vector2 position) {
@@ -44,24 +49,81 @@ public:
         direction = RIGHT_DEMON;
         state = IDLE_DEMON;
 
-        spriteSheet = LoadTexture("assets/Demon/spritesheets/demon_slime_FREE_v1.0_288x160_spritesheet.png");  // Load the sprite sheet
-        
-        // Debug: Check if the texture loads correctly
-        std::cout << "Sprite Sheet Loaded: " << spriteSheet.width << "x" << spriteSheet.height << std::endl;
+        // Load animations from directories
+        loadAnimations();
 
-        // Define animations with first and last frame (dynamically handle frames per row)
-        animations = {
-            { 0, 5, 0, 0.1f, 0.1f, REPEATING_DEMON },   // Animation for Idle
-            { 0, 11, 0, 0.1f, 0.1f, REPEATING_DEMON },  // Animation for Walk
-            { 0, 14, 0, 0.1f, 0.1f, ONESHOT_DEMON },   // Animation for Cleave
-            { 0, 4, 0, 0.1f, 0.1f, ONESHOT_DEMON },    // Animation for Take Hit
-            { 0, 21, 0, 0.1f, 0.1f, ONESHOT_DEMON }    // Animation for Death
-        };
+        // Debug: Check if the textures load correctly
+        std::cout << "Loaded " << animations[IDLE_DEMON].frames.size() << " frames for idle animation." << std::endl;
     }
 
     ~Demon() {
-        UnloadTexture(spriteSheet);  // Unload sprite sheet
+        // Unload all textures for each animation
+        for (auto& anim : animations) {
+            for (auto& frame : anim.frames) {
+                UnloadTexture(frame);  // Unload individual frames
+            }
+        }
     }
+
+    #include <algorithm>
+
+    void loadAnimations() {
+        std::vector<std::string> animationFolders = { 
+            "assets/Demon/individual sprites/01_demon_idle", 
+            "assets/Demon/individual sprites/02_demon_walk", 
+            "assets/Demon/individual sprites/03_demon_cleave", 
+            "assets/Demon/individual sprites/04_demon_take_hit", 
+            "assets/Demon/individual sprites/05_demon_death" 
+        };
+
+        for (int i = 0; i < animationFolders.size(); ++i) {
+            AnimationDemon anim;
+            anim.speed = 0.1f;
+            anim.timeLeft = anim.speed;
+            anim.type = (i == ATTACK_DEMON) ? ONESHOT_DEMON : REPEATING_DEMON;
+            
+            std::vector<std::string> framePaths;
+            
+            // Collect all PNG paths from the directory
+            for (const auto& entry : fs::directory_iterator(animationFolders[i])) {
+                if (entry.path().extension() == ".png") {
+                    framePaths.push_back(entry.path().string());
+                    std::cout << "Found PNG: " << entry.path().string() << std::endl;
+                }
+            }
+
+            // Sort the paths to ensure frames are loaded in the correct order (by filename)
+            std::sort(framePaths.begin(), framePaths.end(), [](const std::string& a, const std::string& b) {
+                // Custom sort by numeric value in the filename, assuming filenames have numbers like "frame1.png", "frame2.png", etc.
+                std::string baseA = a.substr(a.find_last_of("/\\") + 1); // Get the filename
+                std::string baseB = b.substr(b.find_last_of("/\\") + 1); // Get the filename
+                
+                // Sort numerically if filenames contain numbers
+                int numA = std::stoi(baseA.substr(baseA.find_first_of("0123456789")));
+                int numB = std::stoi(baseB.substr(baseB.find_first_of("0123456789")));
+                return numA < numB;
+            });
+
+            std::cout << "Loading " << framePaths.size() << " frames." << std::endl;
+
+            // Load textures in sorted order
+            for (const auto& path : framePaths) {
+                Texture2D texture = LoadTexture(path.c_str());
+                if (texture.id == 0) {
+                    std::cerr << "Failed to load texture: " << path << std::endl;
+                } else {
+                    anim.frames.push_back(texture);
+                    std::cout << "Loaded texture: " << path << std::endl;
+                }
+            }
+
+            anim.firstFrame = 0;
+            anim.lastFrame = anim.frames.size() - 1;
+            animations.push_back(anim);
+        }
+    }
+
+    
 
     void updateAnimation() {
         AnimationDemon& anim = animations[state];
@@ -86,25 +148,16 @@ public:
     Rectangle getAnimationFrame() const {
         const AnimationDemon& anim = animations[state];
 
-        // Calculate the width and height of each frame dynamically based on sprite sheet size
-        int frameHeight = spriteSheet.height / 5;  // Assuming 5 rows (one for each animation)
-
-        // Calculate number of columns dynamically based on animation range
-        int frameWidth = spriteSheet.width / (anim.lastFrame + 1 - anim.firstFrame); // Calculate based on first and last frame
-
-        // Calculate the X and Y offsets based on the current animation row and frame
-        int row = state;  // The row corresponds to the current animation state
         return {
-            (float)(frameWidth * (anim.currentFrame - anim.firstFrame)),  // X offset of the frame
-            (float)(frameHeight * row),                                   // Y offset (based on animation row)
-            (float)frameWidth,                                             // Frame width
-            (float)frameHeight                                            // Frame height
+            0.0f, 0.0f,                        // No X, Y offset
+            (float)anim.frames[anim.currentFrame].width,  // Width of frame
+            (float)anim.frames[anim.currentFrame].height  // Height of frame
         };
     }
 
     void draw() const {
         Rectangle source = getAnimationFrame();
-        float scale = 2.0f;
+        float scale = 5.0f;
 
         Rectangle dest = { rect.x, rect.y, rect.width * scale, rect.height * scale };
 
@@ -113,7 +166,8 @@ public:
             source.x += source.width;  // Adjust the X offset after flipping
         }
 
-        DrawTexturePro(spriteSheet, source, dest, { 0, 0 }, 0.0f, WHITE);
+        // Draw the frame from the texture corresponding to the current animation frame
+        DrawTexturePro(animations[state].frames[animations[state].currentFrame], source, dest, { 0, 0 }, 0.0f, WHITE);
     }
 
     void move() {
@@ -124,19 +178,19 @@ public:
 
         if (IsKeyDown(KEY_H)) {
             velocity.x = -moveSpeed;
-            direction = LEFT_DEMON;
+            direction = RIGHT_DEMON;
             state = WALK_DEMON;
         }
         else if (IsKeyDown(KEY_K)) {
             velocity.x = moveSpeed;
-            direction = RIGHT_DEMON;
+            direction = LEFT_DEMON;
             state = WALK_DEMON;
         }
         else {
             state = IDLE_DEMON;
         }
 
-        if (IsKeyPressed(KEY_KP_4) && hasFinishedAttack) {
+        if (IsKeyPressed(KEY_L) && hasFinishedAttack) {
             state = ATTACK_DEMON;
             hasFinishedAttack = false;
             animations[ATTACK_DEMON].currentFrame = animations[ATTACK_DEMON].firstFrame;
