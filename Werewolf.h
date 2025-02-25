@@ -167,8 +167,6 @@ public:
         }
     }
     
-    
-
     void applyVelocity() {
         float deltaTime = GetFrameTime();
 
