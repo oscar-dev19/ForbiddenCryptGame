@@ -1,4 +1,5 @@
 #include <raylib.h>
+#include <raytmx.h>
 #include <iostream>
 #include "Samurai.h"
 #include "Goblin.h"
