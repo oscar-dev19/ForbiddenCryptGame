@@ -219,7 +219,7 @@ public:
 
     // Load textures for each state.
     void loadTextures() {
-        sprites.resize(7);
+        sprites.resize(6);
 
         // Load textures for different states (idle, attack, etc.).
         sprites[DEAD] = LoadTexture("assets/Samurai/Dead.png");
