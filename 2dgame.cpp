@@ -34,9 +34,7 @@ int main() {
 
     while (!WindowShouldClose()) {
         // Update.
-        samurai.move();
-        samurai.applyVelocity();
-        samurai.updateAnimation();
+        samurai.updateSamurai();
 
         goblin.move();
         goblin.applyVelocity();
@@ -58,6 +56,7 @@ int main() {
         BeginDrawing();
         ClearBackground(GREEN);
         samurai.draw();
+        samurai.drawHealthBar();
         goblin.draw();
         werewolf.draw();
         wizard.draw();

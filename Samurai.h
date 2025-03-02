@@ -15,8 +15,7 @@ enum CurrentState {
     IDLE = 3,
     JUMP = 4,
     RUN = 5,
-    PARRY = 6,
-    WALK = 7
+    WALK = 6
 };
 
 // Determines whether an animation is ran once or repeats.
@@ -47,6 +46,11 @@ class Samurai {
         std::vector<Texture2D> sprites;
         float groundLevel; // Store the initial ground level
 
+        // Define Health Variables
+        int maxHealth = 100;
+        int currentHealth = 100;
+        bool isDead = false;
+
         Samurai(Vector2 position) {
             rect = (Rectangle) {position.x, position.y, 64.0f, 64.0f};
             velocity = (Vector2) {0.0f, 0.0f};
@@ -54,13 +58,12 @@ class Samurai {
             state = IDLE;
             groundLevel = position.y; // Store the initial Y position as the ground level.
             animations = {
-                {0, 2, 0, 0, 0.1f, 0.1f, REPEATING}, // Dead.
-                {0, 3, 0, 0, 0.1f, 0.1f, REPEATING}, // Attack.
-                {0, 1, 0, 0, 0.1f, 0.1f, REPEATING}, // Hurt.
+                {0, 2, 0, 0, 0.1f, 0.1f, ONESHOT}, // Dead.
+                {0, 3, 0, 0, 0.1f, 0.1f, ONESHOT}, // Attack.
+                {0, 1, 0, 0, 0.1f, 0.1f, ONESHOT}, // Hurt.
                 {0, 5, 0, 0, 0.1f, 0.1f, REPEATING}, // Idle.
-                {0, 11, 0, 0, 0.1f, 0.1f, REPEATING}, // Jump.
+                {0, 11, 0, 0, 0.1f, 0.1f, ONESHOT}, // Jump.
                 {0, 7, 0, 0, 0.1f, 0.1f, REPEATING}, // Run.
-                {0, 1, 0, 0, 0.1f, 0.1f, REPEATING}, // Parry
                 {0, 7, 0, 0, 0.1f, 0.1f, REPEATING} // Walk.
             };
         }
@@ -72,7 +75,7 @@ class Samurai {
         }
 
         void loadTextures() {
-            sprites.resize(8);
+            sprites.resize(7);
             
             // Load Sprite Textures.
             sprites[DEAD] = LoadTexture("assets/Samurai/Dead.png");
@@ -81,27 +84,38 @@ class Samurai {
             sprites[IDLE] = LoadTexture("assets/Samurai/Idle.png");
             sprites[JUMP] = LoadTexture("assets/Samurai/Jump.png");
             sprites[RUN] = LoadTexture("assets/Samurai/Run.png");
-            sprites[PARRY] = LoadTexture("assets/Samurai/Shield.png");
             sprites[WALK] = LoadTexture("assets/Samurai/Walk.png");
         }
 
         void updateAnimation() {
             Animation& anim = animations[state];
-            float deltaTime = GetFrameTime();  
-
-            // Determines if we move to next frame.
-            anim.timeLeft -= deltaTime;  
+            float deltaTime = GetFrameTime();
+            
+            // If in HURT state, prevent switching until the hurt animation finishes
+            if (state == HURT) {
+                if (anim.currentFrame == anim.lastFrame) {
+                    // After the hurt animation finishes, switch back to IDLE or other state
+                    if (currentHealth > 0) {
+                        state = IDLE;  // Reset to idle state after hurt animation completes
+                    }
+                }
+            }
+            
+            // Rest of the animation handling
+            if (anim.currentFrame == anim.firstFrame && anim.timeLeft == anim.speed) {
+                anim.timeLeft = anim.speed;
+            }
+            
+            anim.timeLeft -= deltaTime;
             if (anim.timeLeft <= 0) {
-                anim.timeLeft = anim.speed;  
-
-                anim.currentFrame++; // Move to next frame.
-
-                // Loop Animation, Otherwises stop at Last Frame
+                anim.timeLeft = anim.speed;
+                anim.currentFrame++;
+            
                 if (anim.currentFrame > anim.lastFrame) {
                     if (anim.type == REPEATING) {
-                        anim.currentFrame = anim.firstFrame;  
+                        anim.currentFrame = anim.firstFrame;
                     } else if (anim.type == ONESHOT) {
-                        anim.currentFrame = anim.lastFrame;  
+                        anim.currentFrame = anim.lastFrame;
                     }
                 }
             }
@@ -136,56 +150,118 @@ class Samurai {
         }
 
         void move() {
-            // Default horizontal velocity.
             float moveSpeed = 300.0f;
             velocity.x = 0.0f;
-        
+            
+            if (state == ATTACK || state == HURT) return; // Prevent movement during attack or hurt states
+            
             if (IsKeyDown(KEY_A)) {
-                velocity.x = -moveSpeed;  // Adjust Runnning Velocity Right.
+                velocity.x = -moveSpeed;
                 direction = LEFT;
-                if (rect.y >= groundLevel) state = RUN;
+                if (rect.y >= groundLevel && state != JUMP) state = RUN;
             } else if (IsKeyDown(KEY_D)) {
-                velocity.x = moveSpeed;  // Adjust Running Velocity Left.
+                velocity.x = moveSpeed;
                 direction = RIGHT;
-                if (rect.y >= groundLevel) state = RUN;
+                if (rect.y >= groundLevel && state != JUMP) state = RUN;
             } else {
-                if (rect.y >= groundLevel) state = IDLE;
+                if (rect.y >= groundLevel && state != JUMP) state = IDLE;
             }
         
-            if (IsKeyDown(KEY_SPACE)) {
+            if (IsKeyPressed(KEY_SPACE)) { // Attack plays fully
                 state = ATTACK;
+                animations[state].currentFrame = animations[state].firstFrame;
             }
         
-            if (IsKeyDown(KEY_W) && rect.y >= groundLevel) {
+            if (IsKeyPressed(KEY_W) && rect.y >= groundLevel) {
                 state = JUMP;
-                velocity.y = -250.0f;  // Adjust Velocity-Y Vector.
-                velocity.x *= 0.5f;  // Adjust Velocity-X Vector.
+                animations[JUMP].currentFrame = animations[JUMP].firstFrame; // Reset jump animation
+                velocity.y = -250.0f;
+                velocity.x *= 0.5f;
             }
         
-            if (IsKeyDown(KEY_E)) { 
-                if (state != PARRY) {  
-                    state = PARRY;
-                }
-            }
-        
-            // If character is in the air, keep JUMP animation active.
             if (rect.y < groundLevel) {
-                state = JUMP;
+                state = JUMP; // Ensure jump animation plays while airborne
             } else if (state == JUMP && rect.y >= groundLevel) {
                 state = IDLE;
             }
         }
         
+        
         void applyVelocity() {
-            rect.x += velocity.x * GetFrameTime(); // Apply Horizontal Velocity.
-            rect.y += velocity.y * GetFrameTime(); // Apply Vertical Velocity.
-            
-            // Characters in the air.
-            if (rect.y < groundLevel) { 
-                velocity.y += 500.0f * GetFrameTime(); // Apply Gravity.
+            rect.x += velocity.x * GetFrameTime();
+            rect.y += velocity.y * GetFrameTime();
+        
+            if (rect.y < groundLevel) {
+                velocity.y += 500.0f * GetFrameTime();
             } else {
-                velocity.y = 0.0f;  
-                rect.y = groundLevel;  
+                velocity.y = 0.0f;
+                rect.y = groundLevel;
+            }
+        
+            if (state == ATTACK && animations[state].currentFrame == animations[state].lastFrame) {
+                state = IDLE;
+            }
+        }
+
+        void takeDamage(int damage) {
+            if (isDead) return; // Don't take damage if already dead
+            
+            currentHealth -= damage;
+            if (currentHealth <= 0) {
+                currentHealth = 0;
+                isDead = true;
+                state = DEAD; // Set character to dead state
+            } else {
+                state = HURT; // Change state to hurt when damage is taken
+                animations[HURT].currentFrame = animations[HURT].firstFrame; // Reset hurt animation to first frame
+                animations[HURT].timeLeft = animations[HURT].speed; // Reset animation time so it plays from the start
+            }
+        }
+        
+        
+        // Draw the health bar, including healing
+        void drawHealthBar() {
+            float healthPercentage = (float)currentHealth / maxHealth;
+            DrawRectangle(20, 20, 200, 20, DARKGRAY); // Background
+            DrawRectangle(20, 20, (int)(200 * healthPercentage), 20, RED); // Health bar (now green when healed)
+            DrawText(TextFormat("Health: %d/%d", currentHealth, maxHealth), 20, 45, 20, WHITE);
+        }
+
+        void updateSamurai() {
+            if (!isDead) {
+                move(); // Allow movement if not dead
+                applyVelocity();
+            } else {
+                velocity.x = 0;
+                velocity.y = 0;
+            }
+            
+            updateAnimation();
+            checkForHealing(); // Call healing check every frame
+            checkForDamage();
+        }
+
+        // Function to heal the samurai
+        void heal(int healingAmount) {
+            if (isDead) return; // Don't heal if dead
+
+            currentHealth += healingAmount;
+            if (currentHealth > maxHealth) {
+                currentHealth = maxHealth; // Cap health at max health
+            }
+        }
+
+        // Example of a healing item use (this can be triggered on key press or by items in the game)
+        void checkForHealing() {
+            if (IsKeyPressed(KEY_H)) { // Press 'H' to heal
+                heal(20); // Heal 20 health points
+            }
+        }
+
+        //Testing DELETE LATER!!!
+        void checkForDamage() {
+            if (IsKeyPressed(KEY_K)) {  // Press 'K' to simulate the enemy attack
+                takeDamage(20);          // Apply damage to the samurai
             }
         }
 };
