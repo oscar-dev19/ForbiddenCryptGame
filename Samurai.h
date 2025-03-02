@@ -14,8 +14,7 @@ enum CurrentState {
     HURT = 2,
     IDLE = 3,
     JUMP = 4,
-    RUN = 5,
-    WALK = 6
+    RUN = 5
 };
 
 // Determines whether an animation is ran once or repeats.
@@ -208,8 +207,7 @@ public:
             {0, 1, 0, 0, 0.1f, 0.1f, ONESHOT}, // Hurt animation.
             {0, 5, 0, 0, 0.1f, 0.1f, REPEATING}, // Idle animation.
             {0, 11, 0, 0, 0.1f, 0.1f, ONESHOT}, // Jump animation.
-            {0, 7, 0, 0, 0.1f, 0.1f, REPEATING}, // Run animation.
-            {0, 7, 0, 0, 0.1f, 0.1f, REPEATING}  // Walk animation.
+            {0, 7, 0, 0, 0.1f, 0.1f, REPEATING} // Run animation.
         };
     }
 
@@ -221,7 +219,7 @@ public:
 
     // Load textures for each state.
     void loadTextures() {
-        sprites.resize(7);
+        sprites.resize(6);
 
         // Load textures for different states (idle, attack, etc.).
         sprites[DEAD] = LoadTexture("assets/Samurai/Dead.png");
@@ -230,7 +228,6 @@ public:
         sprites[IDLE] = LoadTexture("assets/Samurai/Idle.png");
         sprites[JUMP] = LoadTexture("assets/Samurai/Jump.png");
         sprites[RUN] = LoadTexture("assets/Samurai/Run.png");
-        sprites[WALK] = LoadTexture("assets/Samurai/Walk.png");
     }
 
     // Draw the samurai's current animation frame.
