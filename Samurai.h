@@ -15,8 +15,7 @@ enum CurrentState {
     IDLE = 3,
     JUMP = 4,
     RUN = 5,
-    PARRY = 6,
-    WALK = 7
+    WALK = 6
 };
 
 // Determines whether an animation is ran once or repeats.
@@ -37,155 +36,241 @@ struct Animation {
 };
 
 class Samurai {
-    public:
-        Rectangle rect;
-        Vector2 velocity;
-        Texture2D spriteSheet; 
-        Direction direction; 
-        CurrentState state;
-        std::vector<Animation> animations;
-        std::vector<Texture2D> sprites;
-        float groundLevel; // Store the initial ground level
+private:
+    Rectangle rect; // Character's rectangle for position and size.
+    Vector2 velocity; // Velocity of the character for movement.
+    Texture2D spriteSheet; // The texture sheet used for animations.
+    Direction direction; // Current facing direction of the character.
+    CurrentState state; // Current state of the character (e.g., idle, attack, etc.).
+    std::vector<Animation> animations; // List of animations for different states.
+    std::vector<Texture2D> sprites; // List of textures for each state.
+    float groundLevel; // The Y-coordinate of the ground level.
 
-        Samurai(Vector2 position) {
-            rect = (Rectangle) {position.x, position.y, 64.0f, 64.0f};
-            velocity = (Vector2) {0.0f, 0.0f};
+    // Define Health Variables
+    int maxHealth = 100; // Maximum health value.
+    int currentHealth = 100; // Current health of the samurai.
+    bool isDead = false; // Flag to indicate if the samurai is dead.
+
+    // Helper method to update the animation frame.
+    void updateAnimation() {
+        Animation& anim = animations[state];
+        float deltaTime = GetFrameTime();
+
+        // Prevent animation switch while in the HURT state.
+        if (state == HURT) {
+            if (anim.currentFrame == anim.lastFrame) {
+                if (currentHealth > 0) {
+                    state = IDLE;  // Switch to idle once hurt animation finishes.
+                }
+            }
+        }
+
+        // Rest of the animation handling.
+        if (anim.currentFrame == anim.firstFrame && anim.timeLeft == anim.speed) {
+            anim.timeLeft = anim.speed;
+        }
+
+        anim.timeLeft -= deltaTime;
+        if (anim.timeLeft <= 0) {
+            anim.timeLeft = anim.speed;
+            anim.currentFrame++;
+
+            if (anim.currentFrame > anim.lastFrame) {
+                if (anim.type == REPEATING) {
+                    anim.currentFrame = anim.firstFrame;
+                } else if (anim.type == ONESHOT) {
+                    anim.currentFrame = anim.lastFrame;
+                }
+            }
+        }
+    }
+
+    // Helper method to get the animation frame for drawing.
+    Rectangle getAnimationFrame() const {
+        const Animation &anim = animations[state];
+        // Calculate Frame Dimensions.
+        int frameWidth = sprites[state].width / (anim.lastFrame + 1);
+        int frameHeight = sprites[state].height;
+
+        return (Rectangle){ // Return Rectangle for the current frame.
+            (float)frameWidth * anim.currentFrame, 0, (float)frameWidth, (float)frameHeight
+        };
+    }
+
+    // Helper method to handle movement logic.
+    void move() {
+        float moveSpeed = 300.0f; // Set movement speed.
+        velocity.x = 0.0f; // Reset horizontal velocity.
+
+        // Prevent movement during attack or hurt states.
+        if (state == ATTACK || state == HURT) return;
+
+        if (IsKeyDown(KEY_A)) { // Move Left.
+            velocity.x = -moveSpeed;
+            direction = LEFT;
+            if (rect.y >= groundLevel && state != JUMP) state = RUN;
+        } else if (IsKeyDown(KEY_D)) { // Move Right.
+            velocity.x = moveSpeed;
             direction = RIGHT;
-            state = IDLE;
-            groundLevel = position.y; // Store the initial Y position as the ground level.
-            animations = {
-                {0, 2, 0, 0, 0.1f, 0.1f, REPEATING}, // Dead.
-                {0, 3, 0, 0, 0.1f, 0.1f, REPEATING}, // Attack.
-                {0, 1, 0, 0, 0.1f, 0.1f, REPEATING}, // Hurt.
-                {0, 5, 0, 0, 0.1f, 0.1f, REPEATING}, // Idle.
-                {0, 11, 0, 0, 0.1f, 0.1f, REPEATING}, // Jump.
-                {0, 7, 0, 0, 0.1f, 0.1f, REPEATING}, // Run.
-                {0, 1, 0, 0, 0.1f, 0.1f, REPEATING}, // Parry
-                {0, 7, 0, 0, 0.1f, 0.1f, REPEATING} // Walk.
-            };
+            if (rect.y >= groundLevel && state != JUMP) state = RUN;
+        } else {
+            if (rect.y >= groundLevel && state != JUMP) state = IDLE;
         }
 
-        ~Samurai() {
-            for (auto& sprite : sprites) {
-                UnloadTexture(sprite); // Unload each texture from memory.
-            }
+        if (IsKeyPressed(KEY_SPACE)) { // Attack action.
+            state = ATTACK;
+            animations[state].currentFrame = animations[state].firstFrame;
         }
 
-        void loadTextures() {
-            sprites.resize(8);
-            
-            // Load Sprite Textures.
-            sprites[DEAD] = LoadTexture("assets/Samurai/Dead.png");
-            sprites[ATTACK] = LoadTexture("assets/Samurai/Attack_2.png");
-            sprites[HURT] = LoadTexture("assets/Samurai/Hurt.png");
-            sprites[IDLE] = LoadTexture("assets/Samurai/Idle.png");
-            sprites[JUMP] = LoadTexture("assets/Samurai/Jump.png");
-            sprites[RUN] = LoadTexture("assets/Samurai/Run.png");
-            sprites[PARRY] = LoadTexture("assets/Samurai/Shield.png");
-            sprites[WALK] = LoadTexture("assets/Samurai/Walk.png");
+        if (IsKeyPressed(KEY_W) && rect.y >= groundLevel) { // Jump action.
+            state = JUMP;
+            animations[JUMP].currentFrame = animations[JUMP].firstFrame; // Reset jump animation.
+            velocity.y = -250.0f; // Set vertical velocity for jump.
+            velocity.x *= 0.5f; // Reduce horizontal speed during jump.
         }
 
-        void updateAnimation() {
-            Animation& anim = animations[state];
-            float deltaTime = GetFrameTime();  
-
-            // Determines if we move to next frame.
-            anim.timeLeft -= deltaTime;  
-            if (anim.timeLeft <= 0) {
-                anim.timeLeft = anim.speed;  
-
-                anim.currentFrame++; // Move to next frame.
-
-                // Loop Animation, Otherwises stop at Last Frame
-                if (anim.currentFrame > anim.lastFrame) {
-                    if (anim.type == REPEATING) {
-                        anim.currentFrame = anim.firstFrame;  
-                    } else if (anim.type == ONESHOT) {
-                        anim.currentFrame = anim.lastFrame;  
-                    }
-                }
-            }
+        if (rect.y < groundLevel) {
+            state = JUMP; // Set to JUMP state while airborne.
+        } else if (state == JUMP && rect.y >= groundLevel) {
+            state = IDLE; // Return to idle state after landing.
         }
-        
-        Rectangle getAnimationFrame() const {
-            const Animation &anim = animations[state];
-            // Calculate Frame Dimensions.
-            int frameWidth = sprites[state].width / (anim.lastFrame + 1);
-            int frameHeight = sprites[state].height;
+    }
 
-            return (Rectangle){ // Return Rectangle for the current frame.
-                (float)frameWidth * anim.currentFrame, 0, (float)frameWidth, (float)frameHeight
-            };
-        }
-        
-        void draw() const {
-            Rectangle source = getAnimationFrame();
-            float scale = 2.0f; // Adjust Character Size.
+    // Helper method to apply velocity changes to the samurai's position.
+    void applyVelocity() {
+        rect.x += velocity.x * GetFrameTime(); // Apply horizontal velocity.
+        rect.y += velocity.y * GetFrameTime(); // Apply vertical velocity.
 
-            Rectangle dest = { // Rectangle for Sprite.
-                rect.x, rect.y, 
-                rect.width * scale,   
-                rect.height * scale   
-            };
-
-            // Flip Sprite.
-            source.width *= direction;  
-
-            // Draw Sprite.
-            DrawTexturePro(sprites[state], source, dest, {0, 0}, 0.0f, WHITE);
+        if (rect.y < groundLevel) {
+            velocity.y += 500.0f * GetFrameTime(); // Apply gravity if in air.
+        } else {
+            velocity.y = 0.0f; // Stop vertical movement if on ground.
+            rect.y = groundLevel; // Reset position to ground level.
         }
 
-        void move() {
-            // Default horizontal velocity.
-            float moveSpeed = 300.0f;
-            velocity.x = 0.0f;
-        
-            if (IsKeyDown(KEY_A)) {
-                velocity.x = -moveSpeed;  // Adjust Runnning Velocity Right.
-                direction = LEFT;
-                if (rect.y >= groundLevel) state = RUN;
-            } else if (IsKeyDown(KEY_D)) {
-                velocity.x = moveSpeed;  // Adjust Running Velocity Left.
-                direction = RIGHT;
-                if (rect.y >= groundLevel) state = RUN;
-            } else {
-                if (rect.y >= groundLevel) state = IDLE;
-            }
-        
-            if (IsKeyDown(KEY_SPACE)) {
-                state = ATTACK;
-            }
-        
-            if (IsKeyDown(KEY_W) && rect.y >= groundLevel) {
-                state = JUMP;
-                velocity.y = -250.0f;  // Adjust Velocity-Y Vector.
-                velocity.x *= 0.5f;  // Adjust Velocity-X Vector.
-            }
-        
-            if (IsKeyDown(KEY_E)) { 
-                if (state != PARRY) {  
-                    state = PARRY;
-                }
-            }
-        
-            // If character is in the air, keep JUMP animation active.
-            if (rect.y < groundLevel) {
-                state = JUMP;
-            } else if (state == JUMP && rect.y >= groundLevel) {
-                state = IDLE;
-            }
+        if (state == ATTACK && animations[state].currentFrame == animations[state].lastFrame) {
+            state = IDLE; // Return to idle after attack animation completes.
         }
-        
-        void applyVelocity() {
-            rect.x += velocity.x * GetFrameTime(); // Apply Horizontal Velocity.
-            rect.y += velocity.y * GetFrameTime(); // Apply Vertical Velocity.
-            
-            // Characters in the air.
-            if (rect.y < groundLevel) { 
-                velocity.y += 500.0f * GetFrameTime(); // Apply Gravity.
-            } else {
-                velocity.y = 0.0f;  
-                rect.y = groundLevel;  
-            }
+    }
+
+    // Helper method to handle damage logic.
+    void takeDamage(int damage) {
+        if (isDead) return; // Prevent damage if already dead.
+
+        currentHealth -= damage; // Apply damage to health.
+        if (currentHealth <= 0) {
+            currentHealth = 0;
+            isDead = true; // Set character to dead.
+            state = DEAD; // Set state to dead.
+        } else {
+            state = HURT; // Change state to hurt when damaged.
+            animations[HURT].currentFrame = animations[HURT].firstFrame; // Reset hurt animation.
+            animations[HURT].timeLeft = animations[HURT].speed; // Reset animation time.
         }
+    }
+
+    // Helper method to heal the samurai.
+    void heal(int healingAmount) {
+        if (isDead) return; // Prevent healing if dead.
+
+        currentHealth += healingAmount; // Increase health.
+        if (currentHealth > maxHealth) {
+            currentHealth = maxHealth; // Cap health at max value.
+        }
+    }
+
+    // Helper method to check for healing input.
+    void checkForHealing() {
+        if (IsKeyPressed(KEY_H)) { // Press 'H' to heal.
+            heal(20); // Heal 20 health points.
+        }
+    }
+
+    // Helper method to simulate taking damage for testing.
+    void checkForDamage() {
+        if (IsKeyPressed(KEY_K)) {  // Press 'K' to simulate enemy attack.
+            takeDamage(20);          // Apply 20 damage.
+        }
+    }
+
+public:
+    Samurai(Vector2 position) {
+        rect = (Rectangle){position.x, position.y, 64.0f, 64.0f}; // Set initial position and size.
+        velocity = (Vector2){0.0f, 0.0f}; // Initialize velocity.
+        direction = RIGHT; // Default facing direction.
+        state = IDLE; // Start in idle state.
+        groundLevel = position.y; // Set initial ground level.
+
+        // Initialize animations for different states.
+        animations = {
+            {0, 2, 0, 0, 0.1f, 0.1f, ONESHOT}, // Dead animation.
+            {0, 3, 0, 0, 0.1f, 0.1f, ONESHOT}, // Attack animation.
+            {0, 1, 0, 0, 0.1f, 0.1f, ONESHOT}, // Hurt animation.
+            {0, 5, 0, 0, 0.1f, 0.1f, REPEATING}, // Idle animation.
+            {0, 11, 0, 0, 0.1f, 0.1f, ONESHOT}, // Jump animation.
+            {0, 7, 0, 0, 0.1f, 0.1f, REPEATING}, // Run animation.
+            {0, 7, 0, 0, 0.1f, 0.1f, REPEATING}  // Walk animation.
+        };
+    }
+
+    ~Samurai() {
+        for (auto& sprite : sprites) {
+            UnloadTexture(sprite); // Unload textures from memory when done.
+        }
+    }
+
+    // Load textures for each state.
+    void loadTextures() {
+        sprites.resize(7);
+
+        // Load textures for different states (idle, attack, etc.).
+        sprites[DEAD] = LoadTexture("assets/Samurai/Dead.png");
+        sprites[ATTACK] = LoadTexture("assets/Samurai/Attack_2.png");
+        sprites[HURT] = LoadTexture("assets/Samurai/Hurt.png");
+        sprites[IDLE] = LoadTexture("assets/Samurai/Idle.png");
+        sprites[JUMP] = LoadTexture("assets/Samurai/Jump.png");
+        sprites[RUN] = LoadTexture("assets/Samurai/Run.png");
+        sprites[WALK] = LoadTexture("assets/Samurai/Walk.png");
+    }
+
+    // Draw the samurai's current animation frame.
+    void draw() const {
+        Rectangle source = getAnimationFrame(); // Get the current animation frame.
+        float scale = 2.0f; // Scale the character's size.
+
+        Rectangle dest = { // Destination rectangle for drawing.
+            rect.x, rect.y, 
+            rect.width * scale,   
+            rect.height * scale   
+        };
+
+        // Flip sprite if facing left.
+        source.width *= direction;  
+
+        // Draw the sprite.
+        DrawTexturePro(sprites[state], source, dest, {0, 0}, 0.0f, WHITE);
+    }
+
+    // Draw the health bar.
+    void drawHealthBar() {
+        float healthPercentage = (float)currentHealth / maxHealth;
+        DrawRectangle(20, 20, 200, 20, DARKGRAY); // Health bar background.
+        DrawRectangle(20, 20, (int)(200 * healthPercentage), 20, RED); // Health bar foreground.
+        DrawText(TextFormat("Health: %d/%d", currentHealth, maxHealth), 20, 45, 20, WHITE); // Display health.
+    }
+
+    // Update the samurai's state and perform actions.
+    void updateSamurai() {
+        if (!isDead) {
+            move(); // Allow movement if not dead.
+            applyVelocity(); // Apply velocity to update position.
+        } else {
+            velocity.x = 0; // Stop movement if dead.
+            velocity.y = 0;
+        }
+
+        updateAnimation(); // Update the animation state.
+        checkForHealing(); // Check if the healing key is pressed.
+        checkForDamage(); // Check if the damage key is pressed.
+    }
 };

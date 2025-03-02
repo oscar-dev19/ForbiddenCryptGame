@@ -8,7 +8,16 @@
 #include "Demon.h"
 
 int main() {
-    InitWindow(800, 600, "2D  Game");
+    InitWindow(800, 600, "2D Game");
+
+    // Initialize audio device before loading music
+    InitAudioDevice(); 
+
+    // Load background music, Note this is a placeholder music file, this is the final boss music.
+    Music backgroundMusic = LoadMusicStream("music/Lady Maria of the Astral Clocktower.mp3");  // Replace with your music file path.
+
+    PlayMusicStream(backgroundMusic);  // Start playing the music
+    SetMusicVolume(backgroundMusic, 0.5f);  // Adjust the volume if necessary (0.0 to 1.0)
 
     // Creating Samurai.
     Samurai samurai((Vector2) {400, 300});
@@ -33,10 +42,11 @@ int main() {
     SetTargetFPS(60);
 
     while (!WindowShouldClose()) {
-        // Update.
-        samurai.move();
-        samurai.applyVelocity();
-        samurai.updateAnimation();
+        // Update background music stream
+        UpdateMusicStream(backgroundMusic);  // Ensure music keeps playing
+
+        // Update game objects
+        samurai.updateSamurai();
 
         goblin.move();
         goblin.applyVelocity();
@@ -58,6 +68,7 @@ int main() {
         BeginDrawing();
         ClearBackground(GREEN);
         samurai.draw();
+        samurai.drawHealthBar();
         goblin.draw();
         werewolf.draw();
         wizard.draw();
@@ -65,6 +76,9 @@ int main() {
         EndDrawing();
     }
 
-    CloseWindow();
+    // Unload music and close window
+    UnloadMusicStream(backgroundMusic);  // Free the music resources
+    CloseAudioDevice();  // Close the audio device
+    CloseWindow();  // Close the window
     return 0;
 }
