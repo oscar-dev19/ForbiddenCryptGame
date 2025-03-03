@@ -2,6 +2,7 @@
 *.o
 *.exe
 *.class
+*.dll
 
 # Ignore build and temp files
 /build/
@@ -14,3 +15,7 @@
 .vscode/
 .idea/
 .DS_Store
+
+# Ignore Makefiles
+Makefiles
+makefile
