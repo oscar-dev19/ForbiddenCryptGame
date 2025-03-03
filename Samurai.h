@@ -44,11 +44,21 @@ private:
     std::vector<Animation> animations; // List of animations for different states.
     std::vector<Texture2D> sprites; // List of textures for each state.
     float groundLevel; // The Y-coordinate of the ground level.
+    bool isRunning = false; // Flag for checking if the player is running or not.
 
     // Define Health Variables
     int maxHealth = 100; // Maximum health value.
     int currentHealth = 100; // Current health of the samurai.
     bool isDead = false; // Flag to indicate if the samurai is dead.
+    bool wasInAir = false; // Flag to indicate if the character was in the air.
+
+    // Define Sound Varaibles.
+    Sound attackSound;
+    Sound jumpSound;
+    Sound hurtSound;
+    Sound runSound;
+    Sound deadSound;
+    Sound landSound;
 
     // Helper method to update the animation frame.
     void updateAnimation() {
@@ -96,42 +106,95 @@ private:
         };
     }
 
-    // Helper method to handle movement logic.
     void move() {
         float moveSpeed = 300.0f; // Set movement speed.
         velocity.x = 0.0f; // Reset horizontal velocity.
-
+    
         // Prevent movement during attack or hurt states.
-        if (state == ATTACK || state == HURT) return;
-
-        if (IsKeyDown(KEY_A)) { // Move Left.
-            velocity.x = -moveSpeed;
-            direction = LEFT;
-            if (rect.y >= groundLevel && state != JUMP) state = RUN;
-        } else if (IsKeyDown(KEY_D)) { // Move Right.
-            velocity.x = moveSpeed;
-            direction = RIGHT;
-            if (rect.y >= groundLevel && state != JUMP) state = RUN;
-        } else {
-            if (rect.y >= groundLevel && state != JUMP) state = IDLE;
+        if (state == ATTACK || state == HURT || state == DEAD) {
+            if (isRunning) { // Stop running sound if attacking or hurt
+                StopSound(runSound);
+                isRunning = false;
+            }
+            return;
         }
-
-        if (IsKeyPressed(KEY_SPACE)) { // Attack action.
-            state = ATTACK;
-            animations[state].currentFrame = animations[state].firstFrame;
-        }
-
+    
+        // Handle Jumping
         if (IsKeyPressed(KEY_W) && rect.y >= groundLevel) { // Jump action.
             state = JUMP;
             animations[JUMP].currentFrame = animations[JUMP].firstFrame; // Reset jump animation.
             velocity.y = -250.0f; // Set vertical velocity for jump.
             velocity.x *= 0.5f; // Reduce horizontal speed during jump.
+            PlaySound(jumpSound);
+    
+            if (isRunning) { // Stop running sound when jumping
+                StopSound(runSound);
+                isRunning = false;
+            }
+            wasInAir = false; // Reset falling state on jump start
         }
-
-        if (rect.y < groundLevel) {
-            state = JUMP; // Set to JUMP state while airborne.
-        } else if (state == JUMP && rect.y >= groundLevel) {
-            state = IDLE; // Return to idle state after landing.
+    
+        bool moving = false; // Track if the player is moving
+    
+        if (IsKeyDown(KEY_A)) { // Move Left.
+            velocity.x = -moveSpeed;
+            direction = LEFT;
+            moving = true;
+        } 
+        else if (IsKeyDown(KEY_D)) { // Move Right.
+            velocity.x = moveSpeed;
+            direction = RIGHT;
+            moving = true;
+        }
+    
+        // Handle Running Sound while on the ground
+        if (moving && rect.y >= groundLevel) {
+            if (!isRunning) {
+                PlaySound(runSound);
+                isRunning = true;
+            }
+            state = RUN;
+        } 
+        else { // No movement OR airborne
+            if (isRunning) { // Stop running sound when movement stops or when airborne
+                StopSound(runSound);
+                isRunning = false;
+            }
+            if (rect.y >= groundLevel && state != JUMP) state = IDLE;
+        }
+    
+        // Check for Landing: Play landing sound only when falling
+        if (wasInAir && rect.y >= groundLevel) {
+            PlaySound(landSound); // Play landing sound after falling
+            wasInAir = false; // Reset the falling state
+        }
+    
+        // Attack action
+        if (IsKeyPressed(KEY_SPACE)) { // Attack action.
+            state = ATTACK;
+            animations[state].currentFrame = animations[state].firstFrame;
+            PlaySound(attackSound);
+    
+            if (isRunning) { // Stop running sound if attacking
+                StopSound(runSound);
+                isRunning = false;
+            }
+        }
+    
+        // Handle Jump and Falling States
+        if (rect.y < groundLevel) { // **Check if airborne after jumping or falling**
+            state = JUMP; // The character is in the air.
+            if (!wasInAir) {
+                wasInAir = true; // Character is falling now (after jumping)
+            }
+    
+            if (isRunning) { // Stop running sound if in the air
+                StopSound(runSound);
+                isRunning = false;
+            }
+        } 
+        else if (state == JUMP && rect.y >= groundLevel) {
+            state = IDLE; // Return to idle state after landing
         }
     }
 
@@ -157,14 +220,27 @@ private:
         if (isDead) return; // Prevent damage if already dead.
 
         currentHealth -= damage; // Apply damage to health.
+
         if (currentHealth <= 0) {
             currentHealth = 0;
             isDead = true; // Set character to dead.
             state = DEAD; // Set state to dead.
+            PlaySound(deadSound);
+
+            if (isRunning) { // Stop running sound when dying
+                StopSound(runSound);
+                isRunning = false;
+            }
         } else {
             state = HURT; // Change state to hurt when damaged.
             animations[HURT].currentFrame = animations[HURT].firstFrame; // Reset hurt animation.
             animations[HURT].timeLeft = animations[HURT].speed; // Reset animation time.
+            PlaySound(hurtSound);
+
+            if (isRunning) { // Stop running sound when hurt
+                StopSound(runSound);
+                isRunning = false;
+            }
         }
     }
 
@@ -215,6 +291,14 @@ public:
         for (auto& sprite : sprites) {
             UnloadTexture(sprite); // Unload textures from memory when done.
         }
+
+        // Unload Sounds.
+        UnloadSound(deadSound);
+        UnloadSound(jumpSound);
+        UnloadSound(hurtSound);
+        UnloadSound(runSound);
+        UnloadSound(attackSound);
+        UnloadSound(landSound);
     }
 
     // Load textures for each state.
@@ -228,6 +312,15 @@ public:
         sprites[IDLE] = LoadTexture("assets/Samurai/Idle.png");
         sprites[JUMP] = LoadTexture("assets/Samurai/Jump.png");
         sprites[RUN] = LoadTexture("assets/Samurai/Run.png");
+    }
+
+    void loadSounds() {
+        deadSound = LoadSound("sounds/samurai/female-death.wav");
+        hurtSound = LoadSound("sounds/samurai/female-hurt-2-94301.wav");
+        jumpSound = LoadSound("sounds/samurai/female-jump.wav");
+        attackSound = LoadSound("sounds/samurai/sword-sound-2-36274.wav");
+        runSound = LoadSound("sounds/samurai/running-on-concrete-268478.wav");
+        landSound = LoadSound("sounds/samurai/land2-43790.wav");
     }
 
     // Draw the samurai's current animation frame.

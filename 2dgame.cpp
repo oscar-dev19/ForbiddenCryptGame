@@ -22,6 +22,7 @@ int main() {
     // Creating Samurai.
     Samurai samurai((Vector2) {400, 300});
     samurai.loadTextures();
+    samurai.loadSounds();
 
     // Creating Goblin.
     Goblin goblin((Vector2) {400, 300});
