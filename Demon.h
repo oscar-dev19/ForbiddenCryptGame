@@ -172,10 +172,11 @@ class Demon {
 
         void move() {
             if (!hasFinishedAttack) return;
-
+        
             float moveSpeed = 300.0f;
             velocity.x = 0.0f;
-
+        
+            // Check if moving left or right
             if (IsKeyDown(KEY_H)) {
                 velocity.x = -moveSpeed;
                 direction = RIGHT_DEMON;
@@ -187,13 +188,16 @@ class Demon {
                 state = WALK_DEMON;
             }
             else {
+                // If no key is pressed, set the state to idle
                 state = IDLE_DEMON;
             }
-
+        
+            // Handle attack animation - stop movement during attack
             if (IsKeyPressed(KEY_L) && hasFinishedAttack) {
                 state = ATTACK_DEMON;
                 hasFinishedAttack = false;
                 animations[ATTACK_DEMON].currentFrame = animations[ATTACK_DEMON].firstFrame;
+                velocity.x = 0.0f;  // Stop movement during attack
             }
         }
 
