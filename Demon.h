@@ -41,6 +41,10 @@ class Demon {
         bool isAttacking = false;
         bool hasFinishedAttack = true;
 
+        // Health related to damage and death
+        int health;
+        bool isDead = false;
+
         std::vector<AnimationDemon> animations;
 
         Demon(Vector2 position) {
@@ -48,6 +52,9 @@ class Demon {
             velocity = { 0.0f, 0.0f };
             direction = RIGHT_DEMON;
             state = IDLE_DEMON;
+
+            // Initialize health
+            health = 100;
 
             // Load animations from directories
             loadAnimations();
@@ -64,8 +71,6 @@ class Demon {
                 }
             }
         }
-
-        #include <algorithm>
 
         void loadAnimations() {
             std::vector<std::string> animationFolders = { 
@@ -123,23 +128,58 @@ class Demon {
             }
         }
 
-        
-
         void updateAnimation() {
-            AnimationDemon& anim = animations[state];
-            float deltaTime = GetFrameTime();
-            anim.timeLeft -= deltaTime;
-
-            if (anim.timeLeft <= 0) {
-                anim.timeLeft = anim.speed;
-                anim.currentFrame++;
-
-                if (anim.currentFrame > anim.lastFrame) {
-                    if (anim.type == REPEATING_DEMON) {
-                        anim.currentFrame = anim.firstFrame; // Loop back to first frame
-                    } else {
-                        anim.currentFrame = anim.lastFrame; // Hold on the last frame
-                        hasFinishedAttack = true; // Animation is complete
+            // Check if the demon is dead or hurt, and prioritize these states
+            if (isDead) {
+                state = DEAD_DEMON;  // Ensure dead animation is always active
+            } else if (state == HURT_DEMON) {
+                // Handle hurt animation
+                AnimationDemon& anim = animations[state];
+                float deltaTime = GetFrameTime();
+                anim.timeLeft -= deltaTime;
+        
+                if (anim.timeLeft <= 0) {
+                    anim.timeLeft = anim.speed;
+                    anim.currentFrame++;
+        
+                    if (anim.currentFrame > anim.lastFrame) {
+                        anim.currentFrame = anim.firstFrame;  // Restart or loop
+                        state = IDLE_DEMON;  // After hurt, go back to idle
+                    }
+                }
+            } else if (state == DEAD_DEMON) {
+                // Handle dead animation
+                AnimationDemon& anim = animations[state];
+                float deltaTime = GetFrameTime();
+                anim.timeLeft -= deltaTime;
+        
+                if (anim.timeLeft <= 0) {
+                    anim.timeLeft = anim.speed;
+                    anim.currentFrame++;
+        
+                    if (anim.currentFrame > anim.lastFrame) {
+                        anim.currentFrame = anim.lastFrame;  // Stay on the last frame of dead animation
+                        // Do nothing after the dead animation completes
+                        return; // Dead state will not change to idle
+                    }
+                }
+            } else {
+                // Handle other animations (walking, attacking, etc.)
+                AnimationDemon& anim = animations[state];
+                float deltaTime = GetFrameTime();
+                anim.timeLeft -= deltaTime;
+        
+                if (anim.timeLeft <= 0) {
+                    anim.timeLeft = anim.speed;
+                    anim.currentFrame++;
+        
+                    if (anim.currentFrame > anim.lastFrame) {
+                        if (anim.type == REPEATING_DEMON) {
+                            anim.currentFrame = anim.firstFrame; // Loop back to first frame
+                        } else {
+                            anim.currentFrame = anim.lastFrame; // Hold on the last frame
+                            hasFinishedAttack = true; // Animation is complete
+                        }
                     }
                 }
             }
@@ -171,11 +211,16 @@ class Demon {
         }
 
         void move() {
-            if (!hasFinishedAttack) return;
-
+            // Don't allow movement if the demon is dead
+            if (isDead) return;
+        
+            // Stop attack if hurt or dead
+            if (state == HURT_DEMON || state == DEAD_DEMON) return;
+        
             float moveSpeed = 300.0f;
             velocity.x = 0.0f;
-
+        
+            // Movement controls (walking)
             if (IsKeyDown(KEY_H)) {
                 velocity.x = -moveSpeed;
                 direction = RIGHT_DEMON;
@@ -189,11 +234,18 @@ class Demon {
             else {
                 state = IDLE_DEMON;
             }
-
+        
+            // Attack control (if not hurt or dead)
             if (IsKeyPressed(KEY_L) && hasFinishedAttack) {
                 state = ATTACK_DEMON;
                 hasFinishedAttack = false;
                 animations[ATTACK_DEMON].currentFrame = animations[ATTACK_DEMON].firstFrame;
+                velocity.x = 0.0f;  // Stop movement during attack
+            }
+        
+            // Damage control (only if the demon is not dead)
+            if (IsKeyPressed(KEY_T) && !isDead) {
+                takeDamage(10);  // Demon takes 10 damage
             }
         }
 
@@ -201,5 +253,19 @@ class Demon {
             float deltaTime = GetFrameTime();
             rect.x += velocity.x * deltaTime;
             rect.y += velocity.y * deltaTime;
+        }
+
+        void takeDamage(int damage) {
+            if (isDead) return;  // Do nothing if the demon is already dead
+        
+            // Reduce health
+            health -= damage;
+            if (health <= 0) {
+                health = 0;
+                isDead = true;
+                state = DEAD_DEMON;  // Change to dead animation
+            } else {
+                state = HURT_DEMON;  // Trigger hurt animation
+            }
         }
 };
