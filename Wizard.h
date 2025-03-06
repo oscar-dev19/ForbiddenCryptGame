@@ -1,9 +1,13 @@
-#include <raylib.h>
+#ifndef WIZARD_H
+#define WIZARD_H
+
+#include "raylib.h"
+#include "CollisionSystem.h"
 #include <vector>
 
 const float GRAVITY_WIZARD = 800.0f;
 const float JUMP_FORCE_WIZARD = -400.0f;
-const float GROUND_LEVEL_WIZARD = 200.0f; 
+const float GROUND_LEVEL_WIZARD = 480.0f;
 
 enum DirectionWizard {
     LEFT_WIZARD = -1,
@@ -39,28 +43,57 @@ class Wizard {
         DirectionWizard direction;
         CurrentStateWizard state;
         bool isOnGround = true;
+        bool isDead = false;
 
         std::vector<AnimationWizard> animations;
         std::vector<Texture2D> sprites;
 
         bool isAttacking = false;
         bool hasFinishedAttack = true;
+        
+        // Collision boxes for different purposes
+        std::vector<CollisionBox> collisionBoxes;
 
         Wizard(Vector2 position) {
-            rect = {position.x, position.y, 64.0f, 64.0f};  
-            velocity = {0.0f, 0.0f}; 
-            direction = RIGHT_WIZARD; 
-            state = IDLE_WIZARD; 
+            rect = { position.x, position.y, 64.0f * SPRITE_SCALE, 64.0f * SPRITE_SCALE };
+            velocity = { 0, 0 };
+            direction = RIGHT_WIZARD;
+            state = IDLE_WIZARD;
 
+            // Initialize animations for different states
             animations = {
-                {0, 7, 0, 0, 0.1f, 0.1f, ONESHOT_WIZARD},
-                {0, 7, 0, 0, 0.1f, 0.1f, ONESHOT_WIZARD},
-                {0, 7, 0, 0, 0.1f, 0.1f, ONESHOT_WIZARD},
-                {0, 2, 0, 0, 0.1f, 0.1f, ONESHOT_WIZARD},
-                {0, 7, 0, 0, 0.1f, 0.1f, REPEATING_WIZARD},
-                {0, 1, 0, 0, 0.1f, 0.1f, ONESHOT_WIZARD},
-                {0, 7, 0, 0, 0.1f, 0.1f, REPEATING_WIZARD}
-            }; 
+                { 0, 3, 0, 0, 0.2f, 0.2f, REPEATING_WIZARD }, // DEAD_WIZARD
+                { 0, 5, 0, 0, 0.1f, 0.1f, ONESHOT_WIZARD },   // ATTACK1_WIZARD
+                { 0, 5, 0, 0, 0.1f, 0.1f, ONESHOT_WIZARD },   // ATTACK2_WIZARD
+                { 0, 2, 0, 0, 0.2f, 0.2f, ONESHOT_WIZARD },   // HURT_WIZARD
+                { 0, 5, 0, 0, 0.2f, 0.2f, REPEATING_WIZARD }, // IDLE_WIZARD
+                { 0, 5, 0, 0, 0.2f, 0.2f, ONESHOT_WIZARD },   // JUMP_WIZARD
+                { 0, 7, 0, 0, 0.1f, 0.1f, REPEATING_WIZARD }  // RUN_WIZARD
+            };
+
+            // Load textures for each state
+            loadTextures();
+
+            // Initialize collision boxes with scaled dimensions
+            float bodyOffsetX = 16.0f * SPRITE_SCALE;
+            float bodyOffsetY = 16.0f * SPRITE_SCALE;
+            float bodyWidth = rect.width - (32.0f * SPRITE_SCALE);
+            float bodyHeight = rect.height - (16.0f * SPRITE_SCALE);
+            
+            float attackOffsetX = rect.width - (16.0f * SPRITE_SCALE);
+            float attackOffsetY = 24.0f * SPRITE_SCALE;
+            float attackSize = 32.0f * SPRITE_SCALE;
+            
+            float hurtboxOffsetX = 20.0f * SPRITE_SCALE;
+            float hurtboxOffsetY = 20.0f * SPRITE_SCALE;
+            float hurtboxWidth = rect.width - (40.0f * SPRITE_SCALE);
+            float hurtboxHeight = rect.height - (24.0f * SPRITE_SCALE);
+            
+            collisionBoxes = {
+                CollisionBox({rect.x + bodyOffsetX, rect.y + bodyOffsetY, bodyWidth, bodyHeight}, BODY),
+                CollisionBox({rect.x + attackOffsetX, rect.y + attackOffsetY, attackSize, attackSize}, ATTACK, false),
+                CollisionBox({rect.x + hurtboxOffsetX, rect.y + hurtboxOffsetY, hurtboxWidth, hurtboxHeight}, HURTBOX)
+            };
         }
 
         ~Wizard() {
@@ -71,7 +104,6 @@ class Wizard {
 
         void loadTextures()  {
             sprites.resize(7);
-
             sprites[DEAD_WIZARD] = LoadTexture("assets/Wizard/Sprites/Death.png");
             sprites[ATTACK1_WIZARD] = LoadTexture("assets/Wizard/Sprites/Attack1.png");
             sprites[ATTACK2_WIZARD] = LoadTexture("assets/Wizard/Sprites/Attack2.png");
@@ -84,18 +116,22 @@ class Wizard {
         void updateAnimation() {
             AnimationWizard& anim = animations[state];
             float deltaTime = GetFrameTime();
+
             anim.timeLeft -= deltaTime;
-    
             if (anim.timeLeft <= 0) {
                 anim.timeLeft = anim.speed;
-                anim.currentFrame++;
-    
-                if (anim.currentFrame > anim.lastFrame) {
+
+                if (anim.currentFrame < anim.lastFrame) {
+                    anim.currentFrame++;
+                } else {
                     if (anim.type == REPEATING_WIZARD) {
                         anim.currentFrame = anim.firstFrame;
-                    } else {
-                        anim.currentFrame = anim.lastFrame;
+                    } else if (state == ATTACK1_WIZARD || state == ATTACK2_WIZARD) {
+                        state = IDLE_WIZARD;
+                        isAttacking = false;
                         hasFinishedAttack = true;
+                    } else if (state == HURT_WIZARD) {
+                        state = IDLE_WIZARD;
                     }
                 }
             }
@@ -110,75 +146,181 @@ class Wizard {
         }
 
         void draw() const {
+            if (isDead && animations[DEAD_WIZARD].currentFrame == animations[DEAD_WIZARD].lastFrame) {
+                return; // Don't draw if dead and animation finished
+            }
+
             Rectangle source = getAnimationFrame();
-            float scale = 5.0f;
-    
-            Rectangle dest = { rect.x, rect.y, rect.width * scale, rect.height * scale };
-    
-            if (direction == LEFT_WIZARD) {
-                source.x += source.width; // Fix: Proper mirroring
-                source.width = -source.width;
-            }
-    
-            DrawTexturePro(sprites[state], source, dest, { 0, 0 }, 0.0f, WHITE);
-        }
+            Rectangle dest = { rect.x, rect.y, rect.width, rect.height };
+            Vector2 origin = { 0, 0 };
+            float rotation = 0.0f;
 
-        void move() {
-            if (!hasFinishedAttack) return;
-        
-            float moveSpeed = 300.0f;
-            velocity.x = 0.0f;
-        
-            if (IsKeyDown(KEY_N)) {
-                velocity.x = -moveSpeed;
-                direction = LEFT_WIZARD;
-                if (isOnGround) state = RUN_WIZARD;
-            } 
-            else if (IsKeyDown(KEY_M)) {
-                velocity.x = moveSpeed;
-                direction = RIGHT_WIZARD;
-                if (isOnGround) state = RUN_WIZARD;
-            } 
-            else if (isOnGround) {
-                state = IDLE_WIZARD;
+            if (direction == RIGHT_WIZARD) {
+                DrawTexturePro(sprites[state], source, dest, origin, rotation, WHITE);
+            } else {
+                Rectangle flippedSource = { source.x + source.width, source.y, -source.width, source.height };
+                DrawTexturePro(sprites[state], flippedSource, dest, origin, rotation, WHITE);
             }
-        
-            if (IsKeyPressed(KEY_J) && isOnGround) {
-                velocity.y = JUMP_FORCE_WIZARD;
-                state = JUMP_WIZARD;
-                isOnGround = false;
-        
-                animations[JUMP_WIZARD].currentFrame = animations[JUMP_WIZARD].firstFrame;
-            }
-        
-            if (IsKeyPressed(KEY_KP_7) && hasFinishedAttack) {
-                state = ATTACK1_WIZARD;
-                hasFinishedAttack = false;
-                animations[ATTACK1_WIZARD].currentFrame = animations[ATTACK1_WIZARD].firstFrame;
-            }
-        
-            if (IsKeyPressed(KEY_KP_8) && hasFinishedAttack) {
-                state = ATTACK2_WIZARD;
-                hasFinishedAttack = false;
-                animations[ATTACK2_WIZARD].currentFrame = animations[ATTACK2_WIZARD].firstFrame;
-            }
-        }
 
-        void applyVelocity() {
-            float deltaTime = GetFrameTime();
-    
-            velocity.y += GRAVITY_WIZARD * deltaTime;
-    
-            rect.x += velocity.x * deltaTime;
-            rect.y += velocity.y * deltaTime;
-    
-            if (rect.y >= GROUND_LEVEL_WIZARD) {
-                rect.y = GROUND_LEVEL_WIZARD;
-                velocity.y = 0;
-                isOnGround = true;
-                if (state == JUMP_WIZARD) {
-                    state = IDLE_WIZARD;
+            // Draw collision boxes for debugging
+            for (const auto& box : collisionBoxes) {
+                if (box.active) {
+                    Color color;
+                    switch (box.type) {
+                        case BODY: color = BLUE; break;
+                        case ATTACK: color = RED; break;
+                        case HURTBOX: color = GREEN; break;
+                    }
+                    DrawRectangleLines(box.rect.x, box.rect.y, box.rect.width, box.rect.height, color);
                 }
             }
         }
+
+        void move() {
+            // Simple AI movement logic
+            if (!isAttacking && hasFinishedAttack && !isDead) {
+                // Random chance to change direction or attack
+                if (GetRandomValue(0, 100) < 2) {
+                    direction = (direction == RIGHT_WIZARD) ? LEFT_WIZARD : RIGHT_WIZARD;
+                }
+
+                if (GetRandomValue(0, 100) < 1) {
+                    // Choose a random attack
+                    int attackType = GetRandomValue(1, 2);
+                    switch (attackType) {
+                        case 1: state = ATTACK1_WIZARD; break;
+                        case 2: state = ATTACK2_WIZARD; break;
+                    }
+                    isAttacking = true;
+                    hasFinishedAttack = false;
+                    animations[state].currentFrame = 0;
+                } else {
+                    // Move in the current direction
+                    velocity.x = direction * 1.0f;  // Wizard moves slower
+                    state = RUN_WIZARD;
+                }
+            } else if (isDead) {
+                velocity.x = 0;  // Stop moving when dead
+                state = DEAD_WIZARD;
+            } else {
+                velocity.x = 0;  // Stop moving while attacking
+            }
+
+            // Apply velocity
+            applyVelocity();
+        }
+
+        void applyVelocity() {
+            rect.x += velocity.x;
+            rect.y += velocity.y;
+
+            // Keep within screen bounds
+            if (rect.x < 0) {
+                rect.x = 0;
+                direction = RIGHT_WIZARD;
+            }
+            if (rect.x > GetScreenWidth() - rect.width) {
+                rect.x = GetScreenWidth() - rect.width;
+                direction = LEFT_WIZARD;
+            }
+        }
+
+        void updateCollisionBoxes() {
+            // Define scaled offsets and dimensions
+            float bodyOffsetX = 16.0f * SPRITE_SCALE;
+            float bodyOffsetY = 16.0f * SPRITE_SCALE;
+            float bodyWidth = rect.width - (32.0f * SPRITE_SCALE);
+            float bodyHeight = rect.height - (16.0f * SPRITE_SCALE);
+            
+            float attackOffsetX = rect.width - (16.0f * SPRITE_SCALE);
+            float attackOffsetY = 24.0f * SPRITE_SCALE;
+            float attackSize = 32.0f * SPRITE_SCALE;
+            
+            float hurtboxOffsetX = 20.0f * SPRITE_SCALE;
+            float hurtboxOffsetY = 20.0f * SPRITE_SCALE;
+            float hurtboxWidth = rect.width - (40.0f * SPRITE_SCALE);
+            float hurtboxHeight = rect.height - (24.0f * SPRITE_SCALE);
+            
+            for (auto& box : collisionBoxes) {
+                // Update position of body collision box
+                if (box.type == BODY) {
+                    box.rect.x = rect.x + bodyOffsetX;
+                    box.rect.y = rect.y + bodyOffsetY;
+                    box.rect.width = bodyWidth;
+                    box.rect.height = bodyHeight;
+                }
+                // Update position of attack collision box
+                else if (box.type == ATTACK) {
+                    // Only activate attack box during attack animation frames 2-4
+                    box.active = ((state == ATTACK1_WIZARD || state == ATTACK2_WIZARD) && 
+                                 animations[state].currentFrame >= 2 && 
+                                 animations[state].currentFrame <= 4);
+                    
+                    if (direction == RIGHT_WIZARD) {
+                        box.rect.x = rect.x + attackOffsetX;
+                        box.rect.y = rect.y + attackOffsetY;
+                        box.rect.width = attackSize;
+                        box.rect.height = attackSize;
+                    } else {
+                        box.rect.x = rect.x - attackSize;
+                        box.rect.y = rect.y + attackOffsetY;
+                        box.rect.width = attackSize;
+                        box.rect.height = attackSize;
+                    }
+                }
+                // Update position of hurtbox
+                else if (box.type == HURTBOX) {
+                    box.rect.x = rect.x + hurtboxOffsetX;
+                    box.rect.y = rect.y + hurtboxOffsetY;
+                    box.rect.width = hurtboxWidth;
+                    box.rect.height = hurtboxHeight;
+                    box.active = !isDead;  // Deactivate hurtbox when dead
+                }
+            }
+        }
+
+        void takeDamage(int damage) {
+            if (!isDead && state != HURT_WIZARD) {
+                // Implement health reduction logic here
+                if (GetRandomValue(0, 100) < 15) {  // 15% chance to die from a hit
+                    state = DEAD_WIZARD;
+                    isDead = true;
+                    animations[state].currentFrame = 0;
+                    velocity.x = 0;
+                    
+                    // Deactivate collision boxes
+                    for (auto& box : collisionBoxes) {
+                        if (box.type == ATTACK || box.type == HURTBOX) {
+                            box.active = false;
+                        }
+                    }
+                } else {
+                    state = HURT_WIZARD;
+                    animations[state].currentFrame = 0;
+                    isAttacking = false;
+                }
+            }
+        }
+
+        void update() {
+            if (!isDead) {
+                move();
+                updateAnimation();
+                updateCollisionBoxes();
+            } else {
+                state = DEAD_WIZARD;
+                updateAnimation(); // Continue death animation
+            }
+        }
+
+        CollisionBox* getCollisionBox(CollisionBoxType type) {
+            for (auto& box : collisionBoxes) {
+                if (box.type == type) {
+                    return &box;
+                }
+            }
+            return nullptr;
+        }
 };
+
+#endif // WIZARD_H

@@ -1,11 +1,19 @@
-#include <raylib.h>
+#ifndef DEMON_H
+#define DEMON_H
+
+#include "raylib.h"
+#include "CollisionSystem.h"
 #include <vector>
 #include <iostream>
 #include <string>
-#include <filesystem>
+// Remove or comment out the filesystem include if it's not supported
+// #include <filesystem>
 #include <algorithm>  // For sorting files by name
 
-namespace fs = std::filesystem;
+// Comment out the namespace alias since we won't be using filesystem
+// namespace fs = std::filesystem;
+
+// Collision box types for different purposes
 
 enum DirectionDemon {
     LEFT_DEMON = -1,
@@ -29,7 +37,6 @@ struct AnimationDemon {
     int firstFrame, lastFrame, currentFrame;
     float speed, timeLeft;
     AnimationTypeDemon type;
-    std::vector<Texture2D> frames;  // Store the individual textures for frames
 };
 
 class Demon {
@@ -46,140 +53,79 @@ class Demon {
         bool isDead = false;
 
         std::vector<AnimationDemon> animations;
+        std::vector<Texture2D> sprites; // The texture sheets used for animations
+        
+        // Collision boxes for different purposes
+        std::vector<CollisionBox> collisionBoxes;
 
+        // Constructor initializing the Demon's properties and animations
         Demon(Vector2 position) {
-            rect = { position.x, position.y, 64.0f, 64.0f };
-            velocity = { 0.0f, 0.0f };
+            rect = { position.x, position.y, 144.0f * SPRITE_SCALE, 80.0f * SPRITE_SCALE };
+            velocity = { 0, 0 };
             direction = RIGHT_DEMON;
             state = IDLE_DEMON;
+            health = 100; // Initialize health
 
-            // Initialize health
-            health = 100;
+            // Initialize animations for different states
+            animations = {
+                { 0, 5, 0, 0.2f, 0.2f, REPEATING_DEMON }, // IDLE_DEMON
+                { 0, 5, 0, 0.1f, 0.1f, REPEATING_DEMON }, // WALK_DEMON
+                { 0, 5, 0, 0.1f, 0.1f, ONESHOT_DEMON },   // ATTACK_DEMON
+                { 0, 2, 0, 0.2f, 0.2f, ONESHOT_DEMON },   // HURT_DEMON
+                { 0, 5, 0, 0.2f, 0.2f, ONESHOT_DEMON }    // DEAD_DEMON
+            };
 
-            // Load animations from directories
-            loadAnimations();
+            // Load textures for each state
+            sprites.push_back(LoadTexture("assets/Demon/spritesheets/demon_slime_FREE_v1.0_288x160_spritesheet.png"));
 
-            // Debug: Check if the textures load correctly
-            std::cout << "Loaded " << animations[IDLE_DEMON].frames.size() << " frames for idle animation." << std::endl;
+            // Initialize collision boxes with scaled dimensions
+            float bodyOffsetX = 36.0f * SPRITE_SCALE;
+            float bodyOffsetY = 20.0f * SPRITE_SCALE;
+            float bodyWidth = rect.width - (72.0f * SPRITE_SCALE);
+            float bodyHeight = rect.height - (20.0f * SPRITE_SCALE);
+            
+            float attackOffsetX = rect.width - (36.0f * SPRITE_SCALE);
+            float attackOffsetY = 30.0f * SPRITE_SCALE;
+            float attackSize = 72.0f * SPRITE_SCALE;
+            float attackHeight = 40.0f * SPRITE_SCALE;
+            
+            float hurtboxOffsetX = 45.0f * SPRITE_SCALE;
+            float hurtboxOffsetY = 25.0f * SPRITE_SCALE;
+            float hurtboxWidth = rect.width - (90.0f * SPRITE_SCALE);
+            float hurtboxHeight = rect.height - (30.0f * SPRITE_SCALE);
+            
+            collisionBoxes = {
+                CollisionBox({rect.x + bodyOffsetX, rect.y + bodyOffsetY, bodyWidth, bodyHeight}, BODY),
+                CollisionBox({rect.x + attackOffsetX, rect.y + attackOffsetY, attackSize, attackHeight}, ATTACK, false),
+                CollisionBox({rect.x + hurtboxOffsetX, rect.y + hurtboxOffsetY, hurtboxWidth, hurtboxHeight}, HURTBOX)
+            };
         }
 
         ~Demon() {
-            // Unload all textures for each animation
-            for (auto& anim : animations) {
-                for (auto& frame : anim.frames) {
-                    UnloadTexture(frame);  // Unload individual frames
-                }
-            }
-        }
-
-        void loadAnimations() {
-            std::vector<std::string> animationFolders = { 
-                "assets/Demon/individual sprites/01_demon_idle", 
-                "assets/Demon/individual sprites/02_demon_walk", 
-                "assets/Demon/individual sprites/03_demon_cleave", 
-                "assets/Demon/individual sprites/04_demon_take_hit", 
-                "assets/Demon/individual sprites/05_demon_death" 
-            };
-
-            for (int i = 0; i < animationFolders.size(); ++i) {
-                AnimationDemon anim;
-                anim.speed = 0.1f;
-                anim.timeLeft = anim.speed;
-                anim.type = (i == ATTACK_DEMON) ? ONESHOT_DEMON : REPEATING_DEMON;
-                
-                std::vector<std::string> framePaths;
-                
-                // Collect all PNG paths from the directory
-                for (const auto& entry : fs::directory_iterator(animationFolders[i])) {
-                    if (entry.path().extension() == ".png") {
-                        framePaths.push_back(entry.path().string());
-                        std::cout << "Found PNG: " << entry.path().string() << std::endl;
-                    }
-                }
-
-                // Sort the paths to ensure frames are loaded in the correct order (by filename)
-                std::sort(framePaths.begin(), framePaths.end(), [](const std::string& a, const std::string& b) {
-                    // Custom sort by numeric value in the filename, assuming filenames have numbers like "frame1.png", "frame2.png", etc.
-                    std::string baseA = a.substr(a.find_last_of("/\\") + 1); // Get the filename
-                    std::string baseB = b.substr(b.find_last_of("/\\") + 1); // Get the filename
-                    
-                    // Sort numerically if filenames contain numbers
-                    int numA = std::stoi(baseA.substr(baseA.find_first_of("0123456789")));
-                    int numB = std::stoi(baseB.substr(baseB.find_first_of("0123456789")));
-                    return numA < numB;
-                });
-
-                std::cout << "Loading " << framePaths.size() << " frames." << std::endl;
-
-                // Load textures in sorted order
-                for (const auto& path : framePaths) {
-                    Texture2D texture = LoadTexture(path.c_str());
-                    if (texture.id == 0) {
-                        std::cerr << "Failed to load texture: " << path << std::endl;
-                    } else {
-                        anim.frames.push_back(texture);
-                        std::cout << "Loaded texture: " << path << std::endl;
-                    }
-                }
-
-                anim.firstFrame = 0;
-                anim.lastFrame = anim.frames.size() - 1;
-                animations.push_back(anim);
+            for (Texture2D& texture : sprites) {
+                UnloadTexture(texture);
             }
         }
 
         void updateAnimation() {
-            // Check if the demon is dead or hurt, and prioritize these states
-            if (isDead) {
-                state = DEAD_DEMON;  // Ensure dead animation is always active
-            } else if (state == HURT_DEMON) {
-                // Handle hurt animation
-                AnimationDemon& anim = animations[state];
-                float deltaTime = GetFrameTime();
-                anim.timeLeft -= deltaTime;
-        
-                if (anim.timeLeft <= 0) {
-                    anim.timeLeft = anim.speed;
+            AnimationDemon& anim = animations[state];
+            float deltaTime = GetFrameTime();
+
+            anim.timeLeft -= deltaTime;
+            if (anim.timeLeft <= 0) {
+                anim.timeLeft = anim.speed;
+
+                if (anim.currentFrame < anim.lastFrame) {
                     anim.currentFrame++;
-        
-                    if (anim.currentFrame > anim.lastFrame) {
-                        anim.currentFrame = anim.firstFrame;  // Restart or loop
-                        state = IDLE_DEMON;  // After hurt, go back to idle
-                    }
-                }
-            } else if (state == DEAD_DEMON) {
-                // Handle dead animation
-                AnimationDemon& anim = animations[state];
-                float deltaTime = GetFrameTime();
-                anim.timeLeft -= deltaTime;
-        
-                if (anim.timeLeft <= 0) {
-                    anim.timeLeft = anim.speed;
-                    anim.currentFrame++;
-        
-                    if (anim.currentFrame > anim.lastFrame) {
-                        anim.currentFrame = anim.lastFrame;  // Stay on the last frame of dead animation
-                        // Do nothing after the dead animation completes
-                        return; // Dead state will not change to idle
-                    }
-                }
-            } else {
-                // Handle other animations (walking, attacking, etc.)
-                AnimationDemon& anim = animations[state];
-                float deltaTime = GetFrameTime();
-                anim.timeLeft -= deltaTime;
-        
-                if (anim.timeLeft <= 0) {
-                    anim.timeLeft = anim.speed;
-                    anim.currentFrame++;
-        
-                    if (anim.currentFrame > anim.lastFrame) {
-                        if (anim.type == REPEATING_DEMON) {
-                            anim.currentFrame = anim.firstFrame; // Loop back to first frame
-                        } else {
-                            anim.currentFrame = anim.lastFrame; // Hold on the last frame
-                            hasFinishedAttack = true; // Animation is complete
-                        }
+                } else {
+                    if (anim.type == REPEATING_DEMON) {
+                        anim.currentFrame = anim.firstFrame;
+                    } else if (state == ATTACK_DEMON) {
+                        state = IDLE_DEMON;
+                        isAttacking = false;
+                        hasFinishedAttack = true;
+                    } else if (state == HURT_DEMON) {
+                        state = IDLE_DEMON;
                     }
                 }
             }
@@ -187,85 +133,178 @@ class Demon {
 
         Rectangle getAnimationFrame() const {
             const AnimationDemon& anim = animations[state];
-
-            return {
-                0.0f, 0.0f,                        // No X, Y offset
-                (float)anim.frames[anim.currentFrame].width,  // Width of frame
-                (float)anim.frames[anim.currentFrame].height  // Height of frame
-            };
+            
+            // Calculate the frame width and height based on the spritesheet
+            int frameWidth = 288;  // Width of each frame in the spritesheet
+            int frameHeight = 160; // Height of each frame in the spritesheet
+            
+            return { (float)frameWidth * anim.currentFrame, (float)frameHeight * state, (float)frameWidth, (float)frameHeight };
         }
 
         void draw() const {
-            Rectangle source = getAnimationFrame();
-            float scale = 5.0f;
-
-            Rectangle dest = { rect.x, rect.y, rect.width * scale, rect.height * scale };
-
-            if (direction == LEFT_DEMON) {
-                source.width = -source.width;  // Flip frame for left movement
-                source.x += source.width;  // Adjust the X offset after flipping
+            if (isDead && animations[DEAD_DEMON].currentFrame == animations[DEAD_DEMON].lastFrame) {
+                return; // Don't draw if dead and animation finished
             }
 
-            // Draw the frame from the texture corresponding to the current animation frame
-            DrawTexturePro(animations[state].frames[animations[state].currentFrame], source, dest, { 0, 0 }, 0.0f, WHITE);
+            Rectangle source = getAnimationFrame();
+            Rectangle dest = { rect.x, rect.y, rect.width, rect.height };
+            Vector2 origin = { 0, 0 };
+            float rotation = 0.0f;
+
+            if (direction == RIGHT_DEMON) {
+                DrawTexturePro(sprites[0], source, dest, origin, rotation, WHITE);
+            } else {
+                Rectangle flippedSource = { source.x + source.width, source.y, -source.width, source.height };
+                DrawTexturePro(sprites[0], flippedSource, dest, origin, rotation, WHITE);
+            }
+
+            // Draw collision boxes for debugging
+            for (const auto& box : collisionBoxes) {
+                if (box.active) {
+                    Color color;
+                    switch (box.type) {
+                        case BODY: color = BLUE; break;
+                        case ATTACK: color = RED; break;
+                        case HURTBOX: color = GREEN; break;
+                    }
+                    DrawRectangleLines(box.rect.x, box.rect.y, box.rect.width, box.rect.height, color);
+                }
+            }
         }
 
         void move() {
-            // Don't allow movement if the demon is dead
-            if (isDead) return;
-        
-            // Stop attack if hurt or dead
-            if (state == HURT_DEMON || state == DEAD_DEMON) return;
-        
-            float moveSpeed = 300.0f;
-            velocity.x = 0.0f;
-        
-            // Movement controls (walking)
-            if (IsKeyDown(KEY_H)) {
-                velocity.x = -moveSpeed;
-                direction = RIGHT_DEMON;
-                state = WALK_DEMON;
+            // Simple AI movement logic
+            if (!isAttacking && hasFinishedAttack && !isDead) {
+                // Random chance to change direction or attack
+                if (GetRandomValue(0, 100) < 2) {
+                    direction = (direction == RIGHT_DEMON) ? LEFT_DEMON : RIGHT_DEMON;
+                }
+
+                if (GetRandomValue(0, 100) < 1) {
+                    // Attack
+                    state = ATTACK_DEMON;
+                    isAttacking = true;
+                    hasFinishedAttack = false;
+                    animations[state].currentFrame = 0;
+                } else {
+                    // Move in the current direction
+                    velocity.x = direction * 1.2f;  // Demon moves at medium speed
+                    state = WALK_DEMON;
+                }
+            } else if (isDead) {
+                velocity.x = 0;  // Stop moving when dead
+                state = DEAD_DEMON;
+            } else {
+                velocity.x = 0;  // Stop moving while attacking
             }
-            else if (IsKeyDown(KEY_K)) {
-                velocity.x = moveSpeed;
-                direction = LEFT_DEMON;
-                state = WALK_DEMON;
-            }
-            else {
-                state = IDLE_DEMON;
-            }
-        
-            // Attack control (if not hurt or dead)
-            if (IsKeyPressed(KEY_L) && hasFinishedAttack) {
-                state = ATTACK_DEMON;
-                hasFinishedAttack = false;
-                animations[ATTACK_DEMON].currentFrame = animations[ATTACK_DEMON].firstFrame;
-                velocity.x = 0.0f;  // Stop movement during attack
-            }
-        
-            // Damage control (only if the demon is not dead)
-            if (IsKeyPressed(KEY_T) && !isDead) {
-                takeDamage(10);  // Demon takes 10 damage
-            }
+
+            // Apply velocity
+            applyVelocity();
         }
 
         void applyVelocity() {
-            float deltaTime = GetFrameTime();
-            rect.x += velocity.x * deltaTime;
-            rect.y += velocity.y * deltaTime;
+            rect.x += velocity.x;
+            rect.y += velocity.y;
+
+            // Keep within screen bounds
+            if (rect.x < 0) {
+                rect.x = 0;
+                direction = RIGHT_DEMON;
+            }
+            if (rect.x > GetScreenWidth() - rect.width) {
+                rect.x = GetScreenWidth() - rect.width;
+                direction = LEFT_DEMON;
+            }
         }
 
         void takeDamage(int damage) {
-            if (isDead) return;  // Do nothing if the demon is already dead
-        
-            // Reduce health
-            health -= damage;
-            if (health <= 0) {
-                health = 0;
-                isDead = true;
-                state = DEAD_DEMON;  // Change to dead animation
-            } else {
-                state = HURT_DEMON;  // Trigger hurt animation
+            if (!isDead && state != HURT_DEMON) {
+                health -= damage;
+                if (health <= 0) {
+                    health = 0;
+                    isDead = true;
+                    state = DEAD_DEMON;
+                    animations[state].currentFrame = 0;
+                    velocity.x = 0;
+                    
+                    // Deactivate collision boxes
+                    for (auto& box : collisionBoxes) {
+                        if (box.type == ATTACK || box.type == HURTBOX) {
+                            box.active = false;
+                        }
+                    }
+                } else {
+                    state = HURT_DEMON;
+                    animations[state].currentFrame = 0;
+                    isAttacking = false;
+                }
             }
         }
+
+        void updateCollisionBoxes() {
+            // Define scaled offsets and dimensions
+            float bodyOffsetX = 36.0f * SPRITE_SCALE;
+            float bodyOffsetY = 20.0f * SPRITE_SCALE;
+            float bodyWidth = rect.width - (72.0f * SPRITE_SCALE);
+            float bodyHeight = rect.height - (20.0f * SPRITE_SCALE);
+            
+            float attackOffsetX = rect.width - (36.0f * SPRITE_SCALE);
+            float attackOffsetY = 30.0f * SPRITE_SCALE;
+            float attackSize = 72.0f * SPRITE_SCALE;
+            float attackHeight = 40.0f * SPRITE_SCALE;
+            
+            float hurtboxOffsetX = 45.0f * SPRITE_SCALE;
+            float hurtboxOffsetY = 25.0f * SPRITE_SCALE;
+            float hurtboxWidth = rect.width - (90.0f * SPRITE_SCALE);
+            float hurtboxHeight = rect.height - (30.0f * SPRITE_SCALE);
+            
+            for (auto& box : collisionBoxes) {
+                if (box.type == BODY) {
+                    box.rect.x = rect.x + bodyOffsetX;
+                    box.rect.y = rect.y + bodyOffsetY;
+                    box.rect.width = bodyWidth;
+                    box.rect.height = bodyHeight;
+                } else if (box.type == ATTACK) {
+                    // Only activate attack box during attack animation frames 2-4
+                    box.active = (state == ATTACK_DEMON && animations[state].currentFrame >= 2 && animations[state].currentFrame <= 4);
+                    
+                    if (direction == RIGHT_DEMON) {
+                        box.rect.x = rect.x + attackOffsetX;
+                        box.rect.y = rect.y + attackOffsetY;
+                        box.rect.width = attackSize;
+                        box.rect.height = attackHeight;
+                    } else {
+                        box.rect.x = rect.x - attackSize;
+                        box.rect.y = rect.y + attackOffsetY;
+                        box.rect.width = attackSize;
+                        box.rect.height = attackHeight;
+                    }
+                } else if (box.type == HURTBOX) {
+                    box.rect.x = rect.x + hurtboxOffsetX;
+                    box.rect.y = rect.y + hurtboxOffsetY;
+                    box.rect.width = hurtboxWidth;
+                    box.rect.height = hurtboxHeight;
+                    box.active = !isDead;  // Deactivate hurtbox when dead
+                }
+            }
+        }
+
+        void update() {
+            if (!isDead || (isDead && animations[DEAD_DEMON].currentFrame < animations[DEAD_DEMON].lastFrame)) {
+                move();
+                updateAnimation();
+                updateCollisionBoxes();
+            }
+        }
+
+        CollisionBox* getCollisionBox(CollisionBoxType type) {
+            for (auto& box : collisionBoxes) {
+                if (box.type == type) {
+                    return &box;
+                }
+            }
+            return nullptr;
+        }
 };
+
+#endif // DEMON_H
