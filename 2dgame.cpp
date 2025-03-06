@@ -9,6 +9,9 @@
 #include <iostream>
 #include <vector>
 
+// Define the global variable for collision box visibility
+bool showCollisionBoxes = false;
+
 // Helper function to check collision between two collision boxes
 bool checkCharacterCollision(const CollisionBox& box1, const CollisionBox& box2) {
     if (box1.active && box2.active) {
@@ -19,7 +22,8 @@ bool checkCharacterCollision(const CollisionBox& box1, const CollisionBox& box2)
 
 // Helper function to handle attack collision and damage
 void handleAttackCollision(CollisionBox* attackBox, CollisionBox* hurtBox, int& health, int damage) {
-    if (attackBox && hurtBox && checkCharacterCollision(*attackBox, *hurtBox)) {
+    if (attackBox && hurtBox && attackBox->active && hurtBox->active && 
+        CheckCollisionRecs(attackBox->rect, hurtBox->rect)) {
         health -= damage;
         if (health < 0) health = 0;
         
@@ -54,6 +58,11 @@ int main() {
 
     // Game loop
     while (!WindowShouldClose()) {
+        // Check for F1 key press to toggle collision box visibility
+        if (IsKeyPressed(KEY_F1)) {
+            showCollisionBoxes = !showCollisionBoxes;
+        }
+        
         // Update characters
         samurai.updateSamurai();
         goblin.update();
@@ -67,7 +76,7 @@ int main() {
         // Check Samurai attack vs Goblin
         if (samuraiAttack && samuraiAttack->active) {
             CollisionBox* goblinHurtbox = goblin.getCollisionBox(HURTBOX);
-            if (goblinHurtbox && checkCharacterCollision(*samuraiAttack, *goblinHurtbox)) {
+            if (goblinHurtbox && goblinHurtbox->active && checkCharacterCollision(*samuraiAttack, *goblinHurtbox)) {
                 goblinHealth -= 10;
                 if (goblinHealth <= 0) {
                     goblin.takeDamage(10); // This will set the goblin to dead state
@@ -79,7 +88,7 @@ int main() {
         // Check Samurai attack vs Werewolf
         if (samuraiAttack && samuraiAttack->active) {
             CollisionBox* werewolfHurtbox = werewolf.getCollisionBox(HURTBOX);
-            if (werewolfHurtbox && checkCharacterCollision(*samuraiAttack, *werewolfHurtbox)) {
+            if (werewolfHurtbox && werewolfHurtbox->active && checkCharacterCollision(*samuraiAttack, *werewolfHurtbox)) {
                 werewolfHealth -= 10;
                 if (werewolfHealth <= 0) {
                     werewolf.takeDamage(10); // This will set the werewolf to dead state
@@ -91,7 +100,7 @@ int main() {
         // Check Samurai attack vs Wizard
         if (samuraiAttack && samuraiAttack->active) {
             CollisionBox* wizardHurtbox = wizard.getCollisionBox(HURTBOX);
-            if (wizardHurtbox && checkCharacterCollision(*samuraiAttack, *wizardHurtbox)) {
+            if (wizardHurtbox && wizardHurtbox->active && checkCharacterCollision(*samuraiAttack, *wizardHurtbox)) {
                 wizardHealth -= 10;
                 if (wizardHealth <= 0) {
                     wizard.takeDamage(10); // This will set the wizard to dead state
@@ -103,7 +112,7 @@ int main() {
         // Check Samurai attack vs Demon
         if (samuraiAttack && samuraiAttack->active) {
             CollisionBox* demonHurtbox = demon.getCollisionBox(HURTBOX);
-            if (demonHurtbox && checkCharacterCollision(*samuraiAttack, *demonHurtbox)) {
+            if (demonHurtbox && demonHurtbox->active && checkCharacterCollision(*samuraiAttack, *demonHurtbox)) {
                 demonHealth -= 10;
                 if (demonHealth <= 0) {
                     demon.takeDamage(10); // This will set the demon to dead state
@@ -166,7 +175,7 @@ int main() {
             goblin.draw();
             // Draw health bar for goblin
             CollisionBox* goblinBody = goblin.getCollisionBox(BODY);
-            if (goblinBody) {
+            if (goblinBody && goblinBody->active) {
                 DrawRectangle(goblinBody->rect.x, goblinBody->rect.y - 10, goblinBody->rect.width, 5, RED);
                 DrawRectangle(goblinBody->rect.x, goblinBody->rect.y - 10, goblinBody->rect.width * (goblinHealth / 50.0f), 5, GREEN);
             }
@@ -176,7 +185,7 @@ int main() {
             werewolf.draw();
             // Draw health bar for werewolf
             CollisionBox* werewolfBody = werewolf.getCollisionBox(BODY);
-            if (werewolfBody) {
+            if (werewolfBody && werewolfBody->active) {
                 DrawRectangle(werewolfBody->rect.x, werewolfBody->rect.y - 10, werewolfBody->rect.width, 5, RED);
                 DrawRectangle(werewolfBody->rect.x, werewolfBody->rect.y - 10, werewolfBody->rect.width * (werewolfHealth / 75.0f), 5, GREEN);
             }
@@ -186,7 +195,7 @@ int main() {
             wizard.draw();
             // Draw health bar for wizard
             CollisionBox* wizardBody = wizard.getCollisionBox(BODY);
-            if (wizardBody) {
+            if (wizardBody && wizardBody->active) {
                 DrawRectangle(wizardBody->rect.x, wizardBody->rect.y - 10, wizardBody->rect.width, 5, RED);
                 DrawRectangle(wizardBody->rect.x, wizardBody->rect.y - 10, wizardBody->rect.width * (wizardHealth / 60.0f), 5, GREEN);
             }
@@ -196,7 +205,7 @@ int main() {
             demon.draw();
             // Draw health bar for demon
             CollisionBox* demonBody = demon.getCollisionBox(BODY);
-            if (demonBody) {
+            if (demonBody && demonBody->active) {
                 DrawRectangle(demonBody->rect.x, demonBody->rect.y - 10, demonBody->rect.width, 5, RED);
                 DrawRectangle(demonBody->rect.x, demonBody->rect.y - 10, demonBody->rect.width * (demonHealth / 100.0f), 5, GREEN);
             }
@@ -207,6 +216,7 @@ int main() {
 
         // Draw instructions
         DrawText("Controls: A/D to move, J to attack, SPACE to jump", 10, 30, 20, BLACK);
+        DrawText("Press F1 to toggle collision boxes", 10, 50, 20, BLACK);
 
         EndDrawing();
     }
