@@ -7,7 +7,7 @@
 
 const float GRAVITY_WIZARD = 800.0f;
 const float JUMP_FORCE_WIZARD = -400.0f;
-const float GROUND_LEVEL_WIZARD = 480.0f;
+const float GROUND_LEVEL_WIZARD = 400.0f;
 
 enum DirectionWizard {
     LEFT_WIZARD = -1,

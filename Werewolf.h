@@ -8,7 +8,7 @@
 // Constants for physics
 const float GRAVITY = 800.0f;
 const float JUMP_FORCE = -400.0f;
-const float GROUND_LEVEL = 480.0f; // Updated to match the floor level
+const float GROUND_LEVEL = 400.0f; // Updated to match the floor level
 
 enum DirectionWolf {
     LEFT_WOLF = -1,
@@ -90,7 +90,6 @@ public:
         float bodyWidth = rect.width - (32.0f * SPRITE_SCALE);
         float bodyHeight = rect.height - (16.0f * SPRITE_SCALE);
         
-        float attackOffsetX = 16.0f * SPRITE_SCALE;
         float attackOffsetY = 24.0f * SPRITE_SCALE;
         float attackSize = 32.0f * SPRITE_SCALE;
         
@@ -149,14 +148,40 @@ public:
     }
 
     Rectangle getAnimationFrame() const {
+        // Safety check for valid state
+        if (state < 0 || state >= sprites.size() || state >= animations.size()) {
+            return Rectangle{0, 0, 128, 128}; // Return a default frame
+        }
+        
         const AnimationWolf& anim = animations[state];
+        
+        // Safety check for valid sprite
+        if (sprites[state].width <= 0 || sprites[state].height <= 0) {
+            return Rectangle{0, 0, 128, 128}; // Return a default frame
+        }
+        
         int frameWidth = sprites[state].width / (anim.lastFrame + 1);
         int frameHeight = sprites[state].height;
+        
+        // Safety check for valid frame dimensions
+        if (frameWidth <= 0 || frameHeight <= 0) {
+            return Rectangle{0, 0, 128, 128}; // Return a default frame
+        }
+        
+        // Safety check for valid current frame
+        if (anim.currentFrame < 0 || anim.currentFrame > anim.lastFrame) {
+            return Rectangle{0, 0, (float)frameWidth, (float)frameHeight}; // Return the first frame
+        }
 
         return { (float)frameWidth * anim.currentFrame, 0, (float)frameWidth, (float)frameHeight };
     }
 
     void draw() const {
+        // Safety check for valid state
+        if (state < 0 || state >= sprites.size()) {
+            return; // Don't draw if state is invalid
+        }
+        
         Rectangle source = getAnimationFrame();
         Rectangle dest = { rect.x, rect.y, rect.width, rect.height };
         Vector2 origin = { 0, 0 };
@@ -177,6 +202,7 @@ public:
                     case BODY: color = BLUE; break;
                     case ATTACK: color = RED; break;
                     case HURTBOX: color = GREEN; break;
+                    default: color = PURPLE; break;
                 }
                 DrawRectangleLines(box.rect.x, box.rect.y, box.rect.width, box.rect.height, color);
             }
@@ -233,13 +259,17 @@ public:
     }
 
     void updateCollisionBoxes() {
+        // Safety check for empty collision boxes
+        if (collisionBoxes.empty()) {
+            return;
+        }
+        
         // Define scaled offsets and dimensions
         float bodyOffsetX = 16.0f * SPRITE_SCALE;
         float bodyOffsetY = 16.0f * SPRITE_SCALE;
         float bodyWidth = rect.width - (32.0f * SPRITE_SCALE);
         float bodyHeight = rect.height - (16.0f * SPRITE_SCALE);
         
-        float attackOffsetX = 16.0f * SPRITE_SCALE;
         float attackOffsetY = 24.0f * SPRITE_SCALE;
         float attackSize = 32.0f * SPRITE_SCALE;
         
@@ -258,11 +288,17 @@ public:
             }
             // Update position of attack collision box
             else if (box.type == ATTACK) {
+                // Safety check for valid animation state
+                if (state < 0 || state >= animations.size()) {
+                    box.active = false;
+                    continue;
+                }
+                
                 // Only activate attack box during attack animation
                 box.active = (state == ATTACK_SWIPE && animations[state].currentFrame >= 1 && animations[state].currentFrame <= 3);
                 
                 if (direction == RIGHT_WOLF) {
-                    box.rect.x = rect.x + rect.width - attackOffsetX;
+                    box.rect.x = rect.x + rect.width - attackSize;
                     box.rect.y = rect.y + attackOffsetY;
                     box.rect.width = attackSize;
                     box.rect.height = attackSize;

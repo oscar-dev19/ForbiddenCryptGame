@@ -21,21 +21,21 @@ enum CurrentState {
     RUN_STATE = 5
 };
 
-// Determines whether an animation is ran once or repeats.
+// Animation types.
 enum AnimationType {
-    REPEATING,
-    ONESHOT
+    LOOP,    // Animation loops continuously.
+    ONESHOT  // Animation plays once and stops at the last frame.
 };
 
-// Represents an Animation.
+// Animation data structure.
 struct Animation {
-    int firstFrame; // First Frame of Animation.
-    int lastFrame; // Last Frame of Animation.
-    int currentFrame; // Current Frame Displayed.
-    int offset; // Frame Offset (if needed).
-    float speed; // Speed of Animation.
-    float timeLeft; // Time Left for next frame.
-    AnimationType type; // Type of Animation.
+    int firstFrame;    // First frame of the animation.
+    int lastFrame;     // Last frame of the animation.
+    int currentFrame;  // Current frame being displayed.
+    float timer;       // Timer for frame changes.
+    float frameTime;   // Time per frame.
+    float speed;       // Animation speed.
+    AnimationType type; // Type of animation (loop or oneshot).
 };
 
 class Samurai {
@@ -47,7 +47,6 @@ private:
     std::vector<Animation> animations; // List of animations for different states.
     std::vector<Texture2D> sprites; // List of textures for each state.
     float groundLevel; // The Y-coordinate of the ground level.
-    bool isRunning = false; // Flag for checking if the player is running or not.
 
     // Define Health Variables
     int maxHealth = 100; // Maximum health value.
@@ -67,37 +66,46 @@ private:
     std::vector<CollisionBox> collisionBoxes;
 
     // Helper method to update the animation frame.
-    void updateAnimation() {
-        Animation& anim = animations[state];
-        float deltaTime = GetFrameTime();
-
-        // Prevent animation switch while in the HURT state.
-        if (state == HURT_STATE) {
-            if (anim.currentFrame == anim.lastFrame) {
-                if (currentHealth > 0) {
-                    state = IDLE_STATE;  // Switch to idle once hurt animation finishes.
-                }
-                else {
-                    state = DEAD_STATE;  // Switch to dead if health is depleted.
-                    isDead = true;
-                    PlaySound(deadSound);
-                }
-            }
+    void updateAnimation(float deltaTime) {
+        // Safety check for valid state
+        if (state < 0 || state >= sprites.size()) {
+            state = IDLE_STATE;
         }
-
-        // Update animation frame based on time.
-        anim.timeLeft -= deltaTime;
-        if (anim.timeLeft <= 0) {
-            anim.timeLeft = anim.speed;  // Reset timer.
-
-            // Increment frame or loop back to first frame.
-            if (anim.currentFrame < anim.lastFrame) {
-                anim.currentFrame++;
+        
+        Animation &anim = animations[state];
+        anim.timer += deltaTime;
+        
+        // Handle special case for HURT_STATE
+        if (state == HURT_STATE && anim.currentFrame >= anim.lastFrame) {
+            state = IDLE_STATE;
+            anim.currentFrame = 0;
+            anim.timer = 0;
+        }
+        
+        // Update animation frame based on timer
+        if (anim.timer >= anim.frameTime) {
+            anim.timer = 0;
+            
+            // For JUMP_STATE, don't increment frame if we're at the last frame
+            if (state == JUMP_STATE && anim.currentFrame >= anim.lastFrame) {
+                // Keep the last frame until landing
             } else {
-                if (anim.type == REPEATING) {
-                    anim.currentFrame = anim.firstFrame;  // Loop animation.
-                } else if (state == ATTACK_STATE) {
-                    state = IDLE_STATE;  // Return to idle after attack.
+                // Increment frame
+                anim.currentFrame++;
+                
+                // Handle frame looping or state transitions
+                if (anim.currentFrame > anim.lastFrame) {
+                    if (anim.type == LOOP) {
+                        anim.currentFrame = 0;
+                    } else if (anim.type == ONESHOT) {
+                        anim.currentFrame = anim.lastFrame;
+                        
+                        // For ATTACK_STATE, transition back to IDLE_STATE when animation completes
+                        if (state == ATTACK_STATE) {
+                            state = IDLE_STATE;
+                            animations[state].currentFrame = 0;
+                        }
+                    }
                 }
             }
         }
@@ -105,17 +113,41 @@ private:
 
     // Helper method to get the current animation frame rectangle.
     Rectangle getAnimationFrame() const {
-        const Animation &anim = animations[state];
-        // Calculate Frame Dimensions.
-        int frameWidth = sprites[state].width / (anim.lastFrame + 1);
-        int frameHeight = sprites[state].height;
-
-        return (Rectangle){ // Return Rectangle for the current frame.
-            (float)(frameWidth * anim.currentFrame),
-            0,
-            (float)frameWidth,
-            (float)frameHeight
-        };
+        // Safety check for valid state
+        if (state < 0 || state >= sprites.size() || state >= animations.size()) {
+            return Rectangle{0, 0, 128, 128}; // Return a default frame
+        }
+        
+        // Get the sprite dimensions
+        int spriteWidth = sprites[state].width;
+        
+        // Safety check for valid sprite
+        if (spriteWidth <= 0) {
+            return Rectangle{0, 0, 128, 128}; // Return a default frame
+        }
+        
+        // Calculate the number of frames in the sprite sheet
+        int framesPerRow = spriteWidth / 128;
+        int totalFrames = framesPerRow;
+        
+        // Safety check for valid frames calculation
+        if (framesPerRow <= 0 || totalFrames <= 0) {
+            return Rectangle{0, 0, 128, 128}; // Return a default frame
+        }
+        
+        // Get the current frame from the animation
+        int currentFrame = animations[state].currentFrame;
+        
+        // Safety check for valid frame
+        if (currentFrame < 0 || currentFrame >= totalFrames) {
+            currentFrame = 0; // Reset to first frame
+        }
+        
+        // Calculate the position of the frame in the sprite sheet
+        int frameX = (currentFrame % framesPerRow) * 128;
+        int frameY = (currentFrame / framesPerRow) * 128;
+        
+        return Rectangle{(float)frameX, (float)frameY, 128, 128};
     }
 
     // Helper method to handle movement input.
@@ -124,6 +156,16 @@ private:
         if (rect.y >= groundLevel) {
             velocity.y = 0;
             rect.y = groundLevel;  // Ensure character is on ground.
+            
+            // Only transition from JUMP_STATE to IDLE_STATE when landing
+            if (state == JUMP_STATE) {
+                state = IDLE_STATE;
+                animations[state].currentFrame = 0;  // Reset animation frame
+                if (wasInAir) {
+                    PlaySound(landSound);
+                    wasInAir = false;
+                }
+            }
         }
 
         // Check for jump input.
@@ -131,46 +173,50 @@ private:
             velocity.y = -10.0f;  // Apply upward velocity.
             PlaySound(jumpSound);
             wasInAir = true;
+            
+            // Set state to JUMP_STATE and reset animation
+            if (state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
+                state = JUMP_STATE;
+                animations[state].currentFrame = 0;  // Reset animation frame
+            }
         }
 
         // Apply gravity.
         if (rect.y < groundLevel) {
             velocity.y += 0.5f;  // Gravity effect.
-        } else if (wasInAir) {
-            PlaySound(landSound);
-            wasInAir = false;
+            
+            // Maintain JUMP_STATE while in the air unless in special states
+            if (state != JUMP_STATE && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
+                state = JUMP_STATE;
+                animations[state].currentFrame = 0;  // Reset animation frame
+            }
         }
-
-        // Check for horizontal movement input.
+        
+        // Handle left/right movement
         if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
             velocity.x = -5.0f;  // Move left.
             direction = LEFT;
-            if (state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
-                state = RUN_STATE;
+            if (state != JUMP_STATE && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
+                state = RUN_STATE;  // Set to run state.
             }
-            isRunning = true;
         } else if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) {
             velocity.x = 5.0f;  // Move right.
             direction = RIGHT;
-            if (state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
-                state = RUN_STATE;
+            if (state != JUMP_STATE && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
+                state = RUN_STATE;  // Set to run state.
             }
-            isRunning = true;
         } else {
             velocity.x = 0;  // Stop horizontal movement.
-            if (state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
-                state = IDLE_STATE;
+            if (state == RUN_STATE) {
+                state = IDLE_STATE;  // Return to idle if not running.
             }
-            isRunning = false;
         }
 
         // Check for attack input.
-        if (IsKeyPressed(KEY_J)) {
-            if (state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
-                state = ATTACK_STATE;
-                animations[state].currentFrame = 0;  // Reset animation frame.
-                PlaySound(attackSound);
-            }
+        if (IsKeyPressed(KEY_J) && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
+            state = ATTACK_STATE;  // Set to attack state.
+            animations[state].currentFrame = 0;  // Reset animation frame.
+            PlaySound(attackSound);
         }
 
         // Apply velocity to position.
@@ -209,61 +255,41 @@ private:
         }
     }
 
-    // Helper method to update collision boxes based on character state.
+    // Update collision boxes based on current position and state.
     void updateCollisionBoxes() {
-        // Define scaled offsets and dimensions
-        float bodyOffsetX = 16.0f * SPRITE_SCALE;
-        float bodyOffsetY = 16.0f * SPRITE_SCALE;
-        float bodyWidth = rect.width - (32.0f * SPRITE_SCALE);
-        float bodyHeight = rect.height - (16.0f * SPRITE_SCALE);
+        // Safety check for valid state
+        if (state < 0 || state >= sprites.size()) {
+            return;
+        }
         
-        float attackOffsetX = rect.width - (16.0f * SPRITE_SCALE);
-        float attackOffsetY = 24.0f * SPRITE_SCALE;
-        float attackSize = 32.0f * SPRITE_SCALE;
-        
-        float hurtboxOffsetX = 20.0f * SPRITE_SCALE;
-        float hurtboxOffsetY = 20.0f * SPRITE_SCALE;
-        float hurtboxWidth = rect.width - (40.0f * SPRITE_SCALE);
-        float hurtboxHeight = rect.height - (24.0f * SPRITE_SCALE);
-        
-        for (auto& box : collisionBoxes) {
-            if (box.type == BODY) {
-                // Update body collision box position based on character position
-                box.rect.x = rect.x + bodyOffsetX;
-                box.rect.y = rect.y + bodyOffsetY;
-                box.rect.width = bodyWidth;
-                box.rect.height = bodyHeight;
-            } else if (box.type == ATTACK) {
-                // Update attack collision box position based on character position and direction
-                if (direction == RIGHT) {
-                    box.rect.x = rect.x + attackOffsetX;
-                } else {
-                    box.rect.x = rect.x - attackSize;
-                }
-                box.rect.y = rect.y + attackOffsetY;
-                box.rect.width = attackSize;
-                box.rect.height = attackSize;
+        // Update body collision box
+        if (collisionBoxes.size() > 0) {
+            float bodyOffsetX = 16.0f * SPRITE_SCALE;
+            float bodyOffsetY = 16.0f * SPRITE_SCALE;
+            float bodyWidth = rect.width - (32.0f * SPRITE_SCALE);
+            float bodyHeight = rect.height - (16.0f * SPRITE_SCALE);
+            
+            collisionBoxes[0].rect = {rect.x + bodyOffsetX, rect.y + bodyOffsetY, bodyWidth, bodyHeight};
+            collisionBoxes[0].active = true;
+            
+            // Update attack collision box
+            if (collisionBoxes.size() > 1) {
+                float attackOffsetX = (direction == RIGHT) ? rect.width - (16.0f * SPRITE_SCALE) : 0;
+                float attackOffsetY = 24.0f * SPRITE_SCALE;
+                float attackSize = 32.0f * SPRITE_SCALE;
                 
-                // Activate attack box only during attack animation
-                if (state == ATTACK_STATE && animations[state].currentFrame >= 2 && animations[state].currentFrame <= 4) {
-                    box.active = true;
-                } else {
-                    box.active = false;
-                }
-            } else if (box.type == HURTBOX) {
-                // Update hurtbox position based on character position
-                box.rect.x = rect.x + hurtboxOffsetX;
-                box.rect.y = rect.y + hurtboxOffsetY;
-                box.rect.width = hurtboxWidth;
-                box.rect.height = hurtboxHeight;
+                collisionBoxes[1].rect = {rect.x + attackOffsetX, rect.y + attackOffsetY, attackSize, attackSize};
+                collisionBoxes[1].active = (state == ATTACK_STATE && animations[state].currentFrame >= 2 && animations[state].currentFrame <= 4);
                 
-                // Deactivate hurtbox during certain frames of hurt animation
-                if (state == HURT_STATE && animations[state].currentFrame >= 1) {
-                    box.active = false;
-                } else if (state != DEAD_STATE) {
-                    box.active = true;
-                } else {
-                    box.active = false;
+                // Update hurtbox collision box
+                if (collisionBoxes.size() > 2) {
+                    float hurtboxOffsetX = 20.0f * SPRITE_SCALE;
+                    float hurtboxOffsetY = 20.0f * SPRITE_SCALE;
+                    float hurtboxWidth = rect.width - (40.0f * SPRITE_SCALE);
+                    float hurtboxHeight = rect.height - (24.0f * SPRITE_SCALE);
+                    
+                    collisionBoxes[2].rect = {rect.x + hurtboxOffsetX, rect.y + hurtboxOffsetY, hurtboxWidth, hurtboxHeight};
+                    collisionBoxes[2].active = (state != DEAD_STATE);
                 }
             }
         }
@@ -277,32 +303,34 @@ public:
         direction = RIGHT; // Default facing direction.
         state = IDLE_STATE; // Start in idle state.
         this->groundLevel = groundLevel; // Set initial ground level.
-
-        // Initialize animations for different states.
-        animations = {
-            {0, 3, 0, 0, 0.2f, 0.2f, REPEATING}, // DEAD_STATE
-            {0, 5, 0, 0, 0.1f, 0.1f, ONESHOT},   // ATTACK_STATE
-            {0, 2, 0, 0, 0.2f, 0.2f, ONESHOT},   // HURT_STATE
-            {0, 5, 0, 0, 0.2f, 0.2f, REPEATING}, // IDLE_STATE
-            {0, 5, 0, 0, 0.2f, 0.2f, ONESHOT},   // JUMP_STATE
-            {0, 7, 0, 0, 0.1f, 0.1f, REPEATING}  // RUN_STATE
-        };
+        currentHealth = maxHealth = 100;
+        isDead = false;
+        wasInAir = false;
 
         // Load textures for each state.
         sprites = {
-            LoadTexture("assets/Samurai/Dead.png"),
-            LoadTexture("assets/Samurai/Attack_1.png"),
-            LoadTexture("assets/Samurai/Hurt.png"),
-            LoadTexture("assets/Samurai/Idle.png"),
-            LoadTexture("assets/Samurai/Jump.png"),
-            LoadTexture("assets/Samurai/Run.png")
+            LoadTexture("assets/Samurai/Dead.png"),    // DEAD_STATE
+            LoadTexture("assets/Samurai/Attack_1.png"), // ATTACK_STATE
+            LoadTexture("assets/Samurai/Hurt.png"),    // HURT_STATE
+            LoadTexture("assets/Samurai/Idle.png"),    // IDLE_STATE
+            LoadTexture("assets/Samurai/Jump.png"),    // JUMP_STATE
+            LoadTexture("assets/Samurai/Run.png")      // RUN_STATE
+        };
+
+        // Initialize animations for each state.
+        animations = {
+            {0, 3, 0, 0, 0.2f, 0.2f, LOOP},    // DEAD_STATE
+            {0, 5, 0, 0, 0.1f, 0.1f, ONESHOT},  // ATTACK_STATE
+            {0, 2, 0, 0, 0.2f, 0.2f, ONESHOT},  // HURT_STATE
+            {0, 5, 0, 0, 0.2f, 0.2f, LOOP},     // IDLE_STATE
+            {0, 11, 0, 0, 0.1f, 0.1f, ONESHOT}, // JUMP_STATE - 12 frames (0-11) based on 1536/128 = 12
+            {0, 7, 0, 0, 0.1f, 0.1f, LOOP}      // RUN_STATE
         };
 
         // Load sounds
         attackSound = LoadSound("assets/sounds/attack.wav");
         jumpSound = LoadSound("assets/sounds/jump.wav");
         hurtSound = LoadSound("assets/sounds/hurt.wav");
-        runSound = LoadSound("assets/sounds/run.wav");
         deadSound = LoadSound("assets/sounds/dead.wav");
         landSound = LoadSound("assets/sounds/land.wav");
 
@@ -341,22 +369,39 @@ public:
         UnloadSound(landSound);
     }
 
-    // Draw the Samurai on the screen
-    void draw() const {
-        Rectangle source = getAnimationFrame(); // Get the current animation frame.
-        Rectangle dest = {rect.x, rect.y, rect.width, rect.height}; // Destination rectangle.
-        Vector2 origin = {0, 0}; // Origin for rotation and scaling.
-        float rotation = 0.0f; // No rotation.
-
-        // Draw the sprite with appropriate flipping based on direction.
-        if (direction == RIGHT) {
-            DrawTexturePro(sprites[state], source, dest, origin, rotation, WHITE);
-        } else {
-            // Flip horizontally for left direction.
-            Rectangle flippedSource = {source.x + source.width, source.y, -source.width, source.height};
-            DrawTexturePro(sprites[state], flippedSource, dest, origin, rotation, WHITE);
+    // Draw the character.
+    void draw() {
+        // Safety check for valid state
+        if (state < 0 || state >= sprites.size()) {
+            state = IDLE_STATE;
         }
-
+        
+        // Get the current animation frame.
+        Rectangle frame = getAnimationFrame();
+        
+        // Draw the sprite.
+        if (direction == RIGHT) {
+            DrawTexturePro(
+                sprites[state],
+                frame,
+                Rectangle{rect.x, rect.y, rect.width, rect.height},
+                Vector2{0, 0},
+                0.0f,
+                WHITE
+            );
+        } else {
+            // Flip the sprite horizontally for left direction.
+            Rectangle flippedFrame = {frame.x + frame.width, frame.y, -frame.width, frame.height};
+            DrawTexturePro(
+                sprites[state],
+                flippedFrame,
+                Rectangle{rect.x, rect.y, rect.width, rect.height},
+                Vector2{0, 0},
+                0.0f,
+                WHITE
+            );
+        }
+        
         // Draw collision boxes for debugging
         for (const auto& box : collisionBoxes) {
             if (box.active) {
@@ -383,7 +428,7 @@ public:
     void updateSamurai() {
         if (!isDead) {
             move(); // Handle movement input.
-            updateAnimation(); // Update animation frame.
+            updateAnimation(GetFrameTime()); // Update animation frame.
             updateCollisionBoxes(); // Update collision boxes.
         }
         checkForHealing(); // Check if the healing key is pressed.
