@@ -195,16 +195,18 @@ public:
         }
 
         // Draw collision boxes for debugging
-        for (const auto& box : collisionBoxes) {
-            if (box.active) {
-                Color color;
-                switch (box.type) {
-                    case BODY: color = BLUE; break;
-                    case ATTACK: color = RED; break;
-                    case HURTBOX: color = GREEN; break;
-                    default: color = PURPLE; break;
+        if (showCollisionBoxes) {
+            for (const auto& box : collisionBoxes) {
+                if (box.active) {
+                    Color color;
+                    switch (box.type) {
+                        case BODY: color = BLUE; break;
+                        case ATTACK: color = RED; break;
+                        case HURTBOX: color = GREEN; break;
+                        default: color = PURPLE; break;
+                    }
+                    DrawRectangleLines(box.rect.x, box.rect.y, box.rect.width, box.rect.height, color);
                 }
-                DrawRectangleLines(box.rect.x, box.rect.y, box.rect.width, box.rect.height, color);
             }
         }
     }

@@ -51,7 +51,6 @@ private:
     // Define Health Variables
     int maxHealth = 100; // Maximum health value.
     int currentHealth = 100; // Current health of the samurai.
-    bool isDead = false; // Flag to indicate if the samurai is dead.
     bool wasInAir = false; // Flag to indicate if the character was in the air.
 
     // Define Sound Varaibles.
@@ -78,7 +77,7 @@ private:
         // Handle special case for HURT_STATE
         if (state == HURT_STATE && anim.currentFrame >= anim.lastFrame) {
             state = IDLE_STATE;
-            anim.currentFrame = 0;
+            animations[state].currentFrame = 0;
             anim.timer = 0;
         }
         
@@ -128,10 +127,9 @@ private:
         
         // Calculate the number of frames in the sprite sheet
         int framesPerRow = spriteWidth / 128;
-        int totalFrames = framesPerRow;
         
         // Safety check for valid frames calculation
-        if (framesPerRow <= 0 || totalFrames <= 0) {
+        if (framesPerRow <= 0) {
             return Rectangle{0, 0, 128, 128}; // Return a default frame
         }
         
@@ -139,8 +137,13 @@ private:
         int currentFrame = animations[state].currentFrame;
         
         // Safety check for valid frame
-        if (currentFrame < 0 || currentFrame >= totalFrames) {
+        if (currentFrame < 0) {
             currentFrame = 0; // Reset to first frame
+        }
+        
+        // Ensure current frame doesn't exceed the last frame
+        if (currentFrame > animations[state].lastFrame) {
+            currentFrame = animations[state].lastFrame;
         }
         
         // Calculate the position of the frame in the sprite sheet
@@ -270,7 +273,7 @@ private:
             float bodyHeight = rect.height - (16.0f * SPRITE_SCALE);
             
             collisionBoxes[0].rect = {rect.x + bodyOffsetX, rect.y + bodyOffsetY, bodyWidth, bodyHeight};
-            collisionBoxes[0].active = true;
+            collisionBoxes[0].active = (state != DEAD_STATE); // Deactivate body collision when dead
             
             // Update attack collision box
             if (collisionBoxes.size() > 1) {
@@ -296,6 +299,8 @@ private:
     }
 
 public:
+    bool isDead = false; // Flag to indicate if the samurai is dead.
+
     // Constructor initializing the Samurai's properties and animations
     Samurai(float x, float y, float groundLevel) {
         rect = (Rectangle){x, y, 64.0f * SPRITE_SCALE, 64.0f * SPRITE_SCALE}; // Scale the sprite size
@@ -319,7 +324,7 @@ public:
 
         // Initialize animations for each state.
         animations = {
-            {0, 3, 0, 0, 0.2f, 0.2f, LOOP},    // DEAD_STATE
+            {0, 2, 0, 0, 0.2f, 0.2f, ONESHOT},    // DEAD_STATE - Changed to use all 3 frames (0, 1, 2)
             {0, 5, 0, 0, 0.1f, 0.1f, ONESHOT},  // ATTACK_STATE
             {0, 2, 0, 0, 0.2f, 0.2f, ONESHOT},  // HURT_STATE
             {0, 5, 0, 0, 0.2f, 0.2f, LOOP},     // IDLE_STATE
@@ -403,15 +408,17 @@ public:
         }
         
         // Draw collision boxes for debugging
-        for (const auto& box : collisionBoxes) {
-            if (box.active) {
-                Color color;
-                switch (box.type) {
-                    case BODY: color = BLUE; break;
-                    case ATTACK: color = RED; break;
-                    case HURTBOX: color = GREEN; break;
+        if (showCollisionBoxes) {
+            for (const auto& box : collisionBoxes) {
+                if (box.active) {
+                    Color color;
+                    switch (box.type) {
+                        case BODY: color = BLUE; break;
+                        case ATTACK: color = RED; break;
+                        case HURTBOX: color = GREEN; break;
+                    }
+                    DrawRectangleLines(box.rect.x, box.rect.y, box.rect.width, box.rect.height, color);
                 }
-                DrawRectangleLines(box.rect.x, box.rect.y, box.rect.width, box.rect.height, color);
             }
         }
     }
@@ -426,13 +433,20 @@ public:
 
     // Update the Samurai's state and position
     void updateSamurai() {
+        // Always update animation regardless of whether the samurai is dead or alive
+        updateAnimation(GetFrameTime());
+        
+        // Only handle movement if the samurai is alive
         if (!isDead) {
-            move(); // Handle movement input.
-            updateAnimation(GetFrameTime()); // Update animation frame.
-            updateCollisionBoxes(); // Update collision boxes.
+            move();
         }
-        checkForHealing(); // Check if the healing key is pressed.
-        checkForDamage(); // Check if the damage key is pressed.
+        
+        // Always update collision boxes
+        updateCollisionBoxes();
+        
+        // Always check for healing and damage
+        checkForHealing();
+        checkForDamage();
     }
 
     // Get the Samurai's rectangle for collision detection
@@ -443,11 +457,6 @@ public:
     // Get the Samurai's current health
     int getHealth() const {
         return currentHealth;
-    }
-
-    // Check if the Samurai is dead
-    bool getIsDead() const {
-        return isDead;
     }
 
     // Get a collision box of a specific type
@@ -468,6 +477,8 @@ public:
                 currentHealth = 0;
                 state = DEAD_STATE;
                 isDead = true;
+                animations[state].currentFrame = 0;  // Reset death animation to start from the beginning
+                animations[state].timer = 0;  // Reset timer for smooth animation
                 PlaySound(deadSound);
             } else {
                 state = HURT_STATE;

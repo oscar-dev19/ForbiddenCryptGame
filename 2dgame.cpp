@@ -55,9 +55,19 @@ int main() {
     int werewolfHealth = 75;
     int wizardHealth = 60;
     int demonHealth = 100;
+    
+    // Cooldown timer for body collision damage
+    float bodyDamageCooldown = 0.0f;
+    const float bodyDamageCooldownTime = 1.0f; // 1 second cooldown
 
     // Game loop
     while (!WindowShouldClose()) {
+        // Get frame time
+        float deltaTime = GetFrameTime();
+        
+        // Update cooldown timer
+        bodyDamageCooldown -= deltaTime;
+        
         // Check for F1 key press to toggle collision box visibility
         if (IsKeyPressed(KEY_F1)) {
             showCollisionBoxes = !showCollisionBoxes;
@@ -70,93 +80,131 @@ int main() {
         wizard.update();
         demon.update();
 
-        // Check for collisions
-        CollisionBox* samuraiAttack = samurai.getCollisionBox(ATTACK);
-        
-        // Check Samurai attack vs Goblin
-        if (samuraiAttack && samuraiAttack->active) {
-            CollisionBox* goblinHurtbox = goblin.getCollisionBox(HURTBOX);
-            if (goblinHurtbox && goblinHurtbox->active && checkCharacterCollision(*samuraiAttack, *goblinHurtbox)) {
-                goblinHealth -= 10;
-                if (goblinHealth <= 0) {
-                    goblin.takeDamage(10); // This will set the goblin to dead state
+        // Check for collisions only if samurai is not dead
+        if (!samurai.isDead) {
+            CollisionBox* samuraiAttack = samurai.getCollisionBox(ATTACK);
+            
+            // Check Samurai attack vs Goblin
+            if (samuraiAttack && samuraiAttack->active) {
+                CollisionBox* goblinHurtbox = goblin.getCollisionBox(HURTBOX);
+                if (goblinHurtbox && goblinHurtbox->active && checkCharacterCollision(*samuraiAttack, *goblinHurtbox)) {
+                    goblinHealth -= 10;
+                    if (goblinHealth <= 0) {
+                        goblin.takeDamage(10); // This will set the goblin to dead state
+                    }
+                    samuraiAttack->active = false; // Prevent multiple hits
                 }
-                samuraiAttack->active = false; // Prevent multiple hits
             }
-        }
 
-        // Check Samurai attack vs Werewolf
-        if (samuraiAttack && samuraiAttack->active) {
-            CollisionBox* werewolfHurtbox = werewolf.getCollisionBox(HURTBOX);
-            if (werewolfHurtbox && werewolfHurtbox->active && checkCharacterCollision(*samuraiAttack, *werewolfHurtbox)) {
-                werewolfHealth -= 10;
-                if (werewolfHealth <= 0) {
-                    werewolf.takeDamage(10); // This will set the werewolf to dead state
+            // Check Samurai attack vs Werewolf
+            if (samuraiAttack && samuraiAttack->active) {
+                CollisionBox* werewolfHurtbox = werewolf.getCollisionBox(HURTBOX);
+                if (werewolfHurtbox && werewolfHurtbox->active && checkCharacterCollision(*samuraiAttack, *werewolfHurtbox)) {
+                    werewolfHealth -= 10;
+                    if (werewolfHealth <= 0) {
+                        werewolf.takeDamage(10); // This will set the werewolf to dead state
+                    }
+                    samuraiAttack->active = false; // Prevent multiple hits
                 }
-                samuraiAttack->active = false; // Prevent multiple hits
             }
-        }
 
-        // Check Samurai attack vs Wizard
-        if (samuraiAttack && samuraiAttack->active) {
-            CollisionBox* wizardHurtbox = wizard.getCollisionBox(HURTBOX);
-            if (wizardHurtbox && wizardHurtbox->active && checkCharacterCollision(*samuraiAttack, *wizardHurtbox)) {
-                wizardHealth -= 10;
-                if (wizardHealth <= 0) {
-                    wizard.takeDamage(10); // This will set the wizard to dead state
+            // Check Samurai attack vs Wizard
+            if (samuraiAttack && samuraiAttack->active) {
+                CollisionBox* wizardHurtbox = wizard.getCollisionBox(HURTBOX);
+                if (wizardHurtbox && wizardHurtbox->active && checkCharacterCollision(*samuraiAttack, *wizardHurtbox)) {
+                    wizardHealth -= 10;
+                    if (wizardHealth <= 0) {
+                        wizard.takeDamage(10); // This will set the wizard to dead state
+                    }
+                    samuraiAttack->active = false; // Prevent multiple hits
                 }
-                samuraiAttack->active = false; // Prevent multiple hits
             }
-        }
 
-        // Check Samurai attack vs Demon
-        if (samuraiAttack && samuraiAttack->active) {
-            CollisionBox* demonHurtbox = demon.getCollisionBox(HURTBOX);
-            if (demonHurtbox && demonHurtbox->active && checkCharacterCollision(*samuraiAttack, *demonHurtbox)) {
-                demonHealth -= 10;
-                if (demonHealth <= 0) {
-                    demon.takeDamage(10); // This will set the demon to dead state
+            // Check Samurai attack vs Demon
+            if (samuraiAttack && samuraiAttack->active) {
+                CollisionBox* demonHurtbox = demon.getCollisionBox(HURTBOX);
+                if (demonHurtbox && demonHurtbox->active && checkCharacterCollision(*samuraiAttack, *demonHurtbox)) {
+                    demonHealth -= 10;
+                    if (demonHealth <= 0) {
+                        demon.takeDamage(10); // This will set the demon to dead state
+                    }
+                    samuraiAttack->active = false; // Prevent multiple hits
                 }
-                samuraiAttack->active = false; // Prevent multiple hits
             }
-        }
 
-        // Check for enemy attacks hitting Samurai
-        CollisionBox* samuraiHurtbox = samurai.getCollisionBox(HURTBOX);
-        
-        // Check Goblin attack vs Samurai
-        if (!goblin.isDead && samuraiHurtbox && samuraiHurtbox->active) {
-            CollisionBox* goblinAttack = goblin.getCollisionBox(ATTACK);
-            if (goblinAttack && goblinAttack->active && checkCharacterCollision(*goblinAttack, *samuraiHurtbox)) {
-                samurai.takeDamage(5);
-                goblinAttack->active = false; // Prevent multiple hits
+            // Check for enemy attacks hitting Samurai
+            CollisionBox* samuraiHurtbox = samurai.getCollisionBox(HURTBOX);
+            
+            // Check Goblin attack vs Samurai
+            if (!goblin.isDead && samuraiHurtbox && samuraiHurtbox->active) {
+                CollisionBox* goblinAttack = goblin.getCollisionBox(ATTACK);
+                if (goblinAttack && goblinAttack->active && checkCharacterCollision(*goblinAttack, *samuraiHurtbox)) {
+                    samurai.takeDamage(5);
+                    goblinAttack->active = false; // Prevent multiple hits
+                }
+                
+                // Check Goblin body collision with Samurai
+                CollisionBox* goblinBody = goblin.getCollisionBox(BODY);
+                if (goblinBody && goblinBody->active && checkCharacterCollision(*goblinBody, *samuraiHurtbox) && !goblin.isDead) {
+                    if (bodyDamageCooldown <= 0.0f) {
+                        samurai.takeDamage(3); // Apply less damage for body collision
+                        bodyDamageCooldown = bodyDamageCooldownTime; // Reset cooldown
+                    }
+                }
             }
-        }
 
-        // Check Werewolf attack vs Samurai
-        if (samuraiHurtbox && samuraiHurtbox->active) {
-            CollisionBox* werewolfAttack = werewolf.getCollisionBox(ATTACK);
-            if (werewolfAttack && werewolfAttack->active && checkCharacterCollision(*werewolfAttack, *samuraiHurtbox)) {
-                samurai.takeDamage(8);
-                werewolfAttack->active = false; // Prevent multiple hits
+            // Check Werewolf attack vs Samurai
+            if (!werewolf.isDead && samuraiHurtbox && samuraiHurtbox->active) {
+                CollisionBox* werewolfAttack = werewolf.getCollisionBox(ATTACK);
+                if (werewolfAttack && werewolfAttack->active && checkCharacterCollision(*werewolfAttack, *samuraiHurtbox)) {
+                    samurai.takeDamage(8);
+                    werewolfAttack->active = false; // Prevent multiple hits
+                }
+                
+                // Check Werewolf body collision with Samurai
+                CollisionBox* werewolfBody = werewolf.getCollisionBox(BODY);
+                if (werewolfBody && werewolfBody->active && checkCharacterCollision(*werewolfBody, *samuraiHurtbox) && !werewolf.isDead) {
+                    if (bodyDamageCooldown <= 0.0f) {
+                        samurai.takeDamage(4); // Apply less damage for body collision
+                        bodyDamageCooldown = bodyDamageCooldownTime; // Reset cooldown
+                    }
+                }
             }
-        }
 
-        // Check Wizard attack vs Samurai
-        if (samuraiHurtbox && samuraiHurtbox->active) {
-            CollisionBox* wizardAttack = wizard.getCollisionBox(ATTACK);
-            if (wizardAttack && wizardAttack->active && checkCharacterCollision(*wizardAttack, *samuraiHurtbox)) {
-                samurai.takeDamage(6);
-                wizardAttack->active = false; // Prevent multiple hits
+            // Check Wizard attack vs Samurai
+            if (!wizard.isDead && samuraiHurtbox && samuraiHurtbox->active) {
+                CollisionBox* wizardAttack = wizard.getCollisionBox(ATTACK);
+                if (wizardAttack && wizardAttack->active && checkCharacterCollision(*wizardAttack, *samuraiHurtbox)) {
+                    samurai.takeDamage(6);
+                    wizardAttack->active = false; // Prevent multiple hits
+                }
+                
+                // Check Wizard body collision with Samurai
+                CollisionBox* wizardBody = wizard.getCollisionBox(BODY);
+                if (wizardBody && wizardBody->active && checkCharacterCollision(*wizardBody, *samuraiHurtbox) && !wizard.isDead) {
+                    if (bodyDamageCooldown <= 0.0f) {
+                        samurai.takeDamage(2); // Apply less damage for body collision
+                        bodyDamageCooldown = bodyDamageCooldownTime; // Reset cooldown
+                    }
+                }
             }
-        }
 
-        // Check Demon attack vs Samurai
-        if (samuraiHurtbox && samuraiHurtbox->active) {
-            CollisionBox* demonAttack = demon.getCollisionBox(ATTACK);
-            if (demonAttack && demonAttack->active && checkCharacterCollision(*demonAttack, *samuraiHurtbox)) {
-                samurai.takeDamage(10);
-                demonAttack->active = false; // Prevent multiple hits
+            // Check Demon attack vs Samurai
+            if (!demon.isDead && samuraiHurtbox && samuraiHurtbox->active) {
+                CollisionBox* demonAttack = demon.getCollisionBox(ATTACK);
+                if (demonAttack && demonAttack->active && checkCharacterCollision(*demonAttack, *samuraiHurtbox)) {
+                    samurai.takeDamage(10);
+                    demonAttack->active = false; // Prevent multiple hits
+                }
+                
+                // Check Demon body collision with Samurai
+                CollisionBox* demonBody = demon.getCollisionBox(BODY);
+                if (demonBody && demonBody->active && checkCharacterCollision(*demonBody, *samuraiHurtbox) && !demon.isDead) {
+                    if (bodyDamageCooldown <= 0.0f) {
+                        samurai.takeDamage(5); // Apply less damage for body collision
+                        bodyDamageCooldown = bodyDamageCooldownTime; // Reset cooldown
+                    }
+                }
             }
         }
 

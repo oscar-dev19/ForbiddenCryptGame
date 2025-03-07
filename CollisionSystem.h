@@ -7,6 +7,9 @@
 // Global scale factor for all sprites and collision boxes
 const float SPRITE_SCALE = 3.0f;
 
+// Global flag to toggle collision box visibility
+extern bool showCollisionBoxes;
+
 // Common collision box type enum to be used by all character classes
 enum CollisionBoxType {
     BODY,       // Main body collision for movement and general collisions
