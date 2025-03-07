@@ -12,6 +12,11 @@
 // Define the global variable for collision box visibility
 bool showCollisionBoxes = false;
 
+// Global audio variables
+Music backgroundMusic;
+Sound demonChantSound;
+float masterVolume = 0.7f;
+
 // Helper function to check collision between two collision boxes
 bool checkCharacterCollision(const CollisionBox& box1, const CollisionBox& box2) {
     if (box1.active && box2.active) {
@@ -37,6 +42,19 @@ int main() {
     const int screenWidth = 800;
     const int screenHeight = 550;
     InitWindow(screenWidth, screenHeight, "2D Game");
+    
+    // Initialize audio device
+    InitAudioDevice();
+    
+    // Load background music
+    backgroundMusic = LoadMusicStream("music/Lady Maria of the Astral Clocktower.mp3");
+    SetMusicVolume(backgroundMusic, 0.5f * masterVolume);
+    PlayMusicStream(backgroundMusic);
+    
+    // Load common sound effects
+    demonChantSound = LoadSound("sounds/misc/demon-chant-latin-14489.mp3");
+    SetSoundVolume(demonChantSound, 0.6f * masterVolume);
+    
     SetTargetFPS(60);
 
     // Define floor level higher in the screen
@@ -62,23 +80,49 @@ int main() {
 
     // Game loop
     while (!WindowShouldClose()) {
+        // Update music stream
+        UpdateMusicStream(backgroundMusic);
+        
+        // Toggle music with M key
+        if (IsKeyPressed(KEY_M)) {
+            if (IsMusicStreamPlaying(backgroundMusic)) {
+                PauseMusicStream(backgroundMusic);
+            } else {
+                ResumeMusicStream(backgroundMusic);
+            }
+        }
+        
+        // Volume control with + and - keys
+        if (IsKeyPressed(KEY_EQUAL)) { // + key
+            masterVolume += 0.1f;
+            if (masterVolume > 1.0f) masterVolume = 1.0f;
+            SetMusicVolume(backgroundMusic, 0.5f * masterVolume);
+            SetSoundVolume(demonChantSound, 0.6f * masterVolume);
+        }
+        if (IsKeyPressed(KEY_MINUS)) { // - key
+            masterVolume -= 0.1f;
+            if (masterVolume < 0.0f) masterVolume = 0.0f;
+            SetMusicVolume(backgroundMusic, 0.5f * masterVolume);
+            SetSoundVolume(demonChantSound, 0.6f * masterVolume);
+        }
+        
+        // Toggle collision box visibility with C key
+        if (IsKeyPressed(KEY_C)) {
+            showCollisionBoxes = !showCollisionBoxes;
+        }
+        
         // Get frame time
         float deltaTime = GetFrameTime();
         
         // Update cooldown timer
         bodyDamageCooldown -= deltaTime;
         
-        // Check for F1 key press to toggle collision box visibility
-        if (IsKeyPressed(KEY_F1)) {
-            showCollisionBoxes = !showCollisionBoxes;
-        }
-        
         // Update characters
         samurai.updateSamurai();
         goblin.update();
         werewolf.update();
         wizard.update();
-        demon.update();
+        demon.update(deltaTime);
 
         // Check for collisions only if samurai is not dead
         if (!samurai.isDead) {
@@ -266,10 +310,27 @@ int main() {
         DrawText("Controls: A/D to move, J to attack, SPACE to jump", 10, 30, 20, BLACK);
         DrawText("Press F1 to toggle collision boxes", 10, 50, 20, BLACK);
 
+        // Draw UI elements
+        DrawText(TextFormat("Samurai Health: %d", samurai.getHealth()), 10, 10, 20, RED);
+        
+        // Draw audio controls help text
+        DrawText("Audio Controls:", 10, screenHeight - 80, 16, WHITE);
+        DrawText("M - Toggle Music", 10, screenHeight - 60, 16, WHITE);
+        DrawText("+ / - - Volume Control", 10, screenHeight - 40, 16, WHITE);
+        DrawText(TextFormat("Volume: %.1f", masterVolume), 10, screenHeight - 20, 16, WHITE);
+
         EndDrawing();
     }
 
-    // De-Initialization
+    // Clean up resources
+    StopMusicStream(backgroundMusic);  // Stop the music before unloading
+    UnloadMusicStream(backgroundMusic);
+    
+    // Stop and unload the demon chant sound
+    StopSound(demonChantSound);
+    UnloadSound(demonChantSound);
+    
+    CloseAudioDevice();
     CloseWindow();
 
     return 0;

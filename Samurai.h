@@ -165,7 +165,9 @@ private:
                 state = IDLE_STATE;
                 animations[state].currentFrame = 0;  // Reset animation frame
                 if (wasInAir) {
-                    PlaySound(landSound);
+                    if (landSound.frameCount > 0) {
+                        PlaySound(landSound);
+                    }
                     wasInAir = false;
                 }
             }
@@ -174,7 +176,9 @@ private:
         // Check for jump input.
         if (IsKeyPressed(KEY_SPACE) && rect.y >= groundLevel) {
             velocity.y = -10.0f;  // Apply upward velocity.
-            PlaySound(jumpSound);
+            if (jumpSound.frameCount > 0) {
+                PlaySound(jumpSound);
+            }
             wasInAir = true;
             
             // Set state to JUMP_STATE and reset animation
@@ -219,7 +223,9 @@ private:
         if (IsKeyPressed(KEY_J) && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
             state = ATTACK_STATE;  // Set to attack state.
             animations[state].currentFrame = 0;  // Reset animation frame.
-            PlaySound(attackSound);
+            if (attackSound.frameCount > 0) {
+                PlaySound(attackSound);
+            }
         }
 
         // Apply velocity to position.
@@ -333,11 +339,12 @@ public:
         };
 
         // Load sounds
-        attackSound = LoadSound("assets/sounds/attack.wav");
-        jumpSound = LoadSound("assets/sounds/jump.wav");
-        hurtSound = LoadSound("assets/sounds/hurt.wav");
-        deadSound = LoadSound("assets/sounds/dead.wav");
-        landSound = LoadSound("assets/sounds/land.wav");
+        attackSound = LoadSound("sounds/samurai/sword-sound-2-36274.wav");
+        jumpSound = LoadSound("sounds/samurai/female-jump.wav");
+        hurtSound = LoadSound("sounds/samurai/female-hurt-2-94301.wav");
+        deadSound = LoadSound("sounds/samurai/female-death.wav");
+        landSound = LoadSound("sounds/samurai/land2-43790.wav");
+        runSound = LoadSound("sounds/samurai/running-on-concrete-268478.wav");
 
         // Initialize collision boxes with scaled dimensions
         float bodyOffsetX = 16.0f * SPRITE_SCALE;
@@ -366,12 +373,14 @@ public:
         for (auto& sprite : sprites) {
             UnloadTexture(sprite); // Unload textures from memory when done.
         }
-        UnloadSound(attackSound);
-        UnloadSound(jumpSound);
-        UnloadSound(hurtSound);
-        UnloadSound(runSound);
-        UnloadSound(deadSound);
-        UnloadSound(landSound);
+        
+        // Unload sounds - make sure they're valid before unloading
+        if (attackSound.frameCount > 0) UnloadSound(attackSound);
+        if (jumpSound.frameCount > 0) UnloadSound(jumpSound);
+        if (hurtSound.frameCount > 0) UnloadSound(hurtSound);
+        if (runSound.frameCount > 0) UnloadSound(runSound);
+        if (deadSound.frameCount > 0) UnloadSound(deadSound);
+        if (landSound.frameCount > 0) UnloadSound(landSound);
     }
 
     // Draw the character.
@@ -479,11 +488,15 @@ public:
                 isDead = true;
                 animations[state].currentFrame = 0;  // Reset death animation to start from the beginning
                 animations[state].timer = 0;  // Reset timer for smooth animation
-                PlaySound(deadSound);
+                if (deadSound.frameCount > 0) {
+                    PlaySound(deadSound);
+                }
             } else {
                 state = HURT_STATE;
                 animations[state].currentFrame = 0;  // Reset hurt animation.
-                PlaySound(hurtSound);
+                if (hurtSound.frameCount > 0) {
+                    PlaySound(hurtSound);
+                }
             }
         }
     }

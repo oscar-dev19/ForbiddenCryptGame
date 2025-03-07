@@ -47,14 +47,22 @@ class Demon {
         CurrentStateDemon state;
         bool isAttacking = false;
         bool hasFinishedAttack = true;
+        bool isDead = false;
 
         // Health related to damage and death
         int health;
-        bool isDead = false;
 
         std::vector<AnimationDemon> animations;
         std::vector<Texture2D> sprites; // The texture sheets used for animations
         
+        // Sound variables
+        Sound attackSound;
+        Sound hurtSound;
+        Sound deadSound;
+        Sound chantSound;
+        float chantTimer = 0.0f;
+        float chantInterval = 10.0f; // Play chant every 10 seconds
+
         // Collision boxes for different purposes
         std::vector<CollisionBox> collisionBoxes;
 
@@ -130,6 +138,16 @@ class Demon {
                     CollisionBox({rect.x, rect.y, rect.width/2, rect.height/2}, HURTBOX)
                 };
             }
+
+            // Load sounds
+            chantSound = LoadSound("sounds/misc/demon-chant-latin-14489.mp3");
+            hurtSound = LoadSound("sounds/samurai/female-hurt-2-94301.wav"); // Using samurai hurt sound as fallback
+            deadSound = LoadSound("sounds/samurai/female-death.wav"); // Using samurai death sound as fallback
+            
+            // Set sound volume
+            SetSoundVolume(chantSound, 0.7f);
+            SetSoundVolume(hurtSound, 0.7f);
+            SetSoundVolume(deadSound, 0.7f);
         }
 
         // Destructor to clean up resources
@@ -140,6 +158,11 @@ class Demon {
                         UnloadTexture(sprite);
                     }
                 }
+                
+                // Unload sounds - make sure they're valid before unloading
+                if (chantSound.frameCount > 0) UnloadSound(chantSound);
+                if (hurtSound.frameCount > 0) UnloadSound(hurtSound);
+                if (deadSound.frameCount > 0) UnloadSound(deadSound);
             } catch (const std::exception& e) {
                 std::cout << "Exception in Demon destructor: " << e.what() << std::endl;
             }
@@ -334,6 +357,11 @@ class Demon {
                     animations[state].currentFrame = 0;
                     velocity.x = 0;
                     
+                    // Play death sound if valid
+                    if (deadSound.frameCount > 0) {
+                        PlaySound(deadSound);
+                    }
+                    
                     // Deactivate collision boxes
                     for (auto& box : collisionBoxes) {
                         if (box.type == ATTACK || box.type == HURTBOX) {
@@ -344,6 +372,11 @@ class Demon {
                     state = HURT_DEMON;
                     animations[state].currentFrame = 0;
                     isAttacking = false;
+                    
+                    // Play hurt sound if valid
+                    if (hurtSound.frameCount > 0) {
+                        PlaySound(hurtSound);
+                    }
                 }
             }
         }
@@ -386,25 +419,29 @@ class Demon {
             }
         }
 
-        void update() {
-            try {
-                // Update animation
-                updateAnimation();
-                
-                // Update collision boxes
-                updateCollisionBoxes();
-                
-                // If dead, don't do anything else
-                if (isDead) {
-                    state = DEAD_DEMON;
-                    return;
+        void update(float deltaTime) {
+            // Update animation
+            updateAnimation();
+            
+            // Update chant timer
+            chantTimer += deltaTime;
+            if (chantTimer >= chantInterval && !isDead) {
+                // Only play sound if it's valid
+                if (chantSound.frameCount > 0) {
+                    PlaySound(chantSound);
                 }
-                
-                // Simple AI behavior
-                move();
-                applyVelocity();
-            } catch (const std::exception& e) {
-                std::cout << "Exception in Demon update: " << e.what() << std::endl;
+                chantTimer = 0.0f;
+            }
+            
+            // Update collision boxes
+            updateCollisionBoxes();
+            
+            // Apply velocity
+            applyVelocity();
+            
+            // AI behavior
+            if (!isDead) {
+                // Implement demon AI here
             }
         }
 

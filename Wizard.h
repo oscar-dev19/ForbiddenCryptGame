@@ -47,6 +47,11 @@ class Wizard {
 
         std::vector<AnimationWizard> animations;
         std::vector<Texture2D> sprites;
+        
+        // Sound variables
+        Sound attackSound;
+        Sound hurtSound;
+        Sound deadSound;
 
         bool isAttacking = false;
         bool hasFinishedAttack = true;
@@ -74,6 +79,16 @@ class Wizard {
             // Load textures for each state
             loadTextures();
 
+            // Load sounds
+            attackSound = LoadSound("sounds/wizard/magic-strike-5856.mp3");
+            hurtSound = LoadSound("sounds/samurai/female-hurt-2-94301.wav"); // Using samurai hurt sound as fallback
+            deadSound = LoadSound("sounds/samurai/female-death.wav"); // Using samurai death sound as fallback
+            
+            // Set sound volume
+            SetSoundVolume(attackSound, 0.7f);
+            SetSoundVolume(hurtSound, 0.7f);
+            SetSoundVolume(deadSound, 0.7f);
+
             // Initialize collision boxes with scaled dimensions
             float bodyOffsetX = 16.0f * SPRITE_SCALE;
             float bodyOffsetY = 16.0f * SPRITE_SCALE;
@@ -100,6 +115,11 @@ class Wizard {
             for (auto& sprite : sprites) {
                 UnloadTexture(sprite);
             }
+            
+            // Unload sounds - make sure they're valid before unloading
+            if (attackSound.frameCount > 0) UnloadSound(attackSound);
+            if (hurtSound.frameCount > 0) UnloadSound(hurtSound);
+            if (deadSound.frameCount > 0) UnloadSound(deadSound);
         }
 
         void loadTextures()  {
@@ -282,24 +302,61 @@ class Wizard {
         }
 
         void takeDamage(int damage) {
-            if (!isDead && state != HURT_WIZARD) {
-                // Implement health reduction logic here
-                if (GetRandomValue(0, 100) < 15) {  // 15% chance to die from a hit
-                    state = DEAD_WIZARD;
-                    isDead = true;
-                    animations[state].currentFrame = 0;
-                    velocity.x = 0;
-                    
-                    // Deactivate collision boxes
-                    for (auto& box : collisionBoxes) {
-                        if (box.type == ATTACK || box.type == HURTBOX) {
-                            box.active = false;
-                        }
+            if (state != DEAD_WIZARD) {
+                state = HURT_WIZARD;
+                animations[state].currentFrame = 0;
+                animations[state].timeLeft = animations[state].speed;
+                
+                // Play hurt sound if valid
+                if (hurtSound.frameCount > 0) {
+                    PlaySound(hurtSound);
+                }
+                
+                // Deactivate attack boxes when hurt
+                for (auto& box : collisionBoxes) {
+                    if (box.type == ATTACK || box.type == HURTBOX) {
+                        box.active = false;
                     }
-                } else {
-                    state = HURT_WIZARD;
-                    animations[state].currentFrame = 0;
-                    isAttacking = false;
+                }
+            }
+        }
+        
+        void die() {
+            if (state != DEAD_WIZARD) {
+                state = DEAD_WIZARD;
+                animations[state].currentFrame = 0;
+                animations[state].timeLeft = animations[state].speed;
+                isDead = true;
+                
+                // Play death sound if valid
+                if (deadSound.frameCount > 0) {
+                    PlaySound(deadSound);
+                }
+                
+                // Deactivate all collision boxes when dead
+                for (auto& box : collisionBoxes) {
+                    box.active = false;
+                }
+            }
+        }
+        
+        void attack() {
+            if (state != ATTACK1_WIZARD && state != ATTACK2_WIZARD && state != DEAD_WIZARD) {
+                state = ATTACK1_WIZARD;
+                animations[state].currentFrame = 0;
+                animations[state].timeLeft = animations[state].speed;
+                
+                // Activate attack box
+                for (auto& box : collisionBoxes) {
+                    if (box.type == ATTACK) {
+                        box.active = true;
+                        
+                        // Play attack sound if valid
+                        if (attackSound.frameCount > 0) {
+                            PlaySound(attackSound);
+                        }
+                        break;
+                    }
                 }
             }
         }
