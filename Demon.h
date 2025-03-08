@@ -75,13 +75,13 @@ class Demon {
             state = IDLE_DEMON;
             health = 100; // Initialize health
 
-            // Initialize animations for different states
+            // Initialize animations for different states with correct frame counts
             animations = {
-                { 0, 5, 0, 0.2f, 0.2f, REPEATING_DEMON }, // IDLE_DEMON
-                { 0, 5, 0, 0.1f, 0.1f, REPEATING_DEMON }, // WALK_DEMON
-                { 0, 5, 0, 0.1f, 0.1f, ONESHOT_DEMON },   // ATTACK_DEMON
-                { 0, 2, 0, 0.2f, 0.2f, ONESHOT_DEMON },   // HURT_DEMON
-                { 0, 5, 0, 0.2f, 0.2f, ONESHOT_DEMON }    // DEAD_DEMON
+                { 0, 21, 0, 0.1f, 0.1f, REPEATING_DEMON }, // IDLE_DEMON - 22 frames
+                { 0, 7, 0, 0.1f, 0.1f, REPEATING_DEMON },  // WALK_DEMON - 8 frames
+                { 0, 11, 0, 0.1f, 0.1f, ONESHOT_DEMON },   // ATTACK_DEMON - 12 frames
+                { 0, 5, 0, 0.2f, 0.2f, ONESHOT_DEMON },    // HURT_DEMON - 6 frames
+                { 0, 21, 0, 0.2f, 0.2f, ONESHOT_DEMON }    // DEAD_DEMON - 22 frames
             };
 
             // Load textures for each state
@@ -98,7 +98,7 @@ class Demon {
                 sprites.push_back(texture);
                 std::cout << "Demon texture loaded. Width: " << sprites[0].width << ", Height: " << sprites[0].height << std::endl;
             } catch (const std::exception& e) {
-                std::cout << "Exception loading texture: " << e.what() << std::endl;
+                std::cout << "Exception loading Demon texture: " << e.what() << std::endl;
                 // Create a small placeholder texture to prevent crashes
                 Image placeholder = GenImageColor(288, 160, RED);
                 Texture2D texture = LoadTextureFromImage(placeholder);
@@ -109,8 +109,8 @@ class Demon {
             // Initialize collision boxes with scaled dimensions
             float bodyOffsetX = 36.0f * SPRITE_SCALE;
             float bodyOffsetY = 20.0f * SPRITE_SCALE;
-            float bodyWidth = std::max(10.0f, rect.width - (72.0f * SPRITE_SCALE));
-            float bodyHeight = std::max(10.0f, rect.height - (20.0f * SPRITE_SCALE));
+            float bodyWidth = rect.width - (72.0f * SPRITE_SCALE);
+            float bodyHeight = rect.height - (20.0f * SPRITE_SCALE);
             
             float attackOffsetX = rect.width - (36.0f * SPRITE_SCALE);
             float attackOffsetY = 30.0f * SPRITE_SCALE;
@@ -119,25 +119,16 @@ class Demon {
             
             float hurtboxOffsetX = 45.0f * SPRITE_SCALE;
             float hurtboxOffsetY = 25.0f * SPRITE_SCALE;
-            float hurtboxWidth = std::max(10.0f, rect.width - (90.0f * SPRITE_SCALE));
-            float hurtboxHeight = std::max(10.0f, rect.height - (30.0f * SPRITE_SCALE));
+            float hurtboxWidth = rect.width - (90.0f * SPRITE_SCALE);
+            float hurtboxHeight = rect.height - (30.0f * SPRITE_SCALE);
             
-            try {
-                collisionBoxes = {
-                    CollisionBox({rect.x + bodyOffsetX, rect.y + bodyOffsetY, bodyWidth, bodyHeight}, BODY),
-                    CollisionBox({rect.x + attackOffsetX, rect.y + attackOffsetY, attackSize, attackHeight}, ATTACK, false),
-                    CollisionBox({rect.x + hurtboxOffsetX, rect.y + hurtboxOffsetY, hurtboxWidth, hurtboxHeight}, HURTBOX)
-                };
-                std::cout << "Demon collision boxes initialized. Count: " << collisionBoxes.size() << std::endl;
-            } catch (const std::exception& e) {
-                std::cout << "Exception initializing collision boxes: " << e.what() << std::endl;
-                // Create default collision boxes to prevent crashes
-                collisionBoxes = {
-                    CollisionBox({rect.x, rect.y, rect.width, rect.height}, BODY),
-                    CollisionBox({rect.x, rect.y, rect.width/2, rect.height/2}, ATTACK, false),
-                    CollisionBox({rect.x, rect.y, rect.width/2, rect.height/2}, HURTBOX)
-                };
-            }
+            collisionBoxes = {
+                CollisionBox({rect.x + bodyOffsetX, rect.y + bodyOffsetY, bodyWidth, bodyHeight}, BODY),
+                CollisionBox({rect.x + attackOffsetX, rect.y + attackOffsetY, attackSize, attackHeight}, ATTACK, false),
+                CollisionBox({rect.x + hurtboxOffsetX, rect.y + hurtboxOffsetY, hurtboxWidth, hurtboxHeight}, HURTBOX)
+            };
+            
+            std::cout << "Demon collision boxes initialized. Count: " << collisionBoxes.size() << std::endl;
 
             // Load sounds
             chantSound = LoadSound("sounds/misc/demon-chant-latin-14489.mp3");
@@ -152,228 +143,242 @@ class Demon {
 
         // Destructor to clean up resources
         ~Demon() {
-            try {
-                for (auto& sprite : sprites) {
-                    if (sprite.id != 0) {
-                        UnloadTexture(sprite);
-                    }
+            for (auto& sprite : sprites) {
+                if (sprite.id != 0) {
+                    UnloadTexture(sprite);
                 }
-                
-                // Unload sounds - make sure they're valid before unloading
-                if (chantSound.frameCount > 0) UnloadSound(chantSound);
-                if (hurtSound.frameCount > 0) UnloadSound(hurtSound);
-                if (deadSound.frameCount > 0) UnloadSound(deadSound);
-            } catch (const std::exception& e) {
-                std::cout << "Exception in Demon destructor: " << e.what() << std::endl;
             }
+            
+            // Unload sounds if they were loaded
+            if (attackSound.frameCount > 0) UnloadSound(attackSound);
+            if (hurtSound.frameCount > 0) UnloadSound(hurtSound);
+            if (deadSound.frameCount > 0) UnloadSound(deadSound);
+            if (chantSound.frameCount > 0) UnloadSound(chantSound);
         }
 
         void updateAnimation() {
             // Safety check for valid state
             if (state < 0 || state >= animations.size()) {
-                std::cout << "Invalid state in updateAnimation: " << state << std::endl;
-                state = IDLE_DEMON; // Reset to a valid state
+                state = IDLE_DEMON; // Reset to idle if state is invalid
             }
             
             AnimationDemon& anim = animations[state];
-            anim.timeLeft -= GetFrameTime();
-            
+            float deltaTime = GetFrameTime();
+
+            anim.timeLeft -= deltaTime;
             if (anim.timeLeft <= 0) {
                 anim.timeLeft = anim.speed;
-                
-                if (anim.type == REPEATING_DEMON) {
-                    anim.currentFrame = (anim.currentFrame + 1) % (anim.lastFrame + 1);
-                } else if (anim.type == ONESHOT_DEMON) {
-                    if (anim.currentFrame < anim.lastFrame) {
-                        anim.currentFrame++;
-                    } else {
-                        // Animation has finished
-                        if (state == ATTACK_DEMON) {
-                            isAttacking = false;
-                            hasFinishedAttack = true;
-                            state = IDLE_DEMON;
-                            animations[state].currentFrame = 0;
-                        } else if (state == HURT_DEMON) {
-                            state = IDLE_DEMON;
-                            animations[state].currentFrame = 0;
-                        } else if (state == DEAD_DEMON) {
-                            // Keep in dead state
-                        }
+
+                if (anim.currentFrame < anim.lastFrame) {
+                    anim.currentFrame++;
+                } else {
+                    if (anim.type == REPEATING_DEMON) {
+                        anim.currentFrame = 0;
+                    } else if (state == ATTACK_DEMON) {
+                        state = IDLE_DEMON;
+                        isAttacking = false;
+                        hasFinishedAttack = true;
+                    } else if (state == HURT_DEMON) {
+                        state = IDLE_DEMON;
+                    } else if (state == DEAD_DEMON) {
+                        // Stay on the last frame if dead
+                        anim.currentFrame = anim.lastFrame;
                     }
                 }
             }
         }
-
+        
         Rectangle getAnimationFrame() const {
             // Safety check for valid state
             if (state < 0 || state >= animations.size()) {
-                return { 0, 0, 288, 160 }; // Return a default frame with valid dimensions
+                return Rectangle{0.0f, 0.0f, 288.0f, 160.0f}; // Return a default frame
             }
             
             const AnimationDemon& anim = animations[state];
             
-            // Safety check for valid current frame
-            if (anim.currentFrame < 0 || anim.currentFrame > anim.lastFrame) {
-                return { 0, (float)state * 160, 288, 160 }; // Return the first frame of the current state
-            }
-            
-            // Calculate the frame width and height based on the spritesheet
-            int frameWidth = 288;  // Width of each frame in the spritesheet
-            int frameHeight = 160; // Height of each frame in the spritesheet
-            
-            // Safety check for sprites
+            // Safety check for valid sprite
             if (sprites.empty() || sprites[0].id == 0) {
-                return { 0, 0, (float)frameWidth, (float)frameHeight }; // Return a default frame
+                return Rectangle{0.0f, 0.0f, 288.0f, 160.0f}; // Return a default frame
             }
             
-            // Calculate the position in the spritesheet
-            float x = (float)frameWidth * anim.currentFrame;
-            float y = (float)frameHeight * state;
+            // Calculate frame dimensions based on sprite sheet layout
+            // The demon sprite sheet has 22 columns and 5 rows
+            int frameWidth = 288;
+            int frameHeight = 160;
             
-            // Ensure we don't exceed texture bounds
-            if (x >= sprites[0].width) {
-                x = 0;
+            // Calculate the row and column for the current frame
+            int row = state;
+            int col = anim.currentFrame;
+            
+            // Safety check for valid frame
+            if (row < 0 || row >= 5 || col < 0 || col > anim.lastFrame) {
+                return Rectangle{0.0f, 0.0f, static_cast<float>(frameWidth), static_cast<float>(frameHeight)}; // Return the first frame
             }
             
-            if (y >= sprites[0].height) {
-                y = 0;
-            }
-            
-            // Return the source rectangle for the current animation frame
-            return { x, y, (float)frameWidth, (float)frameHeight };
+            return Rectangle{
+                static_cast<float>(col * frameWidth),
+                static_cast<float>(row * frameHeight),
+                static_cast<float>(frameWidth),
+                static_cast<float>(frameHeight)
+            };
         }
 
         void draw() const {
-            // Don't draw if dead and animation has finished
-            if (isDead && state == DEAD_DEMON && 
-                animations[DEAD_DEMON].currentFrame >= animations[DEAD_DEMON].lastFrame) {
-                return;
+            // Safety check for valid state and sprite
+            if (state < 0 || state >= animations.size() || sprites.empty() || sprites[0].id == 0) {
+                return; // Don't draw if state is invalid or texture not loaded
             }
             
-            // Safety check for sprites
-            if (sprites.empty() || sprites[0].id == 0) {
-                DrawRectangle(rect.x, rect.y, rect.width, rect.height, RED);
-                return;
-            }
-            
-            // Get the source rectangle for the current animation frame
-            Rectangle source;
-            try {
-                source = getAnimationFrame();
-            } catch (...) {
-                // If there's any error, draw a placeholder
-                DrawRectangle(rect.x, rect.y, rect.width, rect.height, RED);
-                return;
-            }
-            
-            // Safety check for valid source dimensions
-            if (source.width <= 0 || source.height <= 0 || 
-                source.x < 0 || source.y < 0 || 
-                source.x + source.width > sprites[0].width || 
-                source.y + source.height > sprites[0].height) {
-                DrawRectangle(rect.x, rect.y, rect.width, rect.height, RED);
-                return;
-            }
-            
-            // Draw the sprite with the correct direction
-            Rectangle dest = {rect.x, rect.y, rect.width, rect.height};
-            Vector2 origin = {0, 0};
+            Rectangle source = getAnimationFrame();
+            Rectangle dest = { rect.x, rect.y, rect.width, rect.height };
+            Vector2 origin = { 0, 0 };
             float rotation = 0.0f;
-            
-            // If facing left, flip the sprite horizontally
-            if (direction == LEFT_DEMON) {
-                dest.width *= -1;  // Negative width will flip the sprite
+
+            if (direction == RIGHT_DEMON) {
+                DrawTexturePro(sprites[0], source, dest, origin, rotation, WHITE);
+            } else {
+                Rectangle flippedSource = { source.x + source.width, source.y, -source.width, source.height };
+                DrawTexturePro(sprites[0], flippedSource, dest, origin, rotation, WHITE);
             }
-            
-            // Draw the sprite
-            DrawTexturePro(sprites[0], source, dest, origin, rotation, WHITE);
-            
-            // Draw collision boxes if enabled
+
+            // Draw collision boxes for debugging
             if (showCollisionBoxes) {
                 for (const auto& box : collisionBoxes) {
                     if (box.active) {
-                        Color boxColor;
+                        Color color;
                         switch (box.type) {
-                            case BODY: boxColor = BLUE; break;
-                            case ATTACK: boxColor = RED; break;
-                            case HURTBOX: boxColor = GREEN; break;
-                            default: boxColor = PURPLE; break;
+                            case BODY: color = BLUE; break;
+                            case ATTACK: color = RED; break;
+                            case HURTBOX: color = GREEN; break;
+                            default: color = YELLOW; break;
                         }
-                        DrawRectangleLines(box.rect.x, box.rect.y, box.rect.width, box.rect.height, boxColor);
+                        DrawRectangleLines(box.rect.x, box.rect.y, box.rect.width, box.rect.height, color);
                     }
                 }
             }
         }
 
         void move() {
-            // Simple AI movement
-            if (!isDead && state != HURT_DEMON && state != ATTACK_DEMON) {
-                // Random chance to change direction
-                if (GetRandomValue(0, 100) < 1) {
-                    direction = (direction == RIGHT_DEMON) ? LEFT_DEMON : RIGHT_DEMON;
+            // Simple AI movement logic
+            if (!isAttacking && hasFinishedAttack && !isDead) {
+                // Random movement
+                if (GetRandomValue(0, 100) < 2) {
+                    direction = (DirectionDemon)GetRandomValue(-1, 1);
+                    if (direction == 0) direction = RIGHT_DEMON;
+                    
+                    // Change state to walking or idle randomly
+                    state = (GetRandomValue(0, 1) == 0) ? IDLE_DEMON : WALK_DEMON;
                 }
                 
-                // Random chance to attack
-                if (!isAttacking && GetRandomValue(0, 100) < 1) {
-                    isAttacking = true;
-                    hasFinishedAttack = false;
-                    state = ATTACK_DEMON;
-                    animations[state].currentFrame = 0;
-                    return;
+                // Random attack
+                if (GetRandomValue(0, 200) < 1) {
+                    attack();
                 }
                 
-                // Move in current direction
-                if (GetRandomValue(0, 100) < 30) {
-                    velocity.x = 2.0f * direction;
-                    state = WALK_DEMON;
+                // Apply movement based on direction and state
+                if (state == WALK_DEMON) {
+                    velocity.x = 50.0f * (float)direction;
                 } else {
                     velocity.x = 0;
-                    state = IDLE_DEMON;
+                }
+            } else {
+                velocity.x = 0; // Stop moving when attacking or dead
+            }
+        }
+
+        void attack() {
+            if (!isAttacking && !isDead) {
+                state = ATTACK_DEMON;
+                isAttacking = true;
+                hasFinishedAttack = false;
+                
+                // Activate attack collision box
+                for (auto& box : collisionBoxes) {
+                    if (box.type == ATTACK) {
+                        // Position the attack box based on direction
+                        if (direction == RIGHT_DEMON) {
+                            box.rect.x = rect.x + rect.width - (36.0f * SPRITE_SCALE);
+                        } else {
+                            box.rect.x = rect.x - (72.0f * SPRITE_SCALE);
+                        }
+                        box.active = true;
+                        break;
+                    }
+                }
+                
+                // Play attack sound if available
+                if (attackSound.frameCount > 0) {
+                    PlaySound(attackSound);
                 }
             }
         }
 
         void applyVelocity() {
-            rect.x += velocity.x;
+            float deltaTime = GetFrameTime();
+            rect.x += velocity.x * deltaTime;
             
-            // Keep within screen bounds
-            if (rect.x < 0) {
-                rect.x = 0;
-                direction = RIGHT_DEMON;
-            }
-            if (rect.x > GetScreenWidth() - rect.width) {
-                rect.x = GetScreenWidth() - rect.width;
-                direction = LEFT_DEMON;
+            // Update collision boxes positions
+            updateCollisionBoxes();
+        }
+
+        void updateCollisionBoxes() {
+            float bodyOffsetX = 36.0f * SPRITE_SCALE;
+            float bodyOffsetY = 20.0f * SPRITE_SCALE;
+            
+            float attackOffsetX = rect.width - (36.0f * SPRITE_SCALE);
+            float attackOffsetY = 30.0f * SPRITE_SCALE;
+            
+            float hurtboxOffsetX = 45.0f * SPRITE_SCALE;
+            float hurtboxOffsetY = 25.0f * SPRITE_SCALE;
+            
+            for (auto& box : collisionBoxes) {
+                if (box.type == BODY) {
+                    box.rect.x = rect.x + bodyOffsetX;
+                    box.rect.y = rect.y + bodyOffsetY;
+                } else if (box.type == ATTACK) {
+                    // Position attack box based on direction
+                    if (direction == RIGHT_DEMON) {
+                        box.rect.x = rect.x + attackOffsetX;
+                    } else {
+                        box.rect.x = rect.x - box.rect.width;
+                    }
+                    box.rect.y = rect.y + attackOffsetY;
+                    
+                    // Only active during attack animation
+                    box.active = isAttacking;
+                } else if (box.type == HURTBOX) {
+                    box.rect.x = rect.x + hurtboxOffsetX;
+                    box.rect.y = rect.y + hurtboxOffsetY;
+                    
+                    // Disable hurtbox if dead
+                    box.active = !isDead;
+                }
             }
         }
 
         void takeDamage(int damage) {
-            if (!isDead && state != HURT_DEMON) {
+            if (!isDead) {
                 health -= damage;
                 if (health <= 0) {
                     health = 0;
                     isDead = true;
                     state = DEAD_DEMON;
-                    animations[state].currentFrame = 0;
-                    velocity.x = 0;
                     
-                    // Play death sound if valid
-                    if (deadSound.frameCount > 0) {
-                        PlaySound(deadSound);
-                    }
-                    
-                    // Deactivate collision boxes
+                    // Disable collision boxes except for BODY
                     for (auto& box : collisionBoxes) {
                         if (box.type == ATTACK || box.type == HURTBOX) {
                             box.active = false;
                         }
                     }
+                    
+                    // Play death sound if available
+                    if (deadSound.frameCount > 0) {
+                        PlaySound(deadSound);
+                    }
                 } else {
                     state = HURT_DEMON;
-                    animations[state].currentFrame = 0;
-                    isAttacking = false;
                     
-                    // Play hurt sound if valid
+                    // Play hurt sound if available
                     if (hurtSound.frameCount > 0) {
                         PlaySound(hurtSound);
                     }
@@ -381,85 +386,31 @@ class Demon {
             }
         }
 
-        void updateCollisionBoxes() {
-            if (collisionBoxes.empty()) {
-                std::cout << "Warning: No collision boxes to update" << std::endl;
-                return;
-            }
-            
-            try {
-                for (auto& box : collisionBoxes) {
-                    // Update position based on character position
-                    if (box.type == BODY) {
-                        float bodyOffsetX = 36.0f * SPRITE_SCALE;
-                        float bodyOffsetY = 20.0f * SPRITE_SCALE;
-                        box.rect.x = rect.x + bodyOffsetX;
-                        box.rect.y = rect.y + bodyOffsetY;
-                    } else if (box.type == ATTACK) {
-                        float attackOffsetX = (direction == RIGHT_DEMON) ? 
-                                            (rect.width - (36.0f * SPRITE_SCALE)) : 0;
-                        float attackOffsetY = 30.0f * SPRITE_SCALE;
-                        box.rect.x = rect.x + attackOffsetX;
-                        box.rect.y = rect.y + attackOffsetY;
-                        
-                        // Only activate attack box during attack animation
-                        box.active = (state == ATTACK_DEMON);
-                    } else if (box.type == HURTBOX) {
-                        float hurtboxOffsetX = 45.0f * SPRITE_SCALE;
-                        float hurtboxOffsetY = 25.0f * SPRITE_SCALE;
-                        box.rect.x = rect.x + hurtboxOffsetX;
-                        box.rect.y = rect.y + hurtboxOffsetY;
-                        
-                        // Deactivate hurtbox if dead
-                        box.active = !isDead;
+        void update(float deltaTime) {
+            if (!isDead) {
+                // Update chant timer
+                chantTimer += deltaTime;
+                if (chantTimer >= chantInterval) {
+                    chantTimer = 0;
+                    // Play chant sound if available
+                    if (chantSound.frameCount > 0) {
+                        PlaySound(chantSound);
                     }
                 }
-            } catch (const std::exception& e) {
-                std::cout << "Exception in updateCollisionBoxes: " << e.what() << std::endl;
-            }
-        }
-
-        void update(float deltaTime) {
-            // Update animation
-            updateAnimation();
-            
-            // Update chant timer
-            chantTimer += deltaTime;
-            if (chantTimer >= chantInterval && !isDead) {
-                // Only play sound if it's valid
-                if (chantSound.frameCount > 0) {
-                    PlaySound(chantSound);
-                }
-                chantTimer = 0.0f;
+                
+                move();
             }
             
-            // Update collision boxes
-            updateCollisionBoxes();
-            
-            // Apply velocity
             applyVelocity();
-            
-            // AI behavior
-            if (!isDead) {
-                // Implement demon AI here
-            }
+            updateAnimation();
         }
 
         CollisionBox* getCollisionBox(CollisionBoxType type) {
-            // Safety check for empty collision boxes
-            if (collisionBoxes.empty()) {
-                std::cout << "Warning: No collision boxes available" << std::endl;
-                return nullptr;
-            }
-            
-            // Update collision box positions based on current position and direction
             for (auto& box : collisionBoxes) {
                 if (box.type == type) {
                     return &box;
                 }
             }
-            
-            // If no matching collision box is found
             return nullptr;
         }
 };
