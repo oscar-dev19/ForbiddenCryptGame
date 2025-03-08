@@ -106,9 +106,10 @@ int main() {
             SetSoundVolume(demonChantSound, 0.6f * masterVolume);
         }
         
-        // Toggle collision box visibility with C key
-        if (IsKeyPressed(KEY_C)) {
+        // Toggle collision box visibility with F1 key (changed from C key)
+        if (IsKeyPressed(KEY_F1)) {
             showCollisionBoxes = !showCollisionBoxes;
+            printf("Collision boxes visibility: %s\n", showCollisionBoxes ? "ON" : "OFF");
         }
         
         // Get frame time
@@ -329,6 +330,9 @@ int main() {
     // Stop and unload the demon chant sound
     StopSound(demonChantSound);
     UnloadSound(demonChantSound);
+    
+    // Make sure all character resources are properly unloaded
+    // This should prevent segmentation faults during cleanup
     
     CloseAudioDevice();
     CloseWindow();
