@@ -64,24 +64,16 @@ public:
         state = IDLE_WOLF; // Start in idle state.
         this->groundLevel = groundLevel; // Set initial ground level.
 
-        // Initialize animations for different states.
+        // Initialize animations for different states with correct frame counts
         animations = {
-            {0, 3, 0, 0, 0.2f, 0.2f, REPEATING_WOLF}, // DEAD_WOLF
-            {0, 5, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF},   // ATTACK_SWIPE
-            {0, 2, 0, 0, 0.2f, 0.2f, ONESHOT_WOLF},   // HURT_WOLF
-            {0, 5, 0, 0, 0.2f, 0.2f, REPEATING_WOLF}, // IDLE_WOLF
-            {0, 5, 0, 0, 0.2f, 0.2f, ONESHOT_WOLF},   // JUMP_WOLF
-            {0, 7, 0, 0, 0.1f, 0.1f, REPEATING_WOLF}  // RUN_WOLF
-        };
-
-        // Load textures for each state.
-        sprites = {
-            LoadTexture("assets/Werewolf/Dead.png"),
-            LoadTexture("assets/Werewolf/Attack_1.png"),
-            LoadTexture("assets/Werewolf/Hurt.png"),
-            LoadTexture("assets/Werewolf/Idle.png"),
-            LoadTexture("assets/Werewolf/Jump.png"),
-            LoadTexture("assets/Werewolf/Run.png")
+            {0, 3, 0, 0, 0.2f, 0.2f, ONESHOT_WOLF},   // DEAD_WOLF - 4 frames
+            {0, 5, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF},   // ATTACK_SWIPE - 6 frames
+            {0, 3, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF},   // ATTACK_RUN - 4 frames
+            {0, 2, 0, 0, 0.2f, 0.2f, ONESHOT_WOLF},   // HURT_WOLF - 3 frames
+            {0, 7, 0, 0, 0.2f, 0.2f, REPEATING_WOLF}, // IDLE_WOLF - 8 frames
+            {0, 10, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF},  // JUMP_WOLF - 11 frames
+            {0, 8, 0, 0, 0.1f, 0.1f, REPEATING_WOLF}, // RUN_WOLF - 9 frames
+            {0, 10, 0, 0, 0.1f, 0.1f, REPEATING_WOLF}  // WALK_WOLF - 11 frames
         };
 
         // Initialize collision boxes with scaled dimensions
@@ -100,7 +92,7 @@ public:
         
         collisionBoxes = {
             CollisionBox({rect.x + bodyOffsetX, rect.y + bodyOffsetY, bodyWidth, bodyHeight}, BODY),
-            CollisionBox({rect.x - attackSize, rect.y + attackOffsetY, attackSize, attackSize}, ATTACK, false),
+            CollisionBox({rect.x + rect.width - attackSize, rect.y + attackOffsetY, attackSize, attackSize}, ATTACK, false),
             CollisionBox({rect.x + hurtboxOffsetX, rect.y + hurtboxOffsetY, hurtboxWidth, hurtboxHeight}, HURTBOX)
         };
     }
@@ -112,6 +104,14 @@ public:
     }
 
     void loadTextures() {
+        // Clear any existing textures
+        for (auto& sprite : sprites) {
+            if (sprite.id != 0) {
+                UnloadTexture(sprite);
+            }
+        }
+        
+        // Resize and load all textures
         sprites.resize(8);
         sprites[DEAD_WOLF] = LoadTexture("assets/Werewolf/Dead.png");
         sprites[ATTACK_SWIPE] = LoadTexture("assets/Werewolf/Attack_1.png");
@@ -121,9 +121,19 @@ public:
         sprites[JUMP_WOLF] = LoadTexture("assets/Werewolf/Jump.png");
         sprites[RUN_WOLF] = LoadTexture("assets/Werewolf/Run.png");
         sprites[WALK_WOLF] = LoadTexture("assets/Werewolf/walk.png");
+        
+        // Print debug info about loaded textures
+        for (int i = 0; i < sprites.size(); i++) {
+            printf("Werewolf texture %d: %dx%d\n", i, sprites[i].width, sprites[i].height);
+        }
     }
 
     void updateAnimation() {
+        // Safety check for valid state
+        if (state < 0 || state >= animations.size()) {
+            state = IDLE_WOLF; // Reset to idle if state is invalid
+        }
+        
         AnimationWolf& anim = animations[state];
         float deltaTime = GetFrameTime();
 
@@ -142,6 +152,9 @@ public:
                     hasFinishedAttack = true;
                 } else if (state == HURT_WOLF) {
                     state = IDLE_WOLF;
+                } else if (state == DEAD_WOLF) {
+                    // Stay on the last frame if dead
+                    anim.currentFrame = anim.lastFrame;
                 }
             }
         }
@@ -156,7 +169,7 @@ public:
         const AnimationWolf& anim = animations[state];
         
         // Safety check for valid sprite
-        if (sprites[state].width <= 0 || sprites[state].height <= 0) {
+        if (sprites[state].id == 0 || sprites[state].width <= 0 || sprites[state].height <= 0) {
             return Rectangle{0, 0, 128, 128}; // Return a default frame
         }
         
@@ -178,8 +191,8 @@ public:
 
     void draw() const {
         // Safety check for valid state
-        if (state < 0 || state >= sprites.size()) {
-            return; // Don't draw if state is invalid
+        if (state < 0 || state >= sprites.size() || sprites[state].id == 0) {
+            return; // Don't draw if state is invalid or texture not loaded
         }
         
         Rectangle source = getAnimationFrame();
