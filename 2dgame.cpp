@@ -67,6 +67,41 @@ void safeExit() {
     _Exit(0); // Use _Exit instead of exit to bypass any atexit handlers
 }
 
+// Function to draw collision boxes for debugging
+void drawCollisionBox(const CollisionBox& box) {
+    if (!box.active) return;
+    
+    Color color;
+    switch (box.type) {
+        case BODY:
+            color = BLUE;
+            break;
+        case ATTACK:
+            color = RED;
+            break;
+        case HURTBOX:
+            color = GREEN;
+            break;
+        default:
+            color = YELLOW;
+            break;
+    }
+    
+    // Draw the collision box as a rectangle outline
+    DrawRectangleLines(box.rect.x, box.rect.y, box.rect.width, box.rect.height, color);
+    
+    // Draw a small label to identify the box type
+    const char* label = "";
+    switch (box.type) {
+        case BODY: label = "BODY"; break;
+        case ATTACK: label = "ATTACK"; break;
+        case HURTBOX: label = "HURT"; break;
+        default: label = "UNKNOWN"; break;
+    }
+    
+    DrawText(label, box.rect.x, box.rect.y - 15, 10, color);
+}
+
 // Custom draw function for the demon to apply scaling
 void drawScaledDemon(const Demon& demon) {
     // Get the current animation frame
@@ -93,22 +128,6 @@ void drawScaledDemon(const Demon& demon) {
         0.0f,                                            // Rotation
         WHITE                                            // Tint
     );
-    
-    // Draw collision boxes if enabled
-    if (showCollisionBoxes) {
-        for (const auto& box : demon.collisionBoxes) {
-            if (box.active) {
-                Color boxColor;
-                switch (box.type) {
-                    case BODY: boxColor = BLUE; break;
-                    case ATTACK: boxColor = RED; break;
-                    case HURTBOX: boxColor = GREEN; break;
-                    default: boxColor = YELLOW; break;
-                }
-                DrawRectangleLines(box.rect.x, box.rect.y, box.rect.width, box.rect.height, boxColor);
-            }
-        }
-    }
 }
 
 int main() {
@@ -335,6 +354,68 @@ int main() {
 
         // Draw Samurai health bar
         samurai.drawHealthBar();
+        
+        // Draw collision boxes if enabled
+        if (showCollisionBoxes) {
+            // Draw collision boxes for each character type
+            // For Samurai
+            CollisionBox* bodyBox = samurai.getCollisionBox(BODY);
+            if (bodyBox) drawCollisionBox(*bodyBox);
+            
+            CollisionBox* attackBox = samurai.getCollisionBox(ATTACK);
+            if (attackBox) drawCollisionBox(*attackBox);
+            
+            CollisionBox* hurtBox = samurai.getCollisionBox(HURTBOX);
+            if (hurtBox) drawCollisionBox(*hurtBox);
+            
+            // For Goblin
+            if (goblinHealth > 0) {
+                bodyBox = goblin.getCollisionBox(BODY);
+                if (bodyBox) drawCollisionBox(*bodyBox);
+                
+                attackBox = goblin.getCollisionBox(ATTACK);
+                if (attackBox) drawCollisionBox(*attackBox);
+                
+                hurtBox = goblin.getCollisionBox(HURTBOX);
+                if (hurtBox) drawCollisionBox(*hurtBox);
+            }
+            
+            // For Werewolf
+            if (werewolfHealth > 0) {
+                bodyBox = werewolf.getCollisionBox(BODY);
+                if (bodyBox) drawCollisionBox(*bodyBox);
+                
+                attackBox = werewolf.getCollisionBox(ATTACK);
+                if (attackBox) drawCollisionBox(*attackBox);
+                
+                hurtBox = werewolf.getCollisionBox(HURTBOX);
+                if (hurtBox) drawCollisionBox(*hurtBox);
+            }
+            
+            // For Wizard
+            if (wizardHealth > 0) {
+                bodyBox = wizard.getCollisionBox(BODY);
+                if (bodyBox) drawCollisionBox(*bodyBox);
+                
+                attackBox = wizard.getCollisionBox(ATTACK);
+                if (attackBox) drawCollisionBox(*attackBox);
+                
+                hurtBox = wizard.getCollisionBox(HURTBOX);
+                if (hurtBox) drawCollisionBox(*hurtBox);
+            }
+            
+            // For Demon
+            if (demonHealth > 0) {
+                bodyBox = demon.getCollisionBox(BODY);
+                if (bodyBox) drawCollisionBox(*bodyBox);
+                
+                attackBox = demon.getCollisionBox(ATTACK);
+                if (attackBox) drawCollisionBox(*attackBox);
+                
+                hurtBox = demon.getCollisionBox(HURTBOX);
+                if (hurtBox) drawCollisionBox(*hurtBox);
+            }
+        }
 
         // Draw instructions
         DrawText("Controls: A/D to move, J to attack, SPACE to jump", 10, 30, 20, BLACK);
