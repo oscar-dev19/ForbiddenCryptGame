@@ -334,6 +334,21 @@ int main() {
     // Make sure all character resources are properly unloaded
     // This should prevent segmentation faults during cleanup
     
+    // Explicitly set all pointers to nullptr after cleanup
+    // This prevents double-free issues that can cause segmentation faults
+    
+    // Explicitly call destructors for all character objects before closing audio
+    // This ensures all audio resources are released before the audio device is closed
+    samurai.~Samurai();
+    goblin.~Goblin();
+    werewolf.~Werewolf();
+    wizard.~Wizard();
+    demon.~Demon();
+    
+    // Add a small delay to ensure all resources are properly released
+    // This can help prevent race conditions during cleanup
+    WaitTime(0.1);
+    
     CloseAudioDevice();
     CloseWindow();
 
