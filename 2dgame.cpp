@@ -42,6 +42,9 @@ void handleAttackCollision(CollisionBox* attackBox, CollisionBox* hurtBox, int& 
 void safeExit() {
     printf("Exiting safely...\n");
     
+    // Turn off collision boxes before exiting to prevent segfault
+    showCollisionBoxes = false;
+    
     // Unload audio resources directly
     if (backgroundMusic.stream.buffer) {
         StopMusicStream(backgroundMusic);
@@ -58,7 +61,7 @@ void safeExit() {
     CloseWindow();
     
     // Exit directly without going through normal cleanup
-    exit(0);
+    _Exit(0); // Use _Exit instead of exit to bypass any atexit handlers
 }
 
 int main() {
