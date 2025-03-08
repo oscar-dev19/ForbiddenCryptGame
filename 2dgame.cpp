@@ -8,8 +8,6 @@
 #include "Demon.h"
 #include <iostream>
 #include <vector>
-#include <signal.h>
-#include <stdlib.h>
 
 // Define the global variable for collision box visibility
 bool showCollisionBoxes = false;
@@ -18,27 +16,6 @@ bool showCollisionBoxes = false;
 Music backgroundMusic = { 0 };
 Sound demonChantSound = { 0 };
 float masterVolume = 0.7f;
-
-// Global pointers to character objects
-Samurai* samuraiPtr = NULL;
-Goblin* goblinPtr = NULL;
-Werewolf* werewolfPtr = NULL;
-Wizard* wizardPtr = NULL;
-Demon* demonPtr = NULL;
-
-// Flag to track if we're in cleanup to prevent recursive crashes
-bool inCleanup = false;
-
-// Signal handler for segmentation faults
-void segfaultHandler(int signal) {
-    if (!inCleanup) {
-        fprintf(stderr, "Caught segmentation fault during normal operation. Exiting safely.\n");
-        exit(1);
-    } else {
-        fprintf(stderr, "Caught segmentation fault during cleanup. Continuing with cleanup.\n");
-        // Just continue - we'll skip the problematic operation
-    }
-}
 
 // Helper function to check collision between two collision boxes
 bool checkCharacterCollision(const CollisionBox& box1, const CollisionBox& box2) {
@@ -60,69 +37,7 @@ void handleAttackCollision(CollisionBox* attackBox, CollisionBox* hurtBox, int& 
     }
 }
 
-// Clean up function to safely release all resources
-void cleanupResources() {
-    inCleanup = true;
-    
-    // First unload audio resources before touching character objects
-    if (backgroundMusic.stream.buffer) {
-        StopMusicStream(backgroundMusic);
-        UnloadMusicStream(backgroundMusic);
-        backgroundMusic = { 0 };
-    }
-    
-    if (demonChantSound.stream.buffer) {
-        StopSound(demonChantSound);
-        UnloadSound(demonChantSound);
-        demonChantSound = { 0 };
-    }
-    
-    // Close audio device before cleaning up character objects
-    CloseAudioDevice();
-    
-    // Now free character objects without calling destructors
-    // This is a last resort approach to avoid segmentation faults
-    if (samuraiPtr) {
-        // Instead of delete, we'll just set to NULL
-        samuraiPtr = NULL;
-    }
-    
-    if (goblinPtr) {
-        goblinPtr = NULL;
-    }
-    
-    if (werewolfPtr) {
-        werewolfPtr = NULL;
-    }
-    
-    if (wizardPtr) {
-        wizardPtr = NULL;
-    }
-    
-    if (demonPtr) {
-        demonPtr = NULL;
-    }
-    
-    // Close window last
-    CloseWindow();
-    
-    inCleanup = false;
-}
-
-// Atexit handler to ensure cleanup happens
-void atExitHandler() {
-    if (!inCleanup) {
-        cleanupResources();
-    }
-}
-
 int main() {
-    // Set up signal handler for segmentation faults
-    signal(SIGSEGV, segfaultHandler);
-    
-    // Register cleanup function to be called at exit
-    atexit(atExitHandler);
-    
     // Set up error handling
     SetTraceLogLevel(LOG_WARNING);
     
@@ -149,19 +64,15 @@ int main() {
     const float floorHeight = 50.0f;
     const float floorLevel = screenHeight - floorHeight;
 
-    // Initialize characters using dynamic allocation
-    samuraiPtr = new Samurai(100, floorLevel, floorLevel);
-    
-    goblinPtr = new Goblin((Vector2){500, floorLevel});
-    goblinPtr->loadTextures();
-    
-    werewolfPtr = new Werewolf(600, floorLevel, floorLevel);
-    werewolfPtr->loadTextures();
-    
-    wizardPtr = new Wizard((Vector2){700, floorLevel});
-    wizardPtr->loadTextures();
-    
-    demonPtr = new Demon((Vector2){400, floorLevel});
+    // Initialize characters using stack allocation
+    Samurai samurai(100, floorLevel, floorLevel);
+    Goblin goblin((Vector2){500, floorLevel});
+    goblin.loadTextures();
+    Werewolf werewolf(600, floorLevel, floorLevel);
+    werewolf.loadTextures();
+    Wizard wizard((Vector2){700, floorLevel});
+    wizard.loadTextures();
+    Demon demon((Vector2){400, floorLevel});
 
     // Initialize health values for enemies
     int goblinHealth = 50;
@@ -208,22 +119,22 @@ int main() {
         float deltaTime = GetFrameTime();
         
         // Update characters
-        samuraiPtr->updateSamurai();
-        goblinPtr->update();
-        werewolfPtr->update();
-        wizardPtr->update();
-        demonPtr->update(deltaTime);
+        samurai.updateSamurai();
+        goblin.update();
+        werewolf.update();
+        wizard.update();
+        demon.update(deltaTime);
 
         // Check for collisions between Samurai's attack and enemies
-        CollisionBox* samuraiAttack = samuraiPtr->getCollisionBox(ATTACK);
+        CollisionBox* samuraiAttack = samurai.getCollisionBox(ATTACK);
         
         // Check Samurai attack vs Goblin
-        if (!goblinPtr->isDead && samuraiAttack && samuraiAttack->active) {
-            CollisionBox* goblinHurtbox = goblinPtr->getCollisionBox(HURTBOX);
+        if (!goblin.isDead && samuraiAttack && samuraiAttack->active) {
+            CollisionBox* goblinHurtbox = goblin.getCollisionBox(HURTBOX);
             if (goblinHurtbox && checkCharacterCollision(*samuraiAttack, *goblinHurtbox)) {
                 goblinHealth -= 10;
                 if (goblinHealth <= 0) {
-                    goblinPtr->takeDamage(10); // This will set the goblin to dead state
+                    goblin.takeDamage(10); // This will set the goblin to dead state
                 }
                 samuraiAttack->active = false; // Prevent multiple hits
             }
@@ -231,11 +142,11 @@ int main() {
 
         // Check Samurai attack vs Werewolf
         if (samuraiAttack && samuraiAttack->active) {
-            CollisionBox* werewolfHurtbox = werewolfPtr->getCollisionBox(HURTBOX);
+            CollisionBox* werewolfHurtbox = werewolf.getCollisionBox(HURTBOX);
             if (werewolfHurtbox && checkCharacterCollision(*samuraiAttack, *werewolfHurtbox)) {
                 werewolfHealth -= 10;
                 if (werewolfHealth <= 0) {
-                    werewolfPtr->takeDamage(10); // This will set the werewolf to dead state
+                    werewolf.takeDamage(10); // This will set the werewolf to dead state
                 }
                 samuraiAttack->active = false; // Prevent multiple hits
             }
@@ -243,11 +154,11 @@ int main() {
 
         // Check Samurai attack vs Wizard
         if (samuraiAttack && samuraiAttack->active) {
-            CollisionBox* wizardHurtbox = wizardPtr->getCollisionBox(HURTBOX);
+            CollisionBox* wizardHurtbox = wizard.getCollisionBox(HURTBOX);
             if (wizardHurtbox && checkCharacterCollision(*samuraiAttack, *wizardHurtbox)) {
                 wizardHealth -= 10;
                 if (wizardHealth <= 0) {
-                    wizardPtr->takeDamage(10); // This will set the wizard to dead state
+                    wizard.takeDamage(10); // This will set the wizard to dead state
                 }
                 samuraiAttack->active = false; // Prevent multiple hits
             }
@@ -255,51 +166,51 @@ int main() {
 
         // Check Samurai attack vs Demon
         if (samuraiAttack && samuraiAttack->active) {
-            CollisionBox* demonHurtbox = demonPtr->getCollisionBox(HURTBOX);
+            CollisionBox* demonHurtbox = demon.getCollisionBox(HURTBOX);
             if (demonHurtbox && checkCharacterCollision(*samuraiAttack, *demonHurtbox)) {
                 demonHealth -= 10;
                 if (demonHealth <= 0) {
-                    demonPtr->takeDamage(10); // This will set the demon to dead state
+                    demon.takeDamage(10); // This will set the demon to dead state
                 }
                 samuraiAttack->active = false; // Prevent multiple hits
             }
         }
 
         // Check for enemy attacks hitting Samurai
-        CollisionBox* samuraiHurtbox = samuraiPtr->getCollisionBox(HURTBOX);
+        CollisionBox* samuraiHurtbox = samurai.getCollisionBox(HURTBOX);
         
         // Check Goblin attack vs Samurai
-        if (!goblinPtr->isDead && samuraiHurtbox && samuraiHurtbox->active) {
-            CollisionBox* goblinAttack = goblinPtr->getCollisionBox(ATTACK);
+        if (!goblin.isDead && samuraiHurtbox && samuraiHurtbox->active) {
+            CollisionBox* goblinAttack = goblin.getCollisionBox(ATTACK);
             if (goblinAttack && goblinAttack->active && checkCharacterCollision(*goblinAttack, *samuraiHurtbox)) {
-                samuraiPtr->takeDamage(5);
+                samurai.takeDamage(5);
                 goblinAttack->active = false; // Prevent multiple hits
             }
         }
 
         // Check Werewolf attack vs Samurai
         if (samuraiHurtbox && samuraiHurtbox->active) {
-            CollisionBox* werewolfAttack = werewolfPtr->getCollisionBox(ATTACK);
+            CollisionBox* werewolfAttack = werewolf.getCollisionBox(ATTACK);
             if (werewolfAttack && werewolfAttack->active && checkCharacterCollision(*werewolfAttack, *samuraiHurtbox)) {
-                samuraiPtr->takeDamage(8);
+                samurai.takeDamage(8);
                 werewolfAttack->active = false; // Prevent multiple hits
             }
         }
 
         // Check Wizard attack vs Samurai
         if (samuraiHurtbox && samuraiHurtbox->active) {
-            CollisionBox* wizardAttack = wizardPtr->getCollisionBox(ATTACK);
+            CollisionBox* wizardAttack = wizard.getCollisionBox(ATTACK);
             if (wizardAttack && wizardAttack->active && checkCharacterCollision(*wizardAttack, *samuraiHurtbox)) {
-                samuraiPtr->takeDamage(6);
+                samurai.takeDamage(6);
                 wizardAttack->active = false; // Prevent multiple hits
             }
         }
 
         // Check Demon attack vs Samurai
         if (samuraiHurtbox && samuraiHurtbox->active) {
-            CollisionBox* demonAttack = demonPtr->getCollisionBox(ATTACK);
+            CollisionBox* demonAttack = demon.getCollisionBox(ATTACK);
             if (demonAttack && demonAttack->active && checkCharacterCollision(*demonAttack, *samuraiHurtbox)) {
-                samuraiPtr->takeDamage(10);
+                samurai.takeDamage(10);
                 demonAttack->active = false; // Prevent multiple hits
             }
         }
@@ -312,46 +223,46 @@ int main() {
         DrawRectangle(0, floorLevel, screenWidth, floorHeight, DARKGRAY);
 
         // Draw characters
-        samuraiPtr->draw();
+        samurai.draw();
         
         // Only draw enemies if they're not dead
         if (goblinHealth > 0) {
-            goblinPtr->draw();
+            goblin.draw();
             // Draw health bar for goblin
-            DrawRectangle(goblinPtr->rect.x, goblinPtr->rect.y - 10, goblinPtr->rect.width, 5, RED);
-            DrawRectangle(goblinPtr->rect.x, goblinPtr->rect.y - 10, goblinPtr->rect.width * (goblinHealth / 50.0f), 5, GREEN);
+            DrawRectangle(goblin.rect.x, goblin.rect.y - 10, goblin.rect.width, 5, RED);
+            DrawRectangle(goblin.rect.x, goblin.rect.y - 10, goblin.rect.width * (goblinHealth / 50.0f), 5, GREEN);
         }
         
         if (werewolfHealth > 0) {
-            werewolfPtr->draw();
+            werewolf.draw();
             // Draw health bar for werewolf
-            DrawRectangle(werewolfPtr->rect.x, werewolfPtr->rect.y - 10, werewolfPtr->rect.width, 5, RED);
-            DrawRectangle(werewolfPtr->rect.x, werewolfPtr->rect.y - 10, werewolfPtr->rect.width * (werewolfHealth / 75.0f), 5, GREEN);
+            DrawRectangle(werewolf.rect.x, werewolf.rect.y - 10, werewolf.rect.width, 5, RED);
+            DrawRectangle(werewolf.rect.x, werewolf.rect.y - 10, werewolf.rect.width * (werewolfHealth / 75.0f), 5, GREEN);
         }
         
         if (wizardHealth > 0) {
-            wizardPtr->draw();
+            wizard.draw();
             // Draw health bar for wizard
-            DrawRectangle(wizardPtr->rect.x, wizardPtr->rect.y - 10, wizardPtr->rect.width, 5, RED);
-            DrawRectangle(wizardPtr->rect.x, wizardPtr->rect.y - 10, wizardPtr->rect.width * (wizardHealth / 60.0f), 5, GREEN);
+            DrawRectangle(wizard.rect.x, wizard.rect.y - 10, wizard.rect.width, 5, RED);
+            DrawRectangle(wizard.rect.x, wizard.rect.y - 10, wizard.rect.width * (wizardHealth / 60.0f), 5, GREEN);
         }
         
         if (demonHealth > 0) {
-            demonPtr->draw();
+            demon.draw();
             // Draw health bar for demon
-            DrawRectangle(demonPtr->rect.x, demonPtr->rect.y - 10, demonPtr->rect.width, 5, RED);
-            DrawRectangle(demonPtr->rect.x, demonPtr->rect.y - 10, demonPtr->rect.width * (demonHealth / 100.0f), 5, GREEN);
+            DrawRectangle(demon.rect.x, demon.rect.y - 10, demon.rect.width, 5, RED);
+            DrawRectangle(demon.rect.x, demon.rect.y - 10, demon.rect.width * (demonHealth / 100.0f), 5, GREEN);
         }
 
         // Draw Samurai health bar
-        samuraiPtr->drawHealthBar();
+        samurai.drawHealthBar();
 
         // Draw instructions
         DrawText("Controls: A/D to move, J to attack, SPACE to jump", 10, 30, 20, BLACK);
         DrawText("Press F1 to toggle collision boxes", 10, 50, 20, BLACK);
 
         // Draw UI elements
-        DrawText(TextFormat("Samurai Health: %d", samuraiPtr->getHealth()), 10, 10, 20, RED);
+        DrawText(TextFormat("Samurai Health: %d", samurai.getHealth()), 10, 10, 20, RED);
         
         // Draw audio controls help text
         DrawText("Audio Controls:", 10, screenHeight - 80, 16, WHITE);
@@ -362,8 +273,15 @@ int main() {
         EndDrawing();
     }
 
-    // Use our custom cleanup function to safely release all resources
-    cleanupResources();
+    // Unload audio resources
+    StopMusicStream(backgroundMusic);
+    UnloadMusicStream(backgroundMusic);
+    StopSound(demonChantSound);
+    UnloadSound(demonChantSound);
+    
+    // Close audio device and window
+    CloseAudioDevice();
+    CloseWindow();
 
     return 0;
 }
