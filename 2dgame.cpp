@@ -8,6 +8,7 @@
 #include "Demon.h"
 #include <iostream>
 #include <vector>
+#include <stdlib.h> // For exit()
 
 // Define the global variable for collision box visibility
 bool showCollisionBoxes = false;
@@ -35,6 +36,29 @@ void handleAttackCollision(CollisionBox* attackBox, CollisionBox* hurtBox, int& 
         // Deactivate attack box to prevent multiple hits from the same attack
         attackBox->active = false;
     }
+}
+
+// Custom exit function that bypasses normal cleanup
+void safeExit() {
+    printf("Exiting safely...\n");
+    
+    // Unload audio resources directly
+    if (backgroundMusic.stream.buffer) {
+        StopMusicStream(backgroundMusic);
+        UnloadMusicStream(backgroundMusic);
+    }
+    
+    if (demonChantSound.stream.buffer) {
+        StopSound(demonChantSound);
+        UnloadSound(demonChantSound);
+    }
+    
+    // Close audio device and window
+    CloseAudioDevice();
+    CloseWindow();
+    
+    // Exit directly without going through normal cleanup
+    exit(0);
 }
 
 int main() {
@@ -271,17 +295,14 @@ int main() {
         DrawText(TextFormat("Volume: %.1f", masterVolume), 10, screenHeight - 20, 16, WHITE);
 
         EndDrawing();
+        
+        // Check if window should close
+        if (WindowShouldClose()) {
+            // Use our custom exit function instead of letting the loop end naturally
+            safeExit();
+        }
     }
 
-    // Unload audio resources
-    StopMusicStream(backgroundMusic);
-    UnloadMusicStream(backgroundMusic);
-    StopSound(demonChantSound);
-    UnloadSound(demonChantSound);
-    
-    // Close audio device and window
-    CloseAudioDevice();
-    CloseWindow();
-
+    // This code should never be reached because we call safeExit() when WindowShouldClose() is true
     return 0;
 }
