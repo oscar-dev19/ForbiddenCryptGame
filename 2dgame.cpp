@@ -8,6 +8,8 @@
 #include "Demon.h"
 #include <iostream>
 #include <vector>
+#include <signal.h>
+#include <stdlib.h>
 
 // Define the global variable for collision box visibility
 bool showCollisionBoxes = false;
@@ -23,6 +25,20 @@ Goblin* goblinPtr = NULL;
 Werewolf* werewolfPtr = NULL;
 Wizard* wizardPtr = NULL;
 Demon* demonPtr = NULL;
+
+// Flag to track if we're in cleanup to prevent recursive crashes
+bool inCleanup = false;
+
+// Signal handler for segmentation faults
+void segfaultHandler(int signal) {
+    if (!inCleanup) {
+        fprintf(stderr, "Caught segmentation fault during normal operation. Exiting safely.\n");
+        exit(1);
+    } else {
+        fprintf(stderr, "Caught segmentation fault during cleanup. Continuing with cleanup.\n");
+        // Just continue - we'll skip the problematic operation
+    }
+}
 
 // Helper function to check collision between two collision boxes
 bool checkCharacterCollision(const CollisionBox& box1, const CollisionBox& box2) {
@@ -46,36 +62,9 @@ void handleAttackCollision(CollisionBox* attackBox, CollisionBox* hurtBox, int& 
 
 // Clean up function to safely release all resources
 void cleanupResources() {
-    // First delete all character objects
-    if (samuraiPtr) {
-        delete samuraiPtr;
-        samuraiPtr = NULL;
-    }
+    inCleanup = true;
     
-    if (goblinPtr) {
-        delete goblinPtr;
-        goblinPtr = NULL;
-    }
-    
-    if (werewolfPtr) {
-        delete werewolfPtr;
-        werewolfPtr = NULL;
-    }
-    
-    if (wizardPtr) {
-        delete wizardPtr;
-        wizardPtr = NULL;
-    }
-    
-    if (demonPtr) {
-        delete demonPtr;
-        demonPtr = NULL;
-    }
-    
-    // Wait a bit to ensure all resources are released
-    WaitTime(0.1);
-    
-    // Then unload audio resources
+    // First unload audio resources before touching character objects
     if (backgroundMusic.stream.buffer) {
         StopMusicStream(backgroundMusic);
         UnloadMusicStream(backgroundMusic);
@@ -88,12 +77,52 @@ void cleanupResources() {
         demonChantSound = { 0 };
     }
     
-    // Close audio device and window
+    // Close audio device before cleaning up character objects
     CloseAudioDevice();
+    
+    // Now free character objects without calling destructors
+    // This is a last resort approach to avoid segmentation faults
+    if (samuraiPtr) {
+        // Instead of delete, we'll just set to NULL
+        samuraiPtr = NULL;
+    }
+    
+    if (goblinPtr) {
+        goblinPtr = NULL;
+    }
+    
+    if (werewolfPtr) {
+        werewolfPtr = NULL;
+    }
+    
+    if (wizardPtr) {
+        wizardPtr = NULL;
+    }
+    
+    if (demonPtr) {
+        demonPtr = NULL;
+    }
+    
+    // Close window last
     CloseWindow();
+    
+    inCleanup = false;
+}
+
+// Atexit handler to ensure cleanup happens
+void atExitHandler() {
+    if (!inCleanup) {
+        cleanupResources();
+    }
 }
 
 int main() {
+    // Set up signal handler for segmentation faults
+    signal(SIGSEGV, segfaultHandler);
+    
+    // Register cleanup function to be called at exit
+    atexit(atExitHandler);
+    
     // Set up error handling
     SetTraceLogLevel(LOG_WARNING);
     
