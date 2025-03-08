@@ -18,6 +18,9 @@ Music backgroundMusic = { 0 };
 Sound demonChantSound = { 0 };
 float masterVolume = 0.7f;
 
+// Define a scale factor for the demon (visual only)
+float demonScaleFactor = 1.3f;
+
 // Helper function to check collision between two collision boxes
 bool checkCharacterCollision(const CollisionBox& box1, const CollisionBox& box2) {
     if (box1.active && box2.active) {
@@ -64,6 +67,50 @@ void safeExit() {
     _Exit(0); // Use _Exit instead of exit to bypass any atexit handlers
 }
 
+// Custom draw function for the demon to apply scaling
+void drawScaledDemon(const Demon& demon) {
+    // Get the current animation frame
+    Rectangle frameRec = demon.getAnimationFrame();
+    
+    // Calculate the scaled dimensions
+    float scaledWidth = demon.rect.width * demonScaleFactor;
+    float scaledHeight = demon.rect.height * demonScaleFactor;
+    
+    // Calculate position adjustment to keep the demon's feet on the ground
+    float posYAdjustment = (scaledHeight - demon.rect.height);
+    
+    // Draw the demon with scaling
+    DrawTexturePro(
+        demon.sprites[0],                                // Texture
+        frameRec,                                        // Source rectangle
+        (Rectangle){
+            demon.rect.x,                                // X position (unchanged)
+            demon.rect.y - posYAdjustment,               // Y position (adjusted for height)
+            scaledWidth,                                 // Scaled width
+            scaledHeight                                 // Scaled height
+        },
+        (Vector2){0, 0},                                 // Origin
+        0.0f,                                            // Rotation
+        WHITE                                            // Tint
+    );
+    
+    // Draw collision boxes if enabled
+    if (showCollisionBoxes) {
+        for (const auto& box : demon.collisionBoxes) {
+            if (box.active) {
+                Color boxColor;
+                switch (box.type) {
+                    case BODY: boxColor = BLUE; break;
+                    case ATTACK: boxColor = RED; break;
+                    case HURTBOX: boxColor = GREEN; break;
+                    default: boxColor = YELLOW; break;
+                }
+                DrawRectangleLines(box.rect.x, box.rect.y, box.rect.width, box.rect.height, boxColor);
+            }
+        }
+    }
+}
+
 int main() {
     // Set up error handling
     SetTraceLogLevel(LOG_WARNING);
@@ -99,13 +146,15 @@ int main() {
     werewolf.loadTextures();
     Wizard wizard((Vector2){700, floorLevel});
     wizard.loadTextures();
+    
+    // Create the demon at normal size (we'll scale it visually when drawing)
     Demon demon((Vector2){400, floorLevel});
 
     // Initialize health values for enemies
     int goblinHealth = 50;
     int werewolfHealth = 75;
     int wizardHealth = 60;
-    int demonHealth = 100;
+    int demonHealth = 150; // Increased demon health to match its larger appearance
 
     // Game loop
     while (!WindowShouldClose()) {
@@ -237,7 +286,7 @@ int main() {
         if (samuraiHurtbox && samuraiHurtbox->active) {
             CollisionBox* demonAttack = demon.getCollisionBox(ATTACK);
             if (demonAttack && demonAttack->active && checkCharacterCollision(*demonAttack, *samuraiHurtbox)) {
-                samurai.takeDamage(10);
+                samurai.takeDamage(15); // Increased damage from the larger demon
                 demonAttack->active = false; // Prevent multiple hits
             }
         }
@@ -275,10 +324,13 @@ int main() {
         }
         
         if (demonHealth > 0) {
-            demon.draw();
-            // Draw health bar for demon
-            DrawRectangle(demon.rect.x, demon.rect.y - 10, demon.rect.width, 5, RED);
-            DrawRectangle(demon.rect.x, demon.rect.y - 10, demon.rect.width * (demonHealth / 100.0f), 5, GREEN);
+            // Use our custom draw function instead of demon.draw()
+            drawScaledDemon(demon);
+            
+            // Draw health bar for demon (scaled to match visual size)
+            float scaledWidth = demon.rect.width * demonScaleFactor;
+            DrawRectangle(demon.rect.x, demon.rect.y - 10, scaledWidth, 5, RED);
+            DrawRectangle(demon.rect.x, demon.rect.y - 10, scaledWidth * (demonHealth / 150.0f), 5, GREEN);
         }
 
         // Draw Samurai health bar
