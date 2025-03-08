@@ -87,9 +87,9 @@ int main() {
     
     SetTargetFPS(60);
 
-    // Define floor level at the bottom of the screen
+    // Define floor level higher up on the screen (moved up by 100 pixels)
     const float floorHeight = 50.0f;
-    const float floorLevel = screenHeight - floorHeight;
+    const float floorLevel = screenHeight - floorHeight - 100.0f;
 
     // Initialize characters using stack allocation
     Samurai samurai(100, floorLevel, floorLevel);
