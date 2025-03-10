@@ -52,6 +52,11 @@ private:
     int maxHealth = 100; // Maximum health value.
     int currentHealth = 100; // Current health of the samurai.
     bool wasInAir = false; // Flag to indicate if the character was in the air.
+    
+    // Invincibility frames variables
+    bool isInvincible = false; // Flag to indicate if the character is currently invincible
+    float invincibilityTimer = 0.0f; // Timer to track invincibility duration
+    const float invincibilityDuration = 1.5f; // 1.5 seconds of invincibility after taking damage
 
     // Define Sound Varaibles.
     Sound attackSound;
@@ -306,6 +311,7 @@ private:
 
 public:
     bool isDead = false; // Flag to indicate if the samurai is dead.
+    bool showCollisionBoxes = false; // Flag to enable/disable collision box drawing
 
     // Constructor initializing the Samurai's properties and animations
     Samurai(float x, float y, float groundLevel) {
@@ -384,37 +390,42 @@ public:
     }
 
     // Draw the character.
-    void draw() {
-        // Safety check for valid state
-        if (state < 0 || state >= sprites.size()) {
-            state = IDLE_STATE;
+    void draw() const {
+        if (sprites.size() <= state) {
+            return; // Safety check
         }
         
-        // Get the current animation frame.
-        Rectangle frame = getAnimationFrame();
+        // Get the frame width for rendering
+        float frameWidth = sprites[state].width / (animations[state].lastFrame + 1);
         
-        // Draw the sprite.
-        if (direction == RIGHT) {
-            DrawTexturePro(
-                sprites[state],
-                frame,
-                Rectangle{rect.x, rect.y, rect.width, rect.height},
-                Vector2{0, 0},
-                0.0f,
-                WHITE
-            );
-        } else {
-            // Flip the sprite horizontally for left direction.
-            Rectangle flippedFrame = {frame.x + frame.width, frame.y, -frame.width, frame.height};
-            DrawTexturePro(
-                sprites[state],
-                flippedFrame,
-                Rectangle{rect.x, rect.y, rect.width, rect.height},
-                Vector2{0, 0},
-                0.0f,
-                WHITE
-            );
+        // Calculate source rectangle for the current frame
+        Rectangle source = {
+            animations[state].currentFrame * frameWidth,
+            0.0f,
+            direction == RIGHT ? frameWidth : -frameWidth,
+            (float)sprites[state].height
+        };
+        
+        // Calculate destination rectangle for rendering
+        Rectangle dest = {
+            rect.x,
+            rect.y,
+            rect.width,
+            rect.height
+        };
+        
+        // Apply visual effect for invincibility frames
+        Color tint = WHITE;
+        if (isInvincible) {
+            // Flash the character by alternating transparency
+            float flashFrequency = 10.0f; // Higher value = faster flashing
+            if (fmodf(invincibilityTimer * flashFrequency, 1.0f) > 0.5f) {
+                tint = (Color){255, 255, 255, 128}; // Half transparent
+            }
         }
+        
+        // Draw the sprite
+        DrawTexturePro(sprites[state], source, dest, (Vector2){0, 0}, 0.0f, tint);
         
         // Draw collision boxes for debugging
         if (showCollisionBoxes) {
@@ -430,20 +441,27 @@ public:
                 }
             }
         }
-    }
-
-    // Draw the health bar for the Samurai
-    void drawHealthBar() {
-        float healthPercentage = (float)currentHealth / maxHealth;
-        DrawRectangle(10, 10, 200, 20, GRAY); // Background of health bar.
-        DrawRectangle(10, 10, 200 * healthPercentage, 20, RED); // Filled portion of health bar.
+        
+        // Draw health bar
+        DrawRectangle(10, 10, (currentHealth * 200) / maxHealth, 20, RED);
         DrawRectangleLines(10, 10, 200, 20, BLACK); // Border of health bar.
     }
 
     // Update the Samurai's state and position
     void updateSamurai() {
+        float deltaTime = GetFrameTime();
+        
         // Always update animation regardless of whether the samurai is dead or alive
-        updateAnimation(GetFrameTime());
+        updateAnimation(deltaTime);
+        
+        // Update invincibility timer if active
+        if (isInvincible) {
+            invincibilityTimer -= deltaTime;
+            if (invincibilityTimer <= 0.0f) {
+                isInvincible = false;
+                invincibilityTimer = 0.0f;
+            }
+        }
         
         // Only handle movement if the samurai is alive
         if (!isDead) {
@@ -480,6 +498,9 @@ public:
 
     // Take damage when hit by an enemy
     void takeDamage(int damage) {
+        // Skip damage if currently invincible
+        if (isInvincible) return;
+            
         if (!isDead && state != HURT_STATE) {
             currentHealth -= damage;
             if (currentHealth <= 0) {
@@ -497,6 +518,10 @@ public:
                 if (hurtSound.frameCount > 0) {
                     PlaySound(hurtSound);
                 }
+                
+                // Activate invincibility frames
+                isInvincible = true;
+                invincibilityTimer = invincibilityDuration;
             }
         }
     }

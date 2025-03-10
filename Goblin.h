@@ -62,18 +62,15 @@ public:
         direction = RIGHT_GOBLIN;
         state = IDLE_GOBLIN;
 
-        // Initialize animations for different states
+        // Initialize animations for different states with correct frame counts
         animations = {
-            { 0, 3, 0, 0, 0.2f, 0.2f, REPEATING_GOBLIN }, // DEAD_GOBLIN
-            { 0, 5, 0, 0, 0.1f, 0.1f, ONESHOT_GOBLIN },   // ATTACK_CLUB
-            { 0, 5, 0, 0, 0.1f, 0.1f, ONESHOT_GOBLIN },   // ATTACK_STOMP
-            { 0, 5, 0, 0, 0.1f, 0.1f, ONESHOT_GOBLIN },   // ATTACK_AOE
-            { 0, 5, 0, 0, 0.2f, 0.2f, REPEATING_GOBLIN }, // IDLE_GOBLIN
-            { 0, 7, 0, 0, 0.1f, 0.1f, REPEATING_GOBLIN }  // WALK_GOBLIN
+            { 0, 4, 0, 0, 0.2f, 0.2f, ONESHOT_GOBLIN },   // DEAD_GOBLIN - 5 frames
+            { 0, 9, 0, 0, 0.1f, 0.1f, ONESHOT_GOBLIN },   // ATTACK_CLUB - 10 frames
+            { 0, 23, 0, 0, 0.1f, 0.1f, ONESHOT_GOBLIN },  // ATTACK_STOMP - 24 frames
+            { 0, 8, 0, 0, 0.1f, 0.1f, ONESHOT_GOBLIN },   // ATTACK_AOE - 9 frames
+            { 0, 6, 0, 0, 0.2f, 0.2f, REPEATING_GOBLIN }, // IDLE_GOBLIN - 7 frames
+            { 0, 7, 0, 0, 0.1f, 0.1f, REPEATING_GOBLIN }  // WALK_GOBLIN - 8 frames
         };
-
-        // Load textures for each state
-        loadTextures();
 
         // Initialize collision boxes with scaled dimensions
         float bodyOffsetX = 16.0f * SPRITE_SCALE;
@@ -100,11 +97,21 @@ public:
     // Destructor to clean up resources
     ~Goblin() {
         for (auto& sprite : sprites) {
-            UnloadTexture(sprite); // Unload all textures
+            if (sprite.id != 0) {
+                UnloadTexture(sprite); // Unload all textures
+            }
         }
     }
 
     void loadTextures() {
+        // Clear any existing textures
+        for (auto& sprite : sprites) {
+            if (sprite.id != 0) {
+                UnloadTexture(sprite);
+            }
+        }
+        
+        // Resize and load all textures
         sprites.resize(6);
         sprites[DEAD_GOBLIN] = LoadTexture("assets/Goblin/Hobgoblin Die/Hobgoblin KO.png");
         sprites[ATTACK_CLUB] = LoadTexture("assets/Goblin/Hobgoblin Attack 1 & 2/Hobgoblin Attack 1 and 2.png");
@@ -112,9 +119,19 @@ public:
         sprites[ATTACK_AOE] = LoadTexture("assets/Goblin/Hobgoblin Attack 4/Hobgoblin Fourth Attack.png");
         sprites[IDLE_GOBLIN] = LoadTexture("assets/Goblin/Hobgoblin Idle/GoblinK Idle.png");
         sprites[WALK_GOBLIN] = LoadTexture("assets/Goblin/Hobgoblin Walk/Hobgoblin Walk.png");
+        
+        // Print debug info about loaded textures
+        for (int i = 0; i < sprites.size(); i++) {
+            printf("Goblin texture %d: %dx%d\n", i, sprites[i].width, sprites[i].height);
+        }
     }
 
     void updateAnimation() {
+        // Safety check for valid state
+        if (state < 0 || state >= animations.size()) {
+            state = IDLE_GOBLIN; // Reset to idle if state is invalid
+        }
+        
         AnimationGoblin& anim = animations[state];
         float deltaTime = GetFrameTime();
 
@@ -131,29 +148,54 @@ public:
                     state = IDLE_GOBLIN;
                     isAttacking = false;
                     hasFinishedAttack = true;
+                } else if (state == DEAD_GOBLIN) {
+                    // Stay on the last frame if dead
+                    anim.currentFrame = anim.lastFrame;
                 }
             }
         }
     }
 
     Rectangle getAnimationFrame() const {
+        // Safety check for valid state
+        if (state < 0 || state >= sprites.size() || state >= animations.size()) {
+            return Rectangle{0, 0, 100, 100}; // Return a default frame
+        }
+        
         const AnimationGoblin& anim = animations[state];
+        
+        // Safety check for valid sprite
+        if (sprites[state].id == 0 || sprites[state].width <= 0 || sprites[state].height <= 0) {
+            return Rectangle{0, 0, 100, 100}; // Return a default frame
+        }
+        
         int frameWidth = sprites[state].width / (anim.lastFrame + 1);  // Calculate width of each frame
         int frameHeight = sprites[state].height;  // Height of the frame
+        
+        // Safety check for valid frame dimensions
+        if (frameWidth <= 0 || frameHeight <= 0) {
+            return Rectangle{0, 0, 100, 100}; // Return a default frame
+        }
+        
+        // Safety check for valid current frame
+        if (anim.currentFrame < 0 || anim.currentFrame > anim.lastFrame) {
+            return Rectangle{0, 0, (float)frameWidth, (float)frameHeight}; // Return the first frame
+        }
 
         return (Rectangle) {
-            (float)frameWidth * anim.currentFrame,
-            0,
-            (float)frameWidth,
-            (float)frameHeight
+            (float)frameWidth * anim.currentFrame,  // X position in the sprite sheet
+            0,                                      // Y position in the sprite sheet
+            (float)frameWidth,                      // Width of the frame
+            (float)frameHeight                      // Height of the frame
         };
     }
 
     void draw() const {
-        if (isDead && animations[DEAD_GOBLIN].currentFrame == animations[DEAD_GOBLIN].lastFrame) {
-            return; // Don't draw if dead and animation finished
+        // Safety check for valid state
+        if (state < 0 || state >= sprites.size() || sprites[state].id == 0) {
+            return; // Don't draw if state is invalid or texture not loaded
         }
-
+        
         Rectangle source = getAnimationFrame();
         Rectangle dest = { rect.x, rect.y, rect.width, rect.height };
         Vector2 origin = { 0, 0 };
@@ -175,6 +217,7 @@ public:
                         case BODY: color = BLUE; break;
                         case ATTACK: color = RED; break;
                         case HURTBOX: color = GREEN; break;
+                        default: color = YELLOW; break;
                     }
                     DrawRectangleLines(box.rect.x, box.rect.y, box.rect.width, box.rect.height, color);
                 }

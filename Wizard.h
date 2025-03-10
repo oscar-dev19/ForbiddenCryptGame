@@ -65,19 +65,16 @@ class Wizard {
             direction = RIGHT_WIZARD;
             state = IDLE_WIZARD;
 
-            // Initialize animations for different states
+            // Initialize animations for different states with correct frame counts
             animations = {
-                { 0, 3, 0, 0, 0.2f, 0.2f, REPEATING_WIZARD }, // DEAD_WIZARD
-                { 0, 5, 0, 0, 0.1f, 0.1f, ONESHOT_WIZARD },   // ATTACK1_WIZARD
-                { 0, 5, 0, 0, 0.1f, 0.1f, ONESHOT_WIZARD },   // ATTACK2_WIZARD
-                { 0, 2, 0, 0, 0.2f, 0.2f, ONESHOT_WIZARD },   // HURT_WIZARD
-                { 0, 5, 0, 0, 0.2f, 0.2f, REPEATING_WIZARD }, // IDLE_WIZARD
-                { 0, 5, 0, 0, 0.2f, 0.2f, ONESHOT_WIZARD },   // JUMP_WIZARD
-                { 0, 7, 0, 0, 0.1f, 0.1f, REPEATING_WIZARD }  // RUN_WIZARD
+                { 0, 6, 0, 0, 0.2f, 0.2f, ONESHOT_WIZARD },   // DEAD_WIZARD - 7 frames
+                { 0, 7, 0, 0, 0.1f, 0.1f, ONESHOT_WIZARD },   // ATTACK1_WIZARD - 8 frames
+                { 0, 7, 0, 0, 0.1f, 0.1f, ONESHOT_WIZARD },   // ATTACK2_WIZARD - 8 frames
+                { 0, 2, 0, 0, 0.2f, 0.2f, ONESHOT_WIZARD },   // HURT_WIZARD - 3 frames
+                { 0, 7, 0, 0, 0.2f, 0.2f, REPEATING_WIZARD }, // IDLE_WIZARD - 8 frames
+                { 0, 1, 0, 0, 0.2f, 0.2f, ONESHOT_WIZARD },   // JUMP_WIZARD - 2 frames
+                { 0, 7, 0, 0, 0.1f, 0.1f, REPEATING_WIZARD }  // RUN_WIZARD - 8 frames
             };
-
-            // Load textures for each state
-            loadTextures();
 
             // Load sounds
             attackSound = LoadSound("sounds/wizard/magic-strike-5856.mp3");
@@ -112,17 +109,28 @@ class Wizard {
         }
 
         ~Wizard() {
-            for (auto& sprite : sprites) {
-                UnloadTexture(sprite);
-            }
+            // Unload sounds
+            UnloadSound(attackSound);
+            UnloadSound(hurtSound);
+            UnloadSound(deadSound);
             
-            // Unload sounds - make sure they're valid before unloading
-            if (attackSound.frameCount > 0) UnloadSound(attackSound);
-            if (hurtSound.frameCount > 0) UnloadSound(hurtSound);
-            if (deadSound.frameCount > 0) UnloadSound(deadSound);
+            // Unload textures
+            for (auto& sprite : sprites) {
+                if (sprite.id != 0) {
+                    UnloadTexture(sprite);
+                }
+            }
         }
 
         void loadTextures()  {
+            // Clear any existing textures
+            for (auto& sprite : sprites) {
+                if (sprite.id != 0) {
+                    UnloadTexture(sprite);
+                }
+            }
+            
+            // Resize and load all textures
             sprites.resize(7);
             sprites[DEAD_WIZARD] = LoadTexture("assets/Wizard/Sprites/Death.png");
             sprites[ATTACK1_WIZARD] = LoadTexture("assets/Wizard/Sprites/Attack1.png");
@@ -131,9 +139,19 @@ class Wizard {
             sprites[IDLE_WIZARD] = LoadTexture("assets/Wizard/Sprites/Idle.png");
             sprites[JUMP_WIZARD] = LoadTexture("assets/Wizard/Sprites/Jump.png");
             sprites[RUN_WIZARD] = LoadTexture("assets/Wizard/Sprites/Run.png");
+            
+            // Print debug info about loaded textures
+            for (int i = 0; i < sprites.size(); i++) {
+                printf("Wizard texture %d: %dx%d\n", i, sprites[i].width, sprites[i].height);
+            }
         }
 
         void updateAnimation() {
+            // Safety check for valid state
+            if (state < 0 || state >= animations.size()) {
+                state = IDLE_WIZARD; // Reset to idle if state is invalid
+            }
+            
             AnimationWizard& anim = animations[state];
             float deltaTime = GetFrameTime();
 
@@ -152,24 +170,49 @@ class Wizard {
                         hasFinishedAttack = true;
                     } else if (state == HURT_WIZARD) {
                         state = IDLE_WIZARD;
+                    } else if (state == DEAD_WIZARD) {
+                        // Stay on the last frame if dead
+                        anim.currentFrame = anim.lastFrame;
                     }
                 }
             }
         }
 
         Rectangle getAnimationFrame() const {
+            // Safety check for valid state
+            if (state < 0 || state >= sprites.size() || state >= animations.size()) {
+                return Rectangle{0, 0, 250, 250}; // Return a default frame
+            }
+            
             const AnimationWizard& anim = animations[state];
+            
+            // Safety check for valid sprite
+            if (sprites[state].id == 0 || sprites[state].width <= 0 || sprites[state].height <= 0) {
+                return Rectangle{0, 0, 250, 250}; // Return a default frame
+            }
+            
             int frameWidth = sprites[state].width / (anim.lastFrame + 1);
             int frameHeight = sprites[state].height;
+            
+            // Safety check for valid frame dimensions
+            if (frameWidth <= 0 || frameHeight <= 0) {
+                return Rectangle{0, 0, 250, 250}; // Return a default frame
+            }
+            
+            // Safety check for valid current frame
+            if (anim.currentFrame < 0 || anim.currentFrame > anim.lastFrame) {
+                return Rectangle{0, 0, (float)frameWidth, (float)frameHeight}; // Return the first frame
+            }
     
             return { (float)frameWidth * anim.currentFrame, 0, (float)frameWidth, (float)frameHeight };
         }
 
         void draw() const {
-            if (isDead && animations[DEAD_WIZARD].currentFrame == animations[DEAD_WIZARD].lastFrame) {
-                return; // Don't draw if dead and animation finished
+            // Safety check for valid state
+            if (state < 0 || state >= sprites.size() || sprites[state].id == 0) {
+                return; // Don't draw if state is invalid or texture not loaded
             }
-
+            
             Rectangle source = getAnimationFrame();
             Rectangle dest = { rect.x, rect.y, rect.width, rect.height };
             Vector2 origin = { 0, 0 };
@@ -191,6 +234,7 @@ class Wizard {
                             case BODY: color = BLUE; break;
                             case ATTACK: color = RED; break;
                             case HURTBOX: color = GREEN; break;
+                            default: color = YELLOW; break;
                         }
                         DrawRectangleLines(box.rect.x, box.rect.y, box.rect.width, box.rect.height, color);
                     }
