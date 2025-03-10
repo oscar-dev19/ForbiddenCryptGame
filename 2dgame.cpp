@@ -259,8 +259,9 @@ int main() {
                 PlaySound(keySound);
                 keyCollected = true;
                 
-                // Display message
-                DrawText("Key Collected!", screenWidth/2 - 50, screenHeight/2, 20, GREEN);
+                // Display message with shadow effect
+                DrawText("Key Collected!", screenWidth/2 - 48, screenHeight/2 + 2, 20, BLACK); // Shadow
+                DrawText("Key Collected!", screenWidth/2 - 50, screenHeight/2, 20, GOLD);      // Main text
             }
         }
 
@@ -360,7 +361,6 @@ int main() {
             keyFrameTime = 0.0f;
             keyCurrentFrame = (keyCurrentFrame + 1) % KEY_FRAME_COUNT;
         }
-        keyRotation += 45.0f * deltaTime; // Rotate 45 degrees per second
 
         // Update key collision rectangle
         keyCollisionRect = (Rectangle){
@@ -412,9 +412,37 @@ int main() {
             DrawRectangle(demon.rect.x, demon.rect.y - 10, scaledWidth * (demonHealth / 150.0f), 5, GREEN);
         }
 
-        // Draw Samurai health bar
-        // samurai.drawHealthBar(); // Commented out as Samurai does not have this method
-        
+        // Draw collected key icon if collected AND samurai is alive
+        if (keyCollected && !samurai.isDead) {
+            // Source rectangle for first frame of key
+            Rectangle keyIconSource = {
+                0.0f,                     // First frame (x = 0)
+                0.0f,                     // y position in sprite sheet
+                (float)KEY_FRAME_WIDTH,   // width of one frame
+                (float)KEY_FRAME_HEIGHT   // height of frame
+            };
+            
+            // Position the key icon above the samurai
+            Rectangle samuraiRect = samurai.getRect();
+            float iconSize = 24.0f; // Make the icon a bit smaller for UI
+            Rectangle keyIconDest = {
+                samuraiRect.x + samuraiRect.width/2 - iconSize/2,  // center horizontally above samurai
+                samuraiRect.y - 20,                                // just above the samurai
+                iconSize,                                           // smaller size for UI
+                iconSize                                            // smaller size for UI
+            };
+            
+            // Draw the key icon without rotation
+            DrawTexturePro(
+                keyTexture,
+                keyIconSource,
+                keyIconDest,
+                (Vector2){0, 0},  // Draw from top-left (no need for centered rotation)
+                0.0f,             // No rotation for UI element
+                WHITE
+            );
+        }
+
         // Draw collision boxes if enabled
         if (showCollisionBoxes) {
             // Draw key collision box
@@ -486,46 +514,64 @@ int main() {
             }
         }
 
-        // Draw instructions
-        DrawText("Controls: A/D to move, J to attack, SPACE to jump", 10, 30, 20, BLACK);
-        DrawText("Press F1 to toggle collision boxes", 10, 50, 20, BLACK);
+        // Draw instructions with shadow
+        DrawText("Controls: A/D to move, J to attack, SPACE to jump", 12, 32, 20, BLACK); // Shadow
+        DrawText("Controls: A/D to move, J to attack, SPACE to jump", 10, 30, 20, WHITE); // Main text
 
-        // Draw UI elements
-        DrawText(TextFormat("Samurai Health: %d", samurai.getHealth()), 10, 10, 20, RED);
+        // Draw UI elements with shadow effect
+        // Health text
+        DrawText(TextFormat("Samurai Health: %d", samurai.getHealth()), 12, 12, 20, BLACK); // Shadow
+        DrawText(TextFormat("Samurai Health: %d", samurai.getHealth()), 10, 10, 20, WHITE); // Main text
         
-        // Draw audio controls help text
-        DrawText("Audio Controls:", 10, screenHeight - 80, 16, WHITE);
-        DrawText("M - Toggle Music", 10, screenHeight - 60, 16, WHITE);
-        DrawText("+ / - - Volume Control", 10, screenHeight - 40, 16, WHITE);
-        DrawText(TextFormat("Volume: %.1f", masterVolume), 10, screenHeight - 20, 16, WHITE);
+        // Health label
+        DrawText("HEALTH", 12, 32, 16, BLACK); // Shadow
+        DrawText("HEALTH", 10, 30, 16, WHITE); // Main text
+        
+        // Score display
+        static int score = 0;
+        DrawText(TextFormat("Score: %d", score), 12, 52, 20, BLACK); // Shadow
+        DrawText(TextFormat("Score: %d", score), 10, 50, 20, WHITE); // Main text
+        
+        // F1 help text
+        DrawText("Press F1 to toggle collision boxes", 12, 72, 20, BLACK); // Shadow
+        DrawText("Press F1 to toggle collision boxes", 10, 70, 20, WHITE); // Main text
+
+        // Draw audio controls help text with shadow
+        DrawText("Audio Controls:", 12, screenHeight - 78, 16, BLACK); // Shadow
+        DrawText("Audio Controls:", 10, screenHeight - 80, 16, WHITE); // Main text
+        
+        DrawText("M - Toggle Music", 12, screenHeight - 58, 16, BLACK); // Shadow
+        DrawText("M - Toggle Music", 10, screenHeight - 60, 16, WHITE); // Main text
+        
+        DrawText("+ / - - Volume Control", 12, screenHeight - 38, 16, BLACK); // Shadow
+        DrawText("+ / - - Volume Control", 10, screenHeight - 40, 16, WHITE); // Main text
+        
+        DrawText(TextFormat("Volume: %.1f", masterVolume), 12, screenHeight - 18, 16, BLACK); // Shadow
+        DrawText(TextFormat("Volume: %.1f", masterVolume), 10, screenHeight - 20, 16, WHITE); // Main text
 
         // Draw key
         if (!keyCollected) {
             // Calculate source rectangle for current frame
             Rectangle sourceRec = { 
-                (float)(keyCurrentFrame * KEY_FRAME_WIDTH), 
-                0.0f, 
-                (float)KEY_FRAME_WIDTH, 
-                (float)KEY_FRAME_HEIGHT 
+                (float)(keyCurrentFrame * KEY_FRAME_WIDTH),  // x position in sprite sheet
+                0.0f,                                        // y position in sprite sheet
+                (float)KEY_FRAME_WIDTH,                      // width of one frame
+                (float)KEY_FRAME_HEIGHT                      // height of frame
             };
-            
+
             // Calculate destination rectangle
             Rectangle destRec = { 
-                keyPosition.x + KEY_FRAME_WIDTH, 
-                keyPosition.y + KEY_FRAME_HEIGHT, 
-                (float)KEY_FRAME_WIDTH * 2, 
-                (float)KEY_FRAME_HEIGHT * 2 
+                keyPosition.x,                               // x position on screen
+                keyPosition.y,                               // y position on screen
+                (float)KEY_FRAME_WIDTH * 2,                 // width on screen (scaled up for better visibility)
+                (float)KEY_FRAME_HEIGHT * 2                 // height on screen (scaled up for better visibility)
             };
-            
-            // Set origin (center of the frame)
-            Vector2 origin = { (float)KEY_FRAME_WIDTH, (float)KEY_FRAME_HEIGHT };
-            
-            // Draw key frame with rotation
+
             DrawTexturePro(
                 keyTexture, 
                 sourceRec, 
                 destRec, 
-                origin, 
+                (Vector2){ KEY_FRAME_WIDTH, KEY_FRAME_HEIGHT },  // Center of the scaled key
                 keyRotation, 
                 WHITE
             );
