@@ -21,6 +21,18 @@ float masterVolume = 0.7f;
 // Define a scale factor for the demon (visual only)
 float demonScaleFactor = 1.3f;
 
+// Key variables
+Texture2D keyTexture = { 0 };
+Vector2 keyPosition = { 0, 0 };
+float keyRotation = 0.0f;
+float keyFrameTime = 0.0f;
+int keyCurrentFrame = 0;
+const int KEY_FRAME_COUNT = 17;  // Number of frames in the sprite sheet
+const float KEY_FRAME_DURATION = 0.1f;  // Duration for each frame in seconds
+const int KEY_FRAME_WIDTH = 32;  // Width of each frame in pixels
+const int KEY_FRAME_HEIGHT = 32; // Height of each frame in pixels
+Rectangle keyCollisionRect = { 0 }; // Collision rectangle for the key
+
 // Helper function to check collision between two collision boxes
 bool checkCharacterCollision(const CollisionBox& box1, const CollisionBox& box2) {
     if (box1.active && box2.active) {
@@ -157,6 +169,15 @@ int main() {
     const float floorHeight = 50.0f;
     const float floorLevel = screenHeight - floorHeight - 100.0f;
 
+    // Load key texture
+    keyTexture = LoadTexture("assets/gameObjects/key/key.png");
+    if (keyTexture.id == 0) {
+        printf("Failed to load key texture!\n");
+        CloseWindow();
+        return -1;
+    }
+    keyPosition = { 200, floorLevel - keyTexture.height };
+
     // Initialize characters using stack allocation
     Samurai samurai(100, floorLevel, floorLevel);
     Goblin goblin((Vector2){500, floorLevel});
@@ -219,6 +240,15 @@ int main() {
         werewolf.update();
         wizard.update();
         demon.update(deltaTime);
+
+        // Check collision between samurai and key
+        CollisionBox* samuraiBody = samurai.getCollisionBox(BODY);
+        if (samuraiBody && samuraiBody->active) {
+            if (CheckCollisionRecs(samuraiBody->rect, keyCollisionRect)) {
+                // TODO: Add key collection logic here
+                DrawText("Key Collected!", screenWidth/2 - 50, screenHeight/2, 20, GREEN);
+            }
+        }
 
         // Check for collisions between Samurai's attack and enemies
         CollisionBox* samuraiAttack = samurai.getCollisionBox(ATTACK);
@@ -310,6 +340,22 @@ int main() {
             }
         }
 
+        // Update key animation
+        keyFrameTime += deltaTime;
+        if (keyFrameTime >= KEY_FRAME_DURATION) {
+            keyFrameTime = 0.0f;
+            keyCurrentFrame = (keyCurrentFrame + 1) % KEY_FRAME_COUNT;
+        }
+        keyRotation += 45.0f * deltaTime; // Rotate 45 degrees per second
+
+        // Update key collision rectangle
+        keyCollisionRect = (Rectangle){
+            keyPosition.x + (KEY_FRAME_WIDTH),              // Center horizontally on the scaled key
+            keyPosition.y + (KEY_FRAME_HEIGHT),             // Center vertically on the scaled key
+            (float)KEY_FRAME_WIDTH,                         // Keep original collision size
+            (float)KEY_FRAME_HEIGHT
+        };
+
         // Drawing
         BeginDrawing();
         ClearBackground(RAYWHITE);
@@ -353,10 +399,19 @@ int main() {
         }
 
         // Draw Samurai health bar
-        samurai.drawHealthBar();
+        // samurai.drawHealthBar(); // Commented out as Samurai does not have this method
         
         // Draw collision boxes if enabled
         if (showCollisionBoxes) {
+            // Draw key collision box
+            DrawRectangleLines(
+                keyCollisionRect.x,
+                keyCollisionRect.y,
+                keyCollisionRect.width,
+                keyCollisionRect.height,
+                PURPLE  // Use purple to distinguish from other collision boxes
+            );
+            
             // Draw collision boxes for each character type
             // For Samurai
             CollisionBox* bodyBox = samurai.getCollisionBox(BODY);
@@ -430,6 +485,30 @@ int main() {
         DrawText("+ / - - Volume Control", 10, screenHeight - 40, 16, WHITE);
         DrawText(TextFormat("Volume: %.1f", masterVolume), 10, screenHeight - 20, 16, WHITE);
 
+        // Draw the key with animation
+        Rectangle sourceRec = {
+            (float)(keyCurrentFrame * KEY_FRAME_WIDTH),  // x position in sprite sheet
+            0.0f,                                        // y position in sprite sheet
+            (float)KEY_FRAME_WIDTH,                      // width of one frame
+            (float)KEY_FRAME_HEIGHT                      // height of frame
+        };
+
+        Rectangle destRec = {
+            keyPosition.x,                               // x position on screen
+            keyPosition.y,                               // y position on screen
+            (float)KEY_FRAME_WIDTH * 2,                 // width on screen (scaled up for better visibility)
+            (float)KEY_FRAME_HEIGHT * 2                 // height on screen (scaled up for better visibility)
+        };
+
+        DrawTexturePro(
+            keyTexture,
+            sourceRec,
+            destRec,
+            (Vector2){ KEY_FRAME_WIDTH, KEY_FRAME_HEIGHT },  // Center of the scaled key
+            keyRotation,
+            WHITE
+        );
+
         EndDrawing();
         
         // Check if window should close
@@ -438,6 +517,9 @@ int main() {
             safeExit();
         }
     }
+
+    // Unload key texture
+    UnloadTexture(keyTexture);
 
     // This code should never be reached because we call safeExit() when WindowShouldClose() is true
     return 0;
