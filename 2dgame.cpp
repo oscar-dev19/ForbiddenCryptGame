@@ -32,6 +32,8 @@ const float KEY_FRAME_DURATION = 0.1f;  // Duration for each frame in seconds
 const int KEY_FRAME_WIDTH = 32;  // Width of each frame in pixels
 const int KEY_FRAME_HEIGHT = 32; // Height of each frame in pixels
 Rectangle keyCollisionRect = { 0 }; // Collision rectangle for the key
+Sound keySound = { 0 }; // Sound to play when key is collected
+bool keyCollected = false; // Flag to track if key has been collected
 
 // Helper function to check collision between two collision boxes
 bool checkCharacterCollision(const CollisionBox& box1, const CollisionBox& box2) {
@@ -69,6 +71,11 @@ void safeExit() {
     if (demonChantSound.stream.buffer) {
         StopSound(demonChantSound);
         UnloadSound(demonChantSound);
+    }
+    
+    if (keySound.stream.buffer) {
+        StopSound(keySound);
+        UnloadSound(keySound);
     }
     
     // Close audio device and window
@@ -163,6 +170,9 @@ int main() {
     demonChantSound = LoadSound("sounds/misc/demon-chant-latin-14489.mp3");
     SetSoundVolume(demonChantSound, 0.6f * masterVolume);
     
+    // Load key sound
+    keySound = LoadSound("sounds/key/keysound.mp3");
+    
     SetTargetFPS(60);
 
     // Define floor level higher up on the screen (moved up by 100 pixels)
@@ -244,8 +254,12 @@ int main() {
         // Check collision between samurai and key
         CollisionBox* samuraiBody = samurai.getCollisionBox(BODY);
         if (samuraiBody && samuraiBody->active) {
-            if (CheckCollisionRecs(samuraiBody->rect, keyCollisionRect)) {
-                // TODO: Add key collection logic here
+            if (CheckCollisionRecs(samuraiBody->rect, keyCollisionRect) && !keyCollected) {
+                // Play key collection sound
+                PlaySound(keySound);
+                keyCollected = true;
+                
+                // Display message
                 DrawText("Key Collected!", screenWidth/2 - 50, screenHeight/2, 20, GREEN);
             }
         }
@@ -485,29 +499,37 @@ int main() {
         DrawText("+ / - - Volume Control", 10, screenHeight - 40, 16, WHITE);
         DrawText(TextFormat("Volume: %.1f", masterVolume), 10, screenHeight - 20, 16, WHITE);
 
-        // Draw the key with animation
-        Rectangle sourceRec = {
-            (float)(keyCurrentFrame * KEY_FRAME_WIDTH),  // x position in sprite sheet
-            0.0f,                                        // y position in sprite sheet
-            (float)KEY_FRAME_WIDTH,                      // width of one frame
-            (float)KEY_FRAME_HEIGHT                      // height of frame
-        };
-
-        Rectangle destRec = {
-            keyPosition.x,                               // x position on screen
-            keyPosition.y,                               // y position on screen
-            (float)KEY_FRAME_WIDTH * 2,                 // width on screen (scaled up for better visibility)
-            (float)KEY_FRAME_HEIGHT * 2                 // height on screen (scaled up for better visibility)
-        };
-
-        DrawTexturePro(
-            keyTexture,
-            sourceRec,
-            destRec,
-            (Vector2){ KEY_FRAME_WIDTH, KEY_FRAME_HEIGHT },  // Center of the scaled key
-            keyRotation,
-            WHITE
-        );
+        // Draw key
+        if (!keyCollected) {
+            // Calculate source rectangle for current frame
+            Rectangle sourceRec = { 
+                (float)(keyCurrentFrame * KEY_FRAME_WIDTH), 
+                0.0f, 
+                (float)KEY_FRAME_WIDTH, 
+                (float)KEY_FRAME_HEIGHT 
+            };
+            
+            // Calculate destination rectangle
+            Rectangle destRec = { 
+                keyPosition.x + KEY_FRAME_WIDTH, 
+                keyPosition.y + KEY_FRAME_HEIGHT, 
+                (float)KEY_FRAME_WIDTH * 2, 
+                (float)KEY_FRAME_HEIGHT * 2 
+            };
+            
+            // Set origin (center of the frame)
+            Vector2 origin = { (float)KEY_FRAME_WIDTH, (float)KEY_FRAME_HEIGHT };
+            
+            // Draw key frame with rotation
+            DrawTexturePro(
+                keyTexture, 
+                sourceRec, 
+                destRec, 
+                origin, 
+                keyRotation, 
+                WHITE
+            );
+        }
 
         EndDrawing();
         
@@ -520,6 +542,9 @@ int main() {
 
     // Unload key texture
     UnloadTexture(keyTexture);
+
+    // Unload sounds
+    UnloadSound(keySound);
 
     // This code should never be reached because we call safeExit() when WindowShouldClose() is true
     return 0;
