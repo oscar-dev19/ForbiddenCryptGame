@@ -53,6 +53,13 @@ private:
     int currentHealth = 100; // Current health of the samurai.
     bool wasInAir = false; // Flag to indicate if the character was in the air.
     
+    // Double jump variables
+    bool canDoubleJump = false; // Flag to track if double jump is available
+    bool hasDoubleJumped = false; // Flag to track if double jump has been used
+    float doubleJumpHeight = -60.0f; // Reduced from -80.0f to prevent flying off screen
+    float singleJumpMaxHeight; // Maximum height for a single jump
+    float doubleJumpMaxHeight; // Maximum height for a double jump
+    
     // Invincibility frames variables
     bool isInvincible = false; // Flag to indicate if the character is currently invincible
     float invincibilityTimer = 0.0f; // Timer to track invincibility duration
@@ -165,6 +172,10 @@ private:
             velocity.y = 0;
             rect.y = groundLevel;  // Ensure character is on ground.
             
+            // Reset double jump flags when landed
+            canDoubleJump = false;
+            hasDoubleJumped = false;
+            
             // Only transition from JUMP_STATE to IDLE_STATE when landing
             if (state == JUMP_STATE) {
                 state = IDLE_STATE;
@@ -179,17 +190,35 @@ private:
         }
 
         // Check for jump input.
-        if (IsKeyPressed(KEY_SPACE) && rect.y >= groundLevel) {
-            velocity.y = -10.0f;  // Apply upward velocity.
-            if (jumpSound.frameCount > 0) {
-                PlaySound(jumpSound);
+        if (IsKeyPressed(KEY_SPACE)) {
+            // First jump (from ground)
+            if (rect.y >= groundLevel) {
+                velocity.y = -100.0f;  // Apply upward velocity.
+                if (jumpSound.frameCount > 0) {
+                    PlaySound(jumpSound);
+                }
+                wasInAir = true;
+                canDoubleJump = true; // Enable double jump after first jump
+                
+                // Set state to JUMP_STATE and reset animation
+                if (state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
+                    state = JUMP_STATE;
+                    animations[state].currentFrame = 0;  // Reset animation frame
+                }
             }
-            wasInAir = true;
-            
-            // Set state to JUMP_STATE and reset animation
-            if (state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
-                state = JUMP_STATE;
-                animations[state].currentFrame = 0;  // Reset animation frame
+            // Double jump (in mid-air)
+            else if (canDoubleJump && !hasDoubleJumped) {
+                velocity.y = doubleJumpHeight;  // Apply double jump velocity
+                if (jumpSound.frameCount > 0) {
+                    PlaySound(jumpSound);
+                }
+                hasDoubleJumped = true; // Mark double jump as used
+                canDoubleJump = false; // Prevent further jumps
+                
+                // Reset jump animation for the double jump
+                if (state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
+                    animations[JUMP_STATE].currentFrame = 0;  // Reset animation frame
+                }
             }
         }
 
@@ -245,6 +274,15 @@ private:
         // Ensure character stays within screen bounds.
         if (rect.x < 0) rect.x = 0;
         if (rect.x > GetScreenWidth() - rect.width) rect.x = GetScreenWidth() - rect.width;
+        
+        // Apply different maximum height limits depending on whether double jump was used
+        float currentMaxHeight = hasDoubleJumped ? doubleJumpMaxHeight : singleJumpMaxHeight;
+        
+        // Ensure character doesn't go too high - limit the maximum jump height
+        if (rect.y < currentMaxHeight) {
+            rect.y = currentMaxHeight;
+            velocity.y = 0; // Stop upward movement when hitting the ceiling
+        }
     }
 
     // Helper method to handle taking damage.
@@ -313,6 +351,15 @@ public:
     bool isDead = false; // Flag to indicate if the samurai is dead.
     bool showCollisionBoxes = false; // Flag to enable/disable collision box drawing
 
+    // Accessors for double jump height
+    float getDoubleJumpHeight() const {
+        return -doubleJumpHeight; // Return positive value for easier understanding
+    }
+    
+    void setDoubleJumpHeight(float height) {
+        doubleJumpHeight = -height; // Store as negative value for upward velocity
+    }
+
     // Constructor initializing the Samurai's properties and animations
     Samurai(float x, float y, float groundLevel) {
         rect = (Rectangle){x, y, 64.0f * SPRITE_SCALE, 64.0f * SPRITE_SCALE}; // Scale the sprite size
@@ -323,6 +370,10 @@ public:
         currentHealth = maxHealth = 100;
         isDead = false;
         wasInAir = false;
+        
+        // Set maximum jump heights
+        singleJumpMaxHeight = groundLevel - 150.0f; // 150 pixels above ground level
+        doubleJumpMaxHeight = groundLevel - 300.0f; // 300 pixels above ground level (double height)
 
         // Load textures for each state.
         sprites = {

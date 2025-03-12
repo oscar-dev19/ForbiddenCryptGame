@@ -177,7 +177,8 @@ int main() {
 
     // Define floor level higher up on the screen (moved up by 100 pixels)
     const float floorHeight = 50.0f;
-    const float floorLevel = screenHeight - floorHeight - 100.0f;
+    const float floorOffset = 120.0f;  // Offset from the bottom to ensure visibility
+    const float floorLevel = screenHeight - floorHeight - floorOffset;
 
     // Load key texture
     keyTexture = LoadTexture("assets/gameObjects/key/key.png");
@@ -233,6 +234,22 @@ int main() {
             if (masterVolume < 0.0f) masterVolume = 0.0f;
             SetMusicVolume(backgroundMusic, 0.5f * masterVolume);
             SetSoundVolume(demonChantSound, 0.6f * masterVolume);
+        }
+        
+        // Double jump height control with PAGE UP and PAGE DOWN keys
+        if (IsKeyPressed(KEY_PAGE_UP)) {
+            // Increase double jump height with a maximum limit
+            float currentHeight = samurai.getDoubleJumpHeight();
+            if (currentHeight < 100.0f) { // Increased maximum limit to match the doubled max height
+                samurai.setDoubleJumpHeight(currentHeight + 5.0f);
+            }
+        }
+        if (IsKeyPressed(KEY_PAGE_DOWN)) {
+            // Decrease double jump height (with minimum limit)
+            float currentHeight = samurai.getDoubleJumpHeight();
+            if (currentHeight > 40.0f) { // Don't go too low
+                samurai.setDoubleJumpHeight(currentHeight - 5.0f);
+            }
         }
         
         // Toggle collision box visibility with F1 key
@@ -517,24 +534,32 @@ int main() {
         // Draw instructions with shadow
         DrawText("Controls: A/D to move, J to attack, SPACE to jump", 12, 32, 20, BLACK); // Shadow
         DrawText("Controls: A/D to move, J to attack, SPACE to jump", 10, 30, 20, WHITE); // Main text
+        
+        // Double jump instructions 
+        DrawText("Press SPACE in mid-air to double jump", 12, 52, 20, BLACK); // Shadow
+        DrawText("Press SPACE in mid-air to double jump", 10, 50, 20, WHITE); // Main text
+        
+        // Double jump height adjustment instructions
+        DrawText("PAGE UP/DOWN to adjust double jump height", 12, 72, 20, BLACK); // Shadow
+        DrawText("PAGE UP/DOWN to adjust double jump height", 10, 70, 20, WHITE); // Main text
 
         // Draw UI elements with shadow effect
         // Health text
-        DrawText(TextFormat("Samurai Health: %d", samurai.getHealth()), 12, 12, 20, BLACK); // Shadow
-        DrawText(TextFormat("Samurai Health: %d", samurai.getHealth()), 10, 10, 20, WHITE); // Main text
+        DrawText(TextFormat("Samurai Health: %d", samurai.getHealth()), 12, 92, 20, BLACK); // Shadow
+        DrawText(TextFormat("Samurai Health: %d", samurai.getHealth()), 10, 90, 20, WHITE); // Main text
         
-        // Health label
-        DrawText("HEALTH", 12, 32, 16, BLACK); // Shadow
-        DrawText("HEALTH", 10, 30, 16, WHITE); // Main text
+        // Double jump height display
+        DrawText(TextFormat("Double Jump Height: %.1f", samurai.getDoubleJumpHeight()), 12, 112, 20, BLACK); // Shadow
+        DrawText(TextFormat("Double Jump Height: %.1f", samurai.getDoubleJumpHeight()), 10, 110, 20, WHITE); // Main text
         
         // Score display
         static int score = 0;
-        DrawText(TextFormat("Score: %d", score), 12, 52, 20, BLACK); // Shadow
-        DrawText(TextFormat("Score: %d", score), 10, 50, 20, WHITE); // Main text
+        DrawText(TextFormat("Score: %d", score), 12, 132, 20, BLACK); // Shadow
+        DrawText(TextFormat("Score: %d", score), 10, 130, 20, WHITE); // Main text
         
         // F1 help text
-        DrawText("Press F1 to toggle collision boxes", 12, 72, 20, BLACK); // Shadow
-        DrawText("Press F1 to toggle collision boxes", 10, 70, 20, WHITE); // Main text
+        DrawText("Press F1 to toggle collision boxes", 12, 152, 20, BLACK); // Shadow
+        DrawText("Press F1 to toggle collision boxes", 10, 150, 20, WHITE); // Main text
 
         // Draw audio controls help text with shadow
         DrawText("Audio Controls:", 12, screenHeight - 78, 16, BLACK); // Shadow
