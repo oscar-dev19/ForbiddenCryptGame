@@ -4,6 +4,13 @@
 #include "raylib.h"
 #include "CollisionSystem.h"
 #include <vector>
+#include <cmath>   // For sinf
+#include <cstdlib> // For system
+
+// Define PI if not already defined
+#ifndef PI
+#define PI 3.14159265358979323846f
+#endif
 
 // Direction of the Character.
 enum Direction {
@@ -60,6 +67,18 @@ private:
     float singleJumpMaxHeight; // Maximum height for a single jump
     float doubleJumpMaxHeight; // Maximum height for a double jump
     
+    // Double dash variables
+    float dashSpeed = 15.0f; // Speed multiplier when dashing
+    float dashDuration = 0.3f; // How long the dash lasts in seconds
+    float dashTimer = 0.0f; // Timer to track current dash duration
+    float dashCooldown = 0.5f; // Cooldown period between dashes in seconds
+    float dashCooldownTimer = 0.0f; // Timer to track cooldown
+    float lastAKeyPressTime = 0.0f; // Time when A key was last pressed
+    float lastDKeyPressTime = 0.0f; // Time when D key was last pressed
+    float doubleTapTimeThreshold = 0.3f; // Maximum time between taps to count as double tap
+    bool canDash = true; // Flag to determine if dash is available
+    float dashSoundVolume = 0.8f; // Volume for dash sound (0.0 to 1.0)
+    
     // Invincibility frames variables
     bool isInvincible = false; // Flag to indicate if the character is currently invincible
     float invincibilityTimer = 0.0f; // Timer to track invincibility duration
@@ -72,6 +91,7 @@ private:
     Sound runSound;
     Sound deadSound;
     Sound landSound;
+    Sound dashSound; // New sound for dash ability
 
     // Collision boxes for different purposes
     std::vector<CollisionBox> collisionBoxes;
@@ -166,7 +186,25 @@ private:
     }
 
     // Helper method to handle movement input.
-    void move() {
+    void move(float deltaTime) {
+        // Update dash cooldown timer
+        if (!canDash) {
+            dashCooldownTimer -= deltaTime;
+            if (dashCooldownTimer <= 0.0f) {
+                canDash = true;
+                dashCooldownTimer = 0.0f;
+            }
+        }
+        
+        // Update dash timer if currently dashing
+        if (isDashing) {
+            dashTimer -= deltaTime;
+            if (dashTimer <= 0.0f) {
+                isDashing = false;
+                dashTimer = 0.0f;
+            }
+        }
+        
         // Reset velocity if not jumping.
         if (rect.y >= groundLevel) {
             velocity.y = 0;
@@ -190,7 +228,7 @@ private:
         }
 
         // Check for jump input.
-        if (IsKeyPressed(KEY_SPACE)) {
+        if (IsKeyPressed(KEY_W)) {
             // First jump (from ground)
             if (rect.y >= groundLevel) {
                 velocity.y = -100.0f;  // Apply upward velocity.
@@ -233,28 +271,76 @@ private:
             }
         }
         
-        // Handle left/right movement
+        // Current time for double tap detection
+        float currentTime = GetTime();
+        
+        // Handle left/right movement with double tap dash
+        if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT)) {
+            // Check for double tap (if the last press was recent enough)
+            if (canDash && (currentTime - lastAKeyPressTime) <= doubleTapTimeThreshold) {
+                // Initiate dash to the left
+                isDashing = true;
+                dashTimer = dashDuration;
+                canDash = false;
+                dashCooldownTimer = dashCooldown;
+                direction = LEFT;
+                
+                // Play dash sound effect
+                playDashSound();
+            }
+            
+            // Update the last key press time
+            lastAKeyPressTime = currentTime;
+        }
+        
+        if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT)) {
+            // Check for double tap (if the last press was recent enough)
+            if (canDash && (currentTime - lastDKeyPressTime) <= doubleTapTimeThreshold) {
+                // Initiate dash to the right
+                isDashing = true;
+                dashTimer = dashDuration;
+                canDash = false;
+                dashCooldownTimer = dashCooldown;
+                direction = RIGHT;
+                
+                // Play dash sound effect
+                playDashSound();
+            }
+            
+            // Update the last key press time
+            lastDKeyPressTime = currentTime;
+        }
+        
+        // Handle movement based on key press and dash state
         if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
-            velocity.x = -5.0f;  // Move left.
+            // Apply dash speed if dashing, otherwise normal speed
+            velocity.x = isDashing && direction == LEFT ? -dashSpeed : -5.0f;
             direction = LEFT;
             if (state != JUMP_STATE && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
                 state = RUN_STATE;  // Set to run state.
             }
         } else if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) {
-            velocity.x = 5.0f;  // Move right.
+            // Apply dash speed if dashing, otherwise normal speed
+            velocity.x = isDashing && direction == RIGHT ? dashSpeed : 5.0f;
             direction = RIGHT;
             if (state != JUMP_STATE && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
                 state = RUN_STATE;  // Set to run state.
             }
         } else {
-            velocity.x = 0;  // Stop horizontal movement.
-            if (state == RUN_STATE) {
-                state = IDLE_STATE;  // Return to idle if not running.
+            // When no movement keys are pressed but still dashing
+            if (isDashing) {
+                velocity.x = (direction == RIGHT) ? dashSpeed : -dashSpeed;
+            } else {
+                velocity.x = 0;  // Stop horizontal movement if not dashing
+            }
+            
+            if (state == RUN_STATE && !isDashing) {
+                state = IDLE_STATE;  // Return to idle if not running and not dashing
             }
         }
 
         // Check for attack input.
-        if (IsKeyPressed(KEY_J) && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
+        if (IsKeyPressed(KEY_SPACE) && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
             state = ATTACK_STATE;  // Set to attack state.
             animations[state].currentFrame = 0;  // Reset animation frame.
             if (attackSound.frameCount > 0) {
@@ -307,22 +393,33 @@ private:
         }
     }
 
-    // Update collision boxes based on current position and state.
+    // Helper method to update the collision boxes of the character.
     void updateCollisionBoxes() {
-        // Safety check for valid state
-        if (state < 0 || state >= sprites.size()) {
-            return;
-        }
-        
-        // Update body collision box
-        if (collisionBoxes.size() > 0) {
-            float bodyOffsetX = 16.0f * SPRITE_SCALE;
-            float bodyOffsetY = 16.0f * SPRITE_SCALE;
-            float bodyWidth = rect.width - (32.0f * SPRITE_SCALE);
-            float bodyHeight = rect.height - (16.0f * SPRITE_SCALE);
+        // Only update collision boxes if they exist.
+        if (!collisionBoxes.empty()) {
             
-            collisionBoxes[0].rect = {rect.x + bodyOffsetX, rect.y + bodyOffsetY, bodyWidth, bodyHeight};
-            collisionBoxes[0].active = (state != DEAD_STATE); // Deactivate body collision when dead
+            // Update the body collision box
+            if (collisionBoxes.size() > 0) {
+                // Base body box
+                float bodyOffsetX = 15.0f * SPRITE_SCALE;
+                float bodyOffsetY = 15.0f * SPRITE_SCALE;
+                float bodyWidth = rect.width - (30.0f * SPRITE_SCALE);
+                float bodyHeight = rect.height - (15.0f * SPRITE_SCALE);
+                
+                // If dashing, extend the collision box in the direction of movement
+                if (isDashing) {
+                    // Extend the box in the direction of dash
+                    if (direction == RIGHT) {
+                        bodyWidth += 10.0f * SPRITE_SCALE;
+                    } else {
+                        bodyOffsetX -= 10.0f * SPRITE_SCALE;
+                        bodyWidth += 10.0f * SPRITE_SCALE;
+                    }
+                }
+                
+                collisionBoxes[0].rect = {rect.x + bodyOffsetX, rect.y + bodyOffsetY, bodyWidth, bodyHeight};
+                collisionBoxes[0].active = (state != DEAD_STATE);
+            }
             
             // Update attack collision box
             if (collisionBoxes.size() > 1) {
@@ -347,9 +444,121 @@ private:
         }
     }
 
+    // Helper function to play the dash sound with proper volume
+    void playDashSound() {
+        if (dashSound.frameCount > 0) {
+            // Set the volume for the dash sound
+            SetSoundVolume(dashSound, dashSoundVolume);
+            
+            // Play the sound
+            PlaySound(dashSound);
+            
+            // Debug output
+            printf("Playing dash sound (volume: %.2f)\n", dashSoundVolume);
+        } else {
+            printf("Dash sound not loaded properly!\n");
+        }
+    }
+
+    // Helper function to try downloading the dash sound file
+    bool tryDownloadDashSound() {
+        printf("Attempting to download dash sound file...\n");
+        
+        // Create sounds directory if it doesn't exist
+        if (!DirectoryExists("sounds")) {
+            #if defined(_WIN32)
+                system("mkdir sounds");
+            #else
+                system("mkdir -p sounds");
+            #endif
+        }
+        
+        // Try to download the file using curl (if available)
+        #if defined(_WIN32)
+            system("curl -s -o sounds/whoosh\\ \\(phaser\\).wav https://freesound.org/data/previews/320/320654_5260872-lq.mp3 > nul 2>&1");
+        #else
+            system("curl -s -o 'sounds/whoosh (phaser).wav' https://freesound.org/data/previews/320/320654_5260872-lq.mp3 > /dev/null 2>&1");
+        #endif
+        
+        // Check if the download was successful
+        dashSound = LoadSound("sounds/whoosh (phaser).wav");
+        if (dashSound.frameCount > 0) {
+            printf("Successfully downloaded dash sound file!\n");
+            return true;
+        }
+        
+        printf("Failed to download dash sound file.\n");
+        return false;
+    }
+
+    // Helper function to create a simple sound file if the dash sound is not found
+    void createDefaultDashSound() {
+        // Create a sounds directory if it doesn't exist
+        if (!DirectoryExists("sounds")) {
+            printf("Creating sounds directory...\n");
+            bool success = false;
+            #if defined(_WIN32)
+                success = (system("mkdir sounds") == 0);
+            #else
+                success = (system("mkdir -p sounds") == 0);
+            #endif
+            
+            if (!success) {
+                printf("Failed to create sounds directory!\n");
+                return;
+            }
+        }
+        
+        // Create a simple wave file with a whoosh sound
+        Wave wave = { 0 };
+        wave.frameCount = 22050;    // 0.5 seconds at 44100 Hz
+        wave.sampleRate = 44100;
+        wave.sampleSize = 16;
+        wave.channels = 1;
+        
+        // Allocate memory for wave data
+        wave.data = malloc(wave.frameCount * wave.channels * wave.sampleSize/8);
+        
+        // Generate a simple whoosh sound (sine wave with decreasing frequency)
+        float frequency = 800.0f;
+        float volume = 0.5f;
+        
+        for (unsigned int i = 0; i < wave.frameCount; i++) {
+            // Decrease frequency over time for whoosh effect
+            frequency = 800.0f - (float)i * 700.0f / (float)wave.frameCount;
+            if (frequency < 100.0f) frequency = 100.0f;
+            
+            // Decrease volume over time
+            volume = 0.5f - (float)i * 0.5f / (float)wave.frameCount;
+            
+            // Calculate sample value
+            short sample = (short)(32000.0f * volume * sinf(2.0f * PI * frequency * (float)i / (float)wave.sampleRate));
+            
+            // Write sample to wave data
+            ((short *)wave.data)[i] = sample;
+        }
+        
+        // Export wave as sound file
+        printf("Creating default dash sound file...\n");
+        ExportWave(wave, "sounds/whoosh (phaser).wav");
+        
+        // Load the newly created sound
+        dashSound = LoadSound("sounds/whoosh (phaser).wav");
+        
+        // Free wave data
+        free(wave.data);
+        
+        if (dashSound.frameCount > 0) {
+            printf("Created and loaded default dash sound successfully!\n");
+        } else {
+            printf("Failed to create default dash sound!\n");
+        }
+    }
+
 public:
     bool isDead = false; // Flag to indicate if the samurai is dead.
     bool showCollisionBoxes = false; // Flag to enable/disable collision box drawing
+    bool isDashing = false; // Flag to indicate if the character is currently dashing
 
     // Accessors for double jump height
     float getDoubleJumpHeight() const {
@@ -358,6 +567,20 @@ public:
     
     void setDoubleJumpHeight(float height) {
         doubleJumpHeight = -height; // Store as negative value for upward velocity
+    }
+    
+    // Accessor for dash sound volume
+    void setDashSoundVolume(float volume) {
+        // Clamp volume between 0.0 and 1.0
+        if (volume < 0.0f) volume = 0.0f;
+        if (volume > 1.0f) volume = 1.0f;
+        
+        dashSoundVolume = volume;
+        printf("Dash sound volume set to: %.2f\n", dashSoundVolume);
+    }
+    
+    float getDashSoundVolume() const {
+        return dashSoundVolume;
     }
 
     // Constructor initializing the Samurai's properties and animations
@@ -395,13 +618,50 @@ public:
             {0, 7, 0, 0, 0.1f, 0.1f, LOOP}      // RUN_STATE
         };
 
-        // Load sounds
-        attackSound = LoadSound("sounds/samurai/sword-sound-2-36274.wav");
-        jumpSound = LoadSound("sounds/samurai/female-jump.wav");
-        hurtSound = LoadSound("sounds/samurai/female-hurt-2-94301.wav");
-        deadSound = LoadSound("sounds/samurai/female-death.wav");
-        landSound = LoadSound("sounds/samurai/land2-43790.wav");
-        runSound = LoadSound("sounds/samurai/running-on-concrete-268478.wav");
+        // Load sound effects with error checking
+        attackSound = LoadSound("sounds/attack.mp3");
+        jumpSound = LoadSound("sounds/jump.mp3");
+        hurtSound = LoadSound("sounds/hurt.mp3");
+        runSound = LoadSound("sounds/run.mp3");
+        deadSound = LoadSound("sounds/dead.mp3");
+        landSound = LoadSound("sounds/land.mp3");
+        
+        // Try to load the dash sound from various possible locations
+        dashSound = LoadSound("sounds/whoosh (phaser).wav");
+        if (dashSound.frameCount > 0) {
+            printf("Loaded dash sound from: sounds/whoosh (phaser).wav\n");
+        } else {
+            // Try alternative paths
+            dashSound = LoadSound("sounds/misc/whoosh (phaser).wav");
+            if (dashSound.frameCount > 0) {
+                printf("Loaded dash sound from: sounds/misc/whoosh (phaser).wav\n");
+            } else {
+                dashSound = LoadSound("assets/sounds/whoosh (phaser).wav");
+                if (dashSound.frameCount > 0) {
+                    printf("Loaded dash sound from: assets/sounds/whoosh (phaser).wav\n");
+                } else {
+                    dashSound = LoadSound("assets/sounds/misc/whoosh (phaser).wav");
+                    if (dashSound.frameCount > 0) {
+                        printf("Loaded dash sound from: assets/sounds/misc/whoosh (phaser).wav\n");
+                    } else {
+                        // If all paths fail, try without spaces in filename
+                        dashSound = LoadSound("sounds/whoosh(phaser).wav");
+                        if (dashSound.frameCount > 0) {
+                            printf("Loaded dash sound from: sounds/whoosh(phaser).wav\n");
+                        } else {
+                            printf("Warning: Could not load dash sound effect! Trying to download...\n");
+                            
+                            // Try to download the sound file
+                            if (!tryDownloadDashSound()) {
+                                // If download fails, create a default sound
+                                printf("Creating a default dash sound...\n");
+                                createDefaultDashSound();
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         // Initialize collision boxes with scaled dimensions
         float bodyOffsetX = 16.0f * SPRITE_SCALE;
@@ -423,6 +683,13 @@ public:
             CollisionBox({rect.x + attackOffsetX, rect.y + attackOffsetY, attackSize, attackSize}, ATTACK, false),
             CollisionBox({rect.x + hurtboxOffsetX, rect.y + hurtboxOffsetY, hurtboxWidth, hurtboxHeight}, HURTBOX)
         };
+
+        // Initialize dash variables
+        isDashing = false;
+        dashTimer = 0.0f;
+        canDash = true;
+        dashCooldownTimer = 0.0f;
+        dashSoundVolume = 0.8f; // Set default volume to 80%
     }
 
     // Destructor to clean up resources
@@ -438,6 +705,7 @@ public:
         if (runSound.frameCount > 0) UnloadSound(runSound);
         if (deadSound.frameCount > 0) UnloadSound(deadSound);
         if (landSound.frameCount > 0) UnloadSound(landSound);
+        if (dashSound.frameCount > 0) UnloadSound(dashSound);
     }
 
     // Draw the character.
@@ -464,6 +732,26 @@ public:
             rect.width,
             rect.height
         };
+        
+        // Draw dash trail effect when dashing
+        if (isDashing) {
+            // Draw a few fading copies of the character behind the main sprite
+            for (int i = 1; i <= 3; i++) {
+                float offsetX = (direction == RIGHT) ? -i * 10.0f : i * 10.0f;
+                Rectangle trailDest = {
+                    rect.x + offsetX,
+                    rect.y,
+                    rect.width,
+                    rect.height
+                };
+                
+                // Calculate alpha based on distance (further = more transparent)
+                float alpha = 0.7f - (i * 0.2f);
+                Color trailTint = {255, 255, 255, (unsigned char)(alpha * 255)};
+                
+                DrawTexturePro(sprites[state], source, trailDest, (Vector2){0, 0}, 0.0f, trailTint);
+            }
+        }
         
         // Apply visual effect for invincibility frames
         Color tint = WHITE;
@@ -516,7 +804,7 @@ public:
         
         // Only handle movement if the samurai is alive
         if (!isDead) {
-            move();
+            move(deltaTime);
         }
         
         // Always update collision boxes

@@ -21,6 +21,10 @@ float masterVolume = 0.7f;
 // Define a scale factor for the demon (visual only)
 float demonScaleFactor = 1.3f;
 
+// Global background texture
+Texture2D backgroundTexture = { 0 };
+Camera2D camera = { 0 };
+
 // Key variables
 Texture2D keyTexture = { 0 };
 Vector2 keyPosition = { 0, 0 };
@@ -57,28 +61,26 @@ void handleAttackCollision(CollisionBox* attackBox, CollisionBox* hurtBox, int& 
 
 // Custom exit function that bypasses normal cleanup
 void safeExit() {
-    printf("Exiting safely...\n");
-    
-    // Turn off collision boxes before exiting to prevent segfault
-    showCollisionBoxes = false;
-    
-    // Unload audio resources directly
-    if (backgroundMusic.stream.buffer) {
+    // Unload audio resources
+    if (backgroundMusic.ctxData != NULL) {
         StopMusicStream(backgroundMusic);
         UnloadMusicStream(backgroundMusic);
     }
     
     if (demonChantSound.stream.buffer) {
-        StopSound(demonChantSound);
         UnloadSound(demonChantSound);
     }
     
     if (keySound.stream.buffer) {
-        StopSound(keySound);
         UnloadSound(keySound);
     }
     
-    // Close audio device and window
+    // Unload the background texture
+    if (backgroundTexture.id != 0) {
+        UnloadTexture(backgroundTexture);
+    }
+    
+    // Clean up Raylib
     CloseAudioDevice();
     CloseWindow();
     
@@ -175,6 +177,27 @@ int main() {
     
     SetTargetFPS(60);
 
+    // Load background texture
+    // Try to load from maps directory first
+    backgroundTexture = LoadTexture("maps/64 x 64 Blue Dungeon Sprite Sheet.png");
+    if (backgroundTexture.id == 0) {
+        // If failed, try assets directory
+        backgroundTexture = LoadTexture("assets/background/dungeon_background.png");
+        if (backgroundTexture.id == 0) {
+            printf("Failed to load background texture! Creating a default one.\n");
+            // Create a default background texture with a simple pattern
+            Image checkerImage = GenImageChecked(800, 600, 64, 64, DARKGRAY, GRAY);
+            backgroundTexture = LoadTextureFromImage(checkerImage);
+            UnloadImage(checkerImage);
+        }
+    }
+    
+    // Initialize camera
+    camera.target = (Vector2){ 0, 0 };
+    camera.offset = (Vector2){ screenWidth/2.0f, screenHeight/2.0f };
+    camera.rotation = 0.0f;
+    camera.zoom = 1.5f;  // Zoom in for better visibility
+
     // Define floor level higher up on the screen (moved up by 100 pixels)
     const float floorHeight = 50.0f;
     const float floorOffset = 120.0f;  // Offset from the bottom to ensure visibility
@@ -250,6 +273,19 @@ int main() {
             if (currentHeight > 40.0f) { // Don't go too low
                 samurai.setDoubleJumpHeight(currentHeight - 5.0f);
             }
+        }
+        
+        // Adjust dash sound volume with [ and ] keys
+        if (IsKeyPressed(KEY_LEFT_BRACKET)) {
+            // Decrease dash sound volume
+            float currentVolume = samurai.getDashSoundVolume();
+            samurai.setDashSoundVolume(currentVolume - 0.1f);
+        }
+        
+        if (IsKeyPressed(KEY_RIGHT_BRACKET)) {
+            // Increase dash sound volume
+            float currentVolume = samurai.getDashSoundVolume();
+            samurai.setDashSoundVolume(currentVolume + 0.1f);
         }
         
         // Toggle collision box visibility with F1 key
@@ -386,15 +422,52 @@ int main() {
             (float)KEY_FRAME_WIDTH,                         // Keep original collision size
             (float)KEY_FRAME_HEIGHT
         };
-
+        
+        // Update camera to follow player
+        Rectangle samuraiRect = samurai.getRect();
+        camera.target = (Vector2){ samuraiRect.x, samuraiRect.y };
+        
+        // Camera zoom controls
+        camera.zoom += ((float)GetMouseWheelMove() * 0.1f);
+        if (camera.zoom < 0.5f) camera.zoom = 0.5f;
+        if (camera.zoom > 3.0f) camera.zoom = 3.0f;
+        
         // Drawing
         BeginDrawing();
         ClearBackground(RAYWHITE);
+        
+        // Begin 2D camera mode
+        BeginMode2D(camera);
+        
+        // Draw the background texture
+        // Tiled approach to make it fill the viewable area
+        float tileWidth = backgroundTexture.width;
+        float tileHeight = backgroundTexture.height;
+        
+        // Calculate how many tiles needed based on camera zoom and window size
+        int tilesX = (int)((screenWidth / camera.zoom) / tileWidth) + 2;  // +2 for safety
+        int tilesY = (int)((screenHeight / camera.zoom) / tileHeight) + 2;
+        
+        // Calculate starting positions based on camera target to create a parallax effect
+        float startX = (int)(camera.target.x / 2 - (tilesX * tileWidth) / 2);
+        float startY = (int)(camera.target.y / 2 - (tilesY * tileHeight) / 2);
+        
+        // Draw the tiled background
+        for (int y = 0; y < tilesY; y++) {
+            for (int x = 0; x < tilesX; x++) {
+                DrawTexture(
+                    backgroundTexture, 
+                    startX + x * tileWidth, 
+                    startY + y * tileHeight, 
+                    WHITE
+                );
+            }
+        }
+        
+        // Draw background floor (only if needed)
+        DrawRectangle(0, floorLevel, screenWidth * 2, floorHeight, DARKGRAY);
 
-        // Draw background
-        DrawRectangle(0, floorLevel, screenWidth, floorHeight, DARKGRAY);
-
-        // Draw characters
+        // Draw characters - moved inside camera mode
         samurai.draw();
         
         // Only draw enemies if they're not dead
@@ -428,48 +501,45 @@ int main() {
             DrawRectangle(demon.rect.x, demon.rect.y - 10, scaledWidth, 5, RED);
             DrawRectangle(demon.rect.x, demon.rect.y - 10, scaledWidth * (demonHealth / 150.0f), 5, GREEN);
         }
-
-        // Draw collected key icon if collected AND samurai is alive
-        if (keyCollected && !samurai.isDead) {
-            // Source rectangle for first frame of key
-            Rectangle keyIconSource = {
-                0.0f,                     // First frame (x = 0)
-                0.0f,                     // y position in sprite sheet
-                (float)KEY_FRAME_WIDTH,   // width of one frame
-                (float)KEY_FRAME_HEIGHT   // height of frame
+        
+        // If the key is not collected, draw it
+        if (!keyCollected) {
+            // Source rectangle for current frame of key
+            Rectangle keySource = {
+                (float)(keyCurrentFrame * KEY_FRAME_WIDTH),  // x position in sprite sheet
+                0.0f,                              // y position in sprite sheet
+                (float)KEY_FRAME_WIDTH,           // width of one frame
+                (float)KEY_FRAME_HEIGHT           // height of frame
             };
             
-            // Position the key icon above the samurai
-            Rectangle samuraiRect = samurai.getRect();
-            float iconSize = 24.0f; // Make the icon a bit smaller for UI
-            Rectangle keyIconDest = {
-                samuraiRect.x + samuraiRect.width/2 - iconSize/2,  // center horizontally above samurai
-                samuraiRect.y - 20,                                // just above the samurai
-                iconSize,                                           // smaller size for UI
-                iconSize                                            // smaller size for UI
-            };
-            
-            // Draw the key icon without rotation
+            // Draw the key with animation
             DrawTexturePro(
                 keyTexture,
-                keyIconSource,
-                keyIconDest,
-                (Vector2){0, 0},  // Draw from top-left (no need for centered rotation)
-                0.0f,             // No rotation for UI element
+                keySource,
+                (Rectangle){
+                    keyPosition.x,
+                    keyPosition.y,
+                    (float)KEY_FRAME_WIDTH,
+                    (float)KEY_FRAME_HEIGHT
+                },
+                (Vector2){0, 0},
+                keyRotation,
                 WHITE
             );
         }
-
+        
         // Draw collision boxes if enabled
         if (showCollisionBoxes) {
             // Draw key collision box
-            DrawRectangleLines(
-                keyCollisionRect.x,
-                keyCollisionRect.y,
-                keyCollisionRect.width,
-                keyCollisionRect.height,
-                PURPLE  // Use purple to distinguish from other collision boxes
-            );
+            if (!keyCollected) {
+                DrawRectangleLines(
+                    keyCollisionRect.x,
+                    keyCollisionRect.y,
+                    keyCollisionRect.width,
+                    keyCollisionRect.height,
+                    PURPLE  // Use purple to distinguish from other collision boxes
+                );
+            }
             
             // Draw collision boxes for each character type
             // For Samurai
@@ -530,77 +600,94 @@ int main() {
                 if (hurtBox) drawCollisionBox(*hurtBox);
             }
         }
+        
+        // End 2D camera mode
+        EndMode2D();
 
-        // Draw instructions with shadow
-        DrawText("Controls: A/D to move, J to attack, SPACE to jump", 12, 32, 20, BLACK); // Shadow
-        DrawText("Controls: A/D to move, J to attack, SPACE to jump", 10, 30, 20, WHITE); // Main text
-        
-        // Double jump instructions 
-        DrawText("Press SPACE in mid-air to double jump", 12, 52, 20, BLACK); // Shadow
-        DrawText("Press SPACE in mid-air to double jump", 10, 50, 20, WHITE); // Main text
-        
-        // Double jump height adjustment instructions
-        DrawText("PAGE UP/DOWN to adjust double jump height", 12, 72, 20, BLACK); // Shadow
-        DrawText("PAGE UP/DOWN to adjust double jump height", 10, 70, 20, WHITE); // Main text
-
-        // Draw UI elements with shadow effect
-        // Health text
-        DrawText(TextFormat("Samurai Health: %d", samurai.getHealth()), 12, 92, 20, BLACK); // Shadow
-        DrawText(TextFormat("Samurai Health: %d", samurai.getHealth()), 10, 90, 20, WHITE); // Main text
-        
-        // Double jump height display
-        DrawText(TextFormat("Double Jump Height: %.1f", samurai.getDoubleJumpHeight()), 12, 112, 20, BLACK); // Shadow
-        DrawText(TextFormat("Double Jump Height: %.1f", samurai.getDoubleJumpHeight()), 10, 110, 20, WHITE); // Main text
-        
-        // Score display
-        static int score = 0;
-        DrawText(TextFormat("Score: %d", score), 12, 132, 20, BLACK); // Shadow
-        DrawText(TextFormat("Score: %d", score), 10, 130, 20, WHITE); // Main text
-        
-        // F1 help text
-        DrawText("Press F1 to toggle collision boxes", 12, 152, 20, BLACK); // Shadow
-        DrawText("Press F1 to toggle collision boxes", 10, 150, 20, WHITE); // Main text
-
-        // Draw audio controls help text with shadow
-        DrawText("Audio Controls:", 12, screenHeight - 78, 16, BLACK); // Shadow
-        DrawText("Audio Controls:", 10, screenHeight - 80, 16, WHITE); // Main text
-        
-        DrawText("M - Toggle Music", 12, screenHeight - 58, 16, BLACK); // Shadow
-        DrawText("M - Toggle Music", 10, screenHeight - 60, 16, WHITE); // Main text
-        
-        DrawText("+ / - - Volume Control", 12, screenHeight - 38, 16, BLACK); // Shadow
-        DrawText("+ / - - Volume Control", 10, screenHeight - 40, 16, WHITE); // Main text
-        
-        DrawText(TextFormat("Volume: %.1f", masterVolume), 12, screenHeight - 18, 16, BLACK); // Shadow
-        DrawText(TextFormat("Volume: %.1f", masterVolume), 10, screenHeight - 20, 16, WHITE); // Main text
-
-        // Draw key
-        if (!keyCollected) {
-            // Calculate source rectangle for current frame
-            Rectangle sourceRec = { 
-                (float)(keyCurrentFrame * KEY_FRAME_WIDTH),  // x position in sprite sheet
-                0.0f,                                        // y position in sprite sheet
-                (float)KEY_FRAME_WIDTH,                      // width of one frame
-                (float)KEY_FRAME_HEIGHT                      // height of frame
+        // Draw UI elements (not affected by camera)
+        // Draw collected key icon if collected AND samurai is alive
+        if (keyCollected && !samurai.isDead) {
+            // Source rectangle for first frame of key
+            Rectangle keyIconSource = {
+                0.0f,                     // First frame (x = 0)
+                0.0f,                     // y position in sprite sheet
+                (float)KEY_FRAME_WIDTH,   // width of one frame
+                (float)KEY_FRAME_HEIGHT   // height of frame
             };
-
-            // Calculate destination rectangle
-            Rectangle destRec = { 
-                keyPosition.x,                               // x position on screen
-                keyPosition.y,                               // y position on screen
-                (float)KEY_FRAME_WIDTH * 2,                 // width on screen (scaled up for better visibility)
-                (float)KEY_FRAME_HEIGHT * 2                 // height on screen (scaled up for better visibility)
+            
+            // Position the key icon in the UI area
+            Rectangle keyIconDest = {
+                20,                  // left side of screen
+                20,                  // top of screen
+                24.0f,               // smaller size for UI
+                24.0f                // smaller size for UI
             };
-
+            
+            // Draw the key icon in the UI
             DrawTexturePro(
-                keyTexture, 
-                sourceRec, 
-                destRec, 
-                (Vector2){ KEY_FRAME_WIDTH, KEY_FRAME_HEIGHT },  // Center of the scaled key
-                keyRotation, 
+                keyTexture,
+                keyIconSource,
+                keyIconDest,
+                (Vector2){0, 0},
+                0.0f,
                 WHITE
             );
         }
+
+        // Draw instructions with shadow
+        DrawText("Controls: A/D to move, SPACE to attack, W to jump", 12, 32, 20, BLACK); // Shadow
+        DrawText("Controls: A/D to move, SPACE to attack, W to jump", 10, 30, 20, WHITE); // Main text
+        
+        // Double jump instructions 
+        DrawText("Press W in mid-air to double jump", 12, 52, 20, BLACK); // Shadow
+        DrawText("Press W in mid-air to double jump", 10, 50, 20, WHITE); // Main text
+        
+        // Double dash instructions
+        DrawText("Double-tap A or D to dash in that direction", 12, 72, 20, BLACK); // Shadow
+        DrawText("Double-tap A or D to dash in that direction", 10, 70, 20, WHITE); // Main text
+        
+        // Double jump height adjustment instructions
+        DrawText("PAGE UP/DOWN to adjust double jump height", 12, 92, 20, BLACK); // Shadow
+        DrawText("PAGE UP/DOWN to adjust double jump height", 10, 90, 20, WHITE); // Main text
+
+        // Draw UI elements with shadow effect
+        // Health text
+        DrawText(TextFormat("Samurai Health: %d", samurai.getHealth()), 12, 112, 20, BLACK); // Shadow
+        DrawText(TextFormat("Samurai Health: %d", samurai.getHealth()), 10, 110, 20, WHITE); // Main text
+        
+        // Double jump height display
+        DrawText(TextFormat("Double Jump Height: %.1f", samurai.getDoubleJumpHeight()), 12, 132, 20, BLACK); // Shadow
+        DrawText(TextFormat("Double Jump Height: %.1f", samurai.getDoubleJumpHeight()), 10, 130, 20, WHITE); // Main text
+        
+        // Score display
+        static int score = 0;
+        DrawText(TextFormat("Score: %d", score), 12, 152, 20, BLACK); // Shadow
+        DrawText(TextFormat("Score: %d", score), 10, 150, 20, WHITE); // Main text
+        
+        // F1 help text
+        DrawText("Press F1 to toggle collision boxes", 12, 172, 20, BLACK); // Shadow
+        DrawText("Press F1 to toggle collision boxes", 10, 170, 20, WHITE); // Main text
+
+        // Draw audio controls help text with shadow
+        DrawText("Audio Controls:", 12, screenHeight - 98, 16, BLACK); // Shadow
+        DrawText("Audio Controls:", 10, screenHeight - 100, 16, WHITE); // Main text
+        
+        DrawText("M - Toggle Music", 12, screenHeight - 78, 16, BLACK); // Shadow
+        DrawText("M - Toggle Music", 10, screenHeight - 80, 16, WHITE); // Main text
+        
+        DrawText("+ / - - Volume Control", 12, screenHeight - 58, 16, BLACK); // Shadow
+        DrawText("+ / - - Volume Control", 10, screenHeight - 60, 16, WHITE); // Main text
+        
+        DrawText("[ / ] - Dash Sound Volume", 12, screenHeight - 38, 16, BLACK); // Shadow
+        DrawText("[ / ] - Dash Sound Volume", 10, screenHeight - 40, 16, WHITE); // Main text
+        
+        DrawText(TextFormat("Master Volume: %.1f", masterVolume), 12, screenHeight - 18, 16, BLACK); // Shadow
+        DrawText(TextFormat("Master Volume: %.1f", masterVolume), 10, screenHeight - 20, 16, WHITE); // Main text
+        
+        // Display dash sound volume
+        float dashVolume = samurai.getDashSoundVolume();
+        DrawText(TextFormat("Dash Volume: %.1f", dashVolume), 250, screenHeight - 18, 16, BLACK); // Shadow
+        DrawText(TextFormat("Dash Volume: %.1f", dashVolume), 248, screenHeight - 20, 16, WHITE); // Main text
 
         EndDrawing();
         
