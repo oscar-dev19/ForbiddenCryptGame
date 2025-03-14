@@ -357,9 +357,12 @@ private:
         rect.x += velocity.x;  // Update horizontal position.
         rect.y += velocity.y;  // Update vertical position.
 
-        // Ensure character stays within screen bounds.
+        // Ensure character stays within map bounds instead of screen bounds
+        // Map dimensions are 128 tiles * 16 pixels = 2048 pixels wide
+        const float mapWidth = 128 * 16;
+        
         if (rect.x < 0) rect.x = 0;
-        if (rect.x > GetScreenWidth() - rect.width) rect.x = GetScreenWidth() - rect.width;
+        if (rect.x > mapWidth - rect.width) rect.x = mapWidth - rect.width;
         
         // Apply different maximum height limits depending on whether double jump was used
         float currentMaxHeight = hasDoubleJumped ? doubleJumpMaxHeight : singleJumpMaxHeight;

@@ -317,6 +317,19 @@ class Demon {
             float deltaTime = GetFrameTime();
             rect.x += velocity.x * deltaTime;
             
+            // Add map boundary checks
+            // Map dimensions are 128 tiles * 16 pixels = 2048 pixels wide
+            const float mapWidth = 128 * 16;
+            
+            if (rect.x < 0) {
+                rect.x = 0;
+                direction = RIGHT_DEMON;
+            }
+            if (rect.x > mapWidth - rect.width) {
+                rect.x = mapWidth - rect.width;
+                direction = LEFT_DEMON;
+            }
+            
             // Update collision boxes positions
             updateCollisionBoxes();
         }
