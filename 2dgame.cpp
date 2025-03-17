@@ -212,7 +212,7 @@ int main() {
     camera.zoom = 1.5f;  // Zoom in for better visibility
 
     // Load the TMX map
-    const char* mapPath = "maps/Room1.tmx";
+    const char* mapPath = "maps/Room3and4.tmx";
     tmxMap = LoadTMX(mapPath);
     
     if (tmxMap == NULL || tmxMap->fileName == NULL) {
@@ -225,8 +225,8 @@ int main() {
     // Calculate the map dimensions in pixels
     // Room1.tmx is 128x128 tiles with each tile being 16x16 pixels
     const int mapTileSize = 16;
-    const int mapWidth = 128;
-    const int mapHeight = 128;
+    const int mapWidth = 1000;
+    const int mapHeight = 500;
     const float mapWidthPixels = mapWidth * mapTileSize;
     const float mapHeightPixels = mapHeight * mapTileSize;
     
