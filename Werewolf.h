@@ -3,6 +3,7 @@
 
 #include "raylib.h"
 #include "CollisionSystem.h"
+#include "CharacterAI.h"
 #include <vector>
 
 // Constants for physics
@@ -52,6 +53,12 @@ public:
     bool isAttacking = false;
     bool hasFinishedAttack = true;
     
+    // AI system
+    CharacterAI ai;
+    float attackRange = 120.0f;
+    float chaseRange = 400.0f;
+    float moveSpeed = 1.5f;
+    
     // Collision boxes for different purposes
     std::vector<CollisionBox> collisionBoxes;
 
@@ -66,17 +73,17 @@ public:
 
         // Initialize animations for different states with correct frame counts
         animations = {
-            {0, 3, 0, 0, 0.2f, 0.2f, ONESHOT_WOLF},   // DEAD_WOLF - 4 frames
-            {0, 5, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF},   // ATTACK_SWIPE - 6 frames
-            {0, 3, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF},   // ATTACK_RUN - 4 frames
-            {0, 2, 0, 0, 0.2f, 0.2f, ONESHOT_WOLF},   // HURT_WOLF - 3 frames
-            {0, 7, 0, 0, 0.2f, 0.2f, REPEATING_WOLF}, // IDLE_WOLF - 8 frames
-            {0, 10, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF},  // JUMP_WOLF - 11 frames
-            {0, 8, 0, 0, 0.1f, 0.1f, REPEATING_WOLF}, // RUN_WOLF - 9 frames
-            {0, 10, 0, 0, 0.1f, 0.1f, REPEATING_WOLF}  // WALK_WOLF - 11 frames
+            {0, 6, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF}, // DEAD_WOLF - 7 frames
+            {0, 7, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF}, // ATTACK_SWIPE - 8 frames
+            {0, 5, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF}, // ATTACK_RUN - 6 frames
+            {0, 2, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF}, // HURT_WOLF - 3 frames
+            {0, 6, 0, 0, 0.1f, 0.1f, REPEATING_WOLF}, // IDLE_WOLF - 7 frames
+            {0, 8, 0, 0, 0.1f, 0.1f, REPEATING_WOLF}, // JUMP_WOLF - 9 frames
+            {0, 7, 0, 0, 0.1f, 0.1f, REPEATING_WOLF}, // RUN_WOLF - 8 frames
+            {0, 9, 0, 0, 0.1f, 0.1f, REPEATING_WOLF}  // WALK_WOLF - 10 frames
         };
 
-        // Initialize collision boxes with scaled dimensions
+        // Initialize collision boxes with appropriate dimensions
         float bodyOffsetX = 16.0f * SPRITE_SCALE;
         float bodyOffsetY = 16.0f * SPRITE_SCALE;
         float bodyWidth = rect.width - (32.0f * SPRITE_SCALE);
@@ -92,9 +99,12 @@ public:
         
         collisionBoxes = {
             CollisionBox({rect.x + bodyOffsetX, rect.y + bodyOffsetY, bodyWidth, bodyHeight}, BODY),
-            CollisionBox({rect.x + rect.width - attackSize, rect.y + attackOffsetY, attackSize, attackSize}, ATTACK, false),
+            CollisionBox({rect.x + rect.width, rect.y + attackOffsetY, attackSize, attackSize}, ATTACK, false),
             CollisionBox({rect.x + hurtboxOffsetX, rect.y + hurtboxOffsetY, hurtboxWidth, hurtboxHeight}, HURTBOX)
         };
+        
+        // Initialize AI with an aggressive behavior
+        ai.setBehavior(std::make_unique<AggressiveBehavior>(attackRange, chaseRange));
     }
 
     ~Werewolf() {
@@ -113,14 +123,14 @@ public:
         
         // Resize and load all textures
         sprites.resize(8);
-        sprites[DEAD_WOLF] = LoadTexture("assets/Werewolf/Dead.png");
-        sprites[ATTACK_SWIPE] = LoadTexture("assets/Werewolf/Attack_1.png");
-        sprites[ATTACK_RUN] = LoadTexture("assets/Werewolf/Attack_2.png");
-        sprites[HURT_WOLF] = LoadTexture("assets/Werewolf/Hurt.png");
-        sprites[IDLE_WOLF] = LoadTexture("assets/Werewolf/Idle.png");
-        sprites[JUMP_WOLF] = LoadTexture("assets/Werewolf/Jump.png");
-        sprites[RUN_WOLF] = LoadTexture("assets/Werewolf/Run.png");
-        sprites[WALK_WOLF] = LoadTexture("assets/Werewolf/walk.png");
+        sprites[DEAD_WOLF] = LoadTexture("assets/Werewolf/dead/werewolf_dead.png");
+        sprites[ATTACK_SWIPE] = LoadTexture("assets/Werewolf/attack/werewolf_attack.png");
+        sprites[ATTACK_RUN] = LoadTexture("assets/Werewolf/attack/werewolf_attack_run.png");
+        sprites[HURT_WOLF] = LoadTexture("assets/Werewolf/hurt/werewolf_hurt.png");
+        sprites[IDLE_WOLF] = LoadTexture("assets/Werewolf/idle/werewolf_idle.png");
+        sprites[JUMP_WOLF] = LoadTexture("assets/Werewolf/jump/werewolf_jump.png");
+        sprites[RUN_WOLF] = LoadTexture("assets/Werewolf/run/werewolf_run.png");
+        sprites[WALK_WOLF] = LoadTexture("assets/Werewolf/walk/werewolf_walk.png");
         
         // Print debug info about loaded textures
         for (int i = 0; i < sprites.size(); i++) {
@@ -151,10 +161,12 @@ public:
                     isAttacking = false;
                     hasFinishedAttack = true;
                 } else if (state == HURT_WOLF) {
-                    state = IDLE_WOLF;
+                    state = IDLE_WOLF; // Return to idle after hurt animation
                 } else if (state == DEAD_WOLF) {
                     // Stay on the last frame if dead
                     anim.currentFrame = anim.lastFrame;
+                } else if (state == JUMP_WOLF && isOnGround) {
+                    state = IDLE_WOLF; // Return to idle after landing
                 }
             }
         }
@@ -244,7 +256,7 @@ public:
                 animations[state].currentFrame = 0;
             } else {
                 // Move in the current direction
-                velocity.x = direction * 1.5f;  // Werewolf moves faster than goblin
+                velocity.x = direction * moveSpeed;  // Werewolf moves faster than goblin
                 state = RUN_WOLF;
             }
         } else if (isDead) {
@@ -256,6 +268,78 @@ public:
 
         // Apply velocity
         applyVelocity();
+    }
+
+    void updateWithTarget(Vector2 targetPos) {
+        if (isDead) {
+            state = DEAD_WOLF;
+            updateAnimation();
+            return;
+        }
+
+        // Calculate distance to target
+        float wolfCenterX = rect.x + rect.width/2;
+        float wolfCenterY = rect.y + rect.height/2;
+        Vector2 wolfCenter = {wolfCenterX, wolfCenterY};
+        float distanceToTarget = Vector2Distance(wolfCenter, targetPos);
+        
+        // Update state based on AI behavior
+        if (!isAttacking && hasFinishedAttack) {
+            // Update direction based on target position
+            if (targetPos.x < wolfCenter.x) {
+                direction = LEFT_WOLF;
+            } else {
+                direction = RIGHT_WOLF;
+            }
+            
+            if (distanceToTarget <= attackRange) {
+                // Attack when in range
+                int attackType = GetRandomValue(1, 2);
+                switch (attackType) {
+                    case 1: state = ATTACK_SWIPE; break;
+                    case 2: state = ATTACK_RUN; break;
+                }
+                isAttacking = true;
+                hasFinishedAttack = false;
+                animations[state].currentFrame = 0;
+                
+                // If using running attack, move toward the target
+                if (state == ATTACK_RUN) {
+                    Vector2 directionVector = Vector2Normalize(Vector2Subtract(targetPos, wolfCenter));
+                    velocity.x = directionVector.x * moveSpeed * 2.0f; // Faster during running attack
+                }
+            }
+            else if (distanceToTarget <= chaseRange) {
+                // Chase the target
+                state = RUN_WOLF;
+                
+                // Calculate direction vector towards target
+                Vector2 directionVector = Vector2Normalize(Vector2Subtract(targetPos, wolfCenter));
+                velocity.x = directionVector.x * moveSpeed;
+                
+                // Random chance to jump during pursuit
+                if (isOnGround && GetRandomValue(0, 100) < 2) {
+                    velocity.y = JUMP_FORCE;
+                    isOnGround = false;
+                    state = JUMP_WOLF;
+                }
+            }
+            else {
+                // Idle when out of range
+                state = IDLE_WOLF;
+                velocity.x = 0;
+            }
+        }
+        
+        // Apply gravity
+        if (!isOnGround) {
+            velocity.y += GRAVITY * GetFrameTime();
+        }
+        
+        // Apply velocity
+        applyVelocity();
+        updateAnimation();
+        updateCollisionBoxes();
     }
 
     void applyVelocity() {
@@ -273,6 +357,13 @@ public:
         if (rect.x > mapWidth - rect.width) {
             rect.x = mapWidth - rect.width;
             direction = LEFT_WOLF;
+        }
+        
+        // Check if werewolf has landed on the ground
+        if (rect.y >= groundLevel - rect.height) {
+            rect.y = groundLevel - rect.height;
+            velocity.y = 0;
+            isOnGround = true;
         }
     }
 
@@ -339,9 +430,13 @@ public:
     }
 
     void takeDamage(int damage) {
-        if (!isDead && state != HURT_WOLF) {
-            // Implement health reduction logic here
-            if (GetRandomValue(0, 100) < 20) {  // 20% chance to die from a hit
+        if (!isDead) {
+            // Set to hurt state temporarily
+            state = HURT_WOLF;
+            animations[state].currentFrame = 0;
+            
+            // Random chance to die
+            if (GetRandomValue(0, 100) < 20) {
                 state = DEAD_WOLF;
                 isDead = true;
                 animations[state].currentFrame = 0;
@@ -353,21 +448,23 @@ public:
                         box.active = false;
                     }
                 }
-            } else {
-                state = HURT_WOLF;
-                animations[state].currentFrame = 0;
-                isAttacking = false;
             }
         }
     }
 
     void update() {
         if (!isDead) {
-            move();
+            // Apply gravity
+            if (!isOnGround) {
+                velocity.y += GRAVITY * GetFrameTime();
+            }
+            
+            move();  // Fall back to random movement if no target is provided
             updateAnimation();
             updateCollisionBoxes();
         } else {
             state = DEAD_WOLF;
+            updateAnimation(); // Continue death animation
         }
     }
 

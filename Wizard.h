@@ -3,6 +3,7 @@
 
 #include "raylib.h"
 #include "CollisionSystem.h"
+#include "CharacterAI.h"
 #include <vector>
 
 const float GRAVITY_WIZARD = 800.0f;
@@ -56,6 +57,13 @@ class Wizard {
         bool isAttacking = false;
         bool hasFinishedAttack = true;
         
+        // AI system
+        CharacterAI ai;
+        float attackRange = 200.0f;  // Wizard has longer range
+        float chaseRange = 350.0f;
+        float retreatRange = 80.0f;  // Distance at which wizard will retreat
+        float moveSpeed = 1.0f;
+        
         // Collision boxes for different purposes
         std::vector<CollisionBox> collisionBoxes;
 
@@ -106,6 +114,9 @@ class Wizard {
                 CollisionBox({rect.x + attackOffsetX, rect.y + attackOffsetY, attackSize, attackSize}, ATTACK, false),
                 CollisionBox({rect.x + hurtboxOffsetX, rect.y + hurtboxOffsetY, hurtboxWidth, hurtboxHeight}, HURTBOX)
             };
+            
+            // Initialize AI with a defensive behavior - wizard keeps distance
+            ai.setBehavior(std::make_unique<DefensiveBehavior>(retreatRange, attackRange));
         }
 
         ~Wizard() {
@@ -260,9 +271,14 @@ class Wizard {
                     isAttacking = true;
                     hasFinishedAttack = false;
                     animations[state].currentFrame = 0;
+                    
+                    // Play attack sound
+                    if (!IsSoundPlaying(attackSound)) {
+                        PlaySound(attackSound);
+                    }
                 } else {
                     // Move in the current direction
-                    velocity.x = direction * 1.0f;  // Wizard moves slower
+                    velocity.x = direction * moveSpeed;
                     state = RUN_WIZARD;
                 }
             } else if (isDead) {
@@ -408,9 +424,98 @@ class Wizard {
             }
         }
 
+        void update(Vector2 targetPos) {
+            if (isDead) {
+                state = DEAD_WIZARD;
+                updateAnimation();
+                return;
+            }
+
+            // Calculate distance to target
+            Vector2 wizardCenter = {rect.x + rect.width/2, rect.y + rect.height/2};
+            float distance = Vector2Distance(wizardCenter, targetPos);
+            
+            // Update state based on AI behavior
+            if (!isAttacking && hasFinishedAttack) {
+                // Update direction based on target position
+                if (targetPos.x < wizardCenter.x) {
+                    direction = LEFT_WIZARD;
+                } else {
+                    direction = RIGHT_WIZARD;
+                }
+                
+                // Determine AI state
+                AIState aiState;
+                
+                if (distance <= retreatRange) {
+                    // Too close, need to retreat
+                    aiState = AIState::RETREAT;
+                } else if (distance <= attackRange) {
+                    // In attack range
+                    aiState = AIState::ATTACK;
+                } else if (distance <= chaseRange) {
+                    // Chase range
+                    aiState = AIState::CHASE;
+                } else {
+                    // Too far, stay idle
+                    aiState = AIState::IDLE;
+                }
+                
+                // Act based on state
+                switch (aiState) {
+                    case AIState::RETREAT: {
+                        // Move away from target
+                        state = RUN_WIZARD;
+                        Vector2 directionVector = Vector2Normalize(Vector2Subtract(wizardCenter, targetPos));
+                        velocity.x = directionVector.x * moveSpeed;
+                        break;
+                    }
+                    
+                    case AIState::ATTACK: {
+                        // Attack the target
+                        int attackType = GetRandomValue(1, 2);
+                        switch (attackType) {
+                            case 1: state = ATTACK1_WIZARD; break;
+                            case 2: state = ATTACK2_WIZARD; break;
+                        }
+                        isAttacking = true;
+                        hasFinishedAttack = false;
+                        animations[state].currentFrame = 0;
+                        
+                        // Play attack sound
+                        if (!IsSoundPlaying(attackSound)) {
+                            PlaySound(attackSound);
+                        }
+                        break;
+                    }
+                    
+                    case AIState::CHASE: {
+                        // Move toward target
+                        state = RUN_WIZARD;
+                        Vector2 directionVector = Vector2Normalize(Vector2Subtract(targetPos, wizardCenter));
+                        velocity.x = directionVector.x * moveSpeed;
+                        break;
+                    }
+                    
+                    case AIState::IDLE:
+                    default: {
+                        // Stand still
+                        state = IDLE_WIZARD;
+                        velocity.x = 0;
+                        break;
+                    }
+                }
+            }
+            
+            // Apply velocity
+            applyVelocity();
+            updateAnimation();
+            updateCollisionBoxes();
+        }
+
         void update() {
             if (!isDead) {
-                move();
+                move();  // Fall back to random movement
                 updateAnimation();
                 updateCollisionBoxes();
             } else {

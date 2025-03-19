@@ -4,6 +4,7 @@
 #include "raylib.h"
 #include "CollisionSystem.h"
 #include <vector>
+#include "CharacterAI.h" // Include the CharacterAI header
 
 // Directions for Goblin movement (LEFT_GOBLIN or RIGHT_GOBLIN)
 enum DirectionGoblin {
@@ -52,6 +53,12 @@ public:
     bool hasFinishedAttack = true;  // Flag to check if the attack animation is finished
     bool isDead = false;         // Flag to check if Goblin is dead
     
+    // AI system
+    CharacterAI ai;
+    float attackRange = 100.0f;
+    float chaseRange = 300.0f;
+    float moveSpeed = 1.0f;
+    
     // Collision boxes for different purposes
     std::vector<CollisionBox> collisionBoxes;
 
@@ -92,6 +99,9 @@ public:
             CollisionBox({rect.x + attackOffsetX, rect.y + attackOffsetY, attackSize, attackSize}, ATTACK, false),
             CollisionBox({rect.x + hurtboxOffsetX, rect.y + hurtboxOffsetY, hurtboxWidth, hurtboxHeight}, HURTBOX)
         };
+        
+        // Initialize AI with an aggressive behavior
+        ai.setBehavior(std::make_unique<AggressiveBehavior>(attackRange, chaseRange));
     }
 
     // Destructor to clean up resources
@@ -228,11 +238,6 @@ public:
     void move() {
         // Simple AI movement logic
         if (!isAttacking && hasFinishedAttack && !isDead) {
-            // Random chance to change direction or attack
-            if (GetRandomValue(0, 100) < 2) {
-                direction = (direction == RIGHT_GOBLIN) ? LEFT_GOBLIN : RIGHT_GOBLIN;
-            }
-
             if (GetRandomValue(0, 100) < 1) {
                 // Choose a random attack
                 int attackType = GetRandomValue(1, 3);
@@ -246,7 +251,7 @@ public:
                 animations[state].currentFrame = 0;
             } else {
                 // Move in the current direction
-                velocity.x = direction * 1.0f;
+                velocity.x = direction * moveSpeed;
                 state = WALK_GOBLIN;
             }
         } else if (isDead) {
@@ -258,6 +263,61 @@ public:
 
         // Apply velocity
         applyVelocity();
+    }
+
+    // New method to update with targeting behavior using the target position
+    void updateWithTarget(Vector2 targetPos) {
+        if (isDead) {
+            state = DEAD_GOBLIN;
+            updateAnimation();
+            return;
+        }
+
+        // Calculate distance to target
+        Rectangle goblinRect = {rect.x, rect.y, rect.width, rect.height};
+        Vector2 goblinCenter = {goblinRect.x + goblinRect.width/2, goblinRect.y + goblinRect.height/2};
+        float distanceToTarget = Vector2Distance(goblinCenter, targetPos);
+        
+        // Update state based on AI behavior
+        if (!isAttacking && hasFinishedAttack) {
+            // Update direction based on target position
+            if (targetPos.x < goblinCenter.x) {
+                direction = LEFT_GOBLIN;
+            } else {
+                direction = RIGHT_GOBLIN;
+            }
+            
+            if (distanceToTarget <= attackRange) {
+                // Attack when in range
+                int attackType = GetRandomValue(1, 3);
+                switch (attackType) {
+                    case 1: state = ATTACK_CLUB; break;
+                    case 2: state = ATTACK_STOMP; break;
+                    case 3: state = ATTACK_AOE; break;
+                }
+                isAttacking = true;
+                hasFinishedAttack = false;
+                animations[state].currentFrame = 0;
+            }
+            else if (distanceToTarget <= chaseRange) {
+                // Chase the target
+                state = WALK_GOBLIN;
+                
+                // Calculate direction vector towards target
+                Vector2 directionVector = Vector2Normalize(Vector2Subtract(targetPos, goblinCenter));
+                velocity.x = directionVector.x * moveSpeed;
+            }
+            else {
+                // Idle when out of range
+                state = IDLE_GOBLIN;
+                velocity.x = 0;
+            }
+        }
+        
+        // Apply velocity
+        applyVelocity();
+        updateAnimation();
+        updateCollisionBoxes();
     }
 
     void applyVelocity() {
@@ -351,7 +411,7 @@ public:
 
     void update() {
         if (!isDead) {
-            move();
+            move();  // Fall back to random movement if no target is provided
             updateAnimation();
             updateCollisionBoxes();
         } else {

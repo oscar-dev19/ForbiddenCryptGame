@@ -3,6 +3,7 @@
 
 #include "raylib.h"
 #include "CollisionSystem.h"
+#include "CharacterAI.h" // Include the CharacterAI header
 #include <vector>
 #include <iostream>
 #include <string>
@@ -63,6 +64,12 @@ class Demon {
         float chantTimer = 0.0f;
         float chantInterval = 10.0f; // Play chant every 10 seconds
 
+        // AI system
+        CharacterAI ai;
+        float attackRange = 150.0f;
+        float chaseRange = 500.0f;
+        float moveSpeed = 0.8f;  // Demon is slower but more powerful
+
         // Collision boxes for different purposes
         std::vector<CollisionBox> collisionBoxes;
 
@@ -106,27 +113,30 @@ class Demon {
                 sprites.push_back(texture);
             }
 
-            // Initialize collision boxes with scaled dimensions
-            float bodyOffsetX = 36.0f * SPRITE_SCALE;
+            // Initialize collision boxes with scaled dimensions for the larger Demon
+            float bodyOffsetX = 30.0f * SPRITE_SCALE;
             float bodyOffsetY = 20.0f * SPRITE_SCALE;
-            float bodyWidth = rect.width - (72.0f * SPRITE_SCALE);
-            float bodyHeight = rect.height - (20.0f * SPRITE_SCALE);
+            float bodyWidth = rect.width - (60.0f * SPRITE_SCALE);
+            float bodyHeight = rect.height - (30.0f * SPRITE_SCALE);
             
-            float attackOffsetX = rect.width - (36.0f * SPRITE_SCALE);
+            float attackOffsetX = rect.width - (20.0f * SPRITE_SCALE);
             float attackOffsetY = 30.0f * SPRITE_SCALE;
-            float attackSize = 72.0f * SPRITE_SCALE;
-            float attackHeight = 40.0f * SPRITE_SCALE;
+            float attackWidth = 60.0f * SPRITE_SCALE;
+            float attackHeight = 50.0f * SPRITE_SCALE;
             
-            float hurtboxOffsetX = 45.0f * SPRITE_SCALE;
+            float hurtboxOffsetX = 40.0f * SPRITE_SCALE;
             float hurtboxOffsetY = 25.0f * SPRITE_SCALE;
-            float hurtboxWidth = rect.width - (90.0f * SPRITE_SCALE);
-            float hurtboxHeight = rect.height - (30.0f * SPRITE_SCALE);
+            float hurtboxWidth = rect.width - (80.0f * SPRITE_SCALE);
+            float hurtboxHeight = rect.height - (45.0f * SPRITE_SCALE);
             
             collisionBoxes = {
                 CollisionBox({rect.x + bodyOffsetX, rect.y + bodyOffsetY, bodyWidth, bodyHeight}, BODY),
-                CollisionBox({rect.x + attackOffsetX, rect.y + attackOffsetY, attackSize, attackHeight}, ATTACK, false),
+                CollisionBox({rect.x + attackOffsetX, rect.y + attackOffsetY, attackWidth, attackHeight}, ATTACK, false),
                 CollisionBox({rect.x + hurtboxOffsetX, rect.y + hurtboxOffsetY, hurtboxWidth, hurtboxHeight}, HURTBOX)
             };
+            
+            // Initialize AI with an aggressive behavior
+            ai.setBehavior(std::make_unique<AggressiveBehavior>(attackRange, chaseRange));
             
             std::cout << "Demon collision boxes initialized. Count: " << collisionBoxes.size() << std::endl;
 
@@ -399,23 +409,94 @@ class Demon {
             }
         }
 
-        void update(float deltaTime) {
-            if (!isDead) {
-                // Update chant timer
-                chantTimer += deltaTime;
-                if (chantTimer >= chantInterval) {
-                    chantTimer = 0;
-                    // Play chant sound if available
-                    if (chantSound.frameCount > 0) {
-                        PlaySound(chantSound);
-                    }
+        // Update with targeting behavior
+        void update(float deltaTime, Vector2 targetPos) {
+            // Update chanting sound timer
+            chantTimer += deltaTime;
+            if (chantTimer >= chantInterval) {
+                chantTimer = 0.0f;
+                if (!IsSoundPlaying(chantSound) && !isDead) {
+                    PlaySound(chantSound);
                 }
-                
-                move();
             }
             
-            applyVelocity();
+            if (isDead) {
+                state = DEAD_DEMON;
+                updateAnimation();
+                return;
+            }
+
+            // Calculate distance to target
+            Vector2 demonCenter = {rect.x + rect.width/2, rect.y + rect.height/2};
+            float distance = Vector2Distance(demonCenter, targetPos);
+            
+            // Update state based on AI behavior
+            if (!isAttacking && hasFinishedAttack) {
+                // Update direction based on target position
+                if (targetPos.x < demonCenter.x) {
+                    direction = LEFT_DEMON;
+                } else {
+                    direction = RIGHT_DEMON;
+                }
+                
+                if (distance <= attackRange) {
+                    // Attack when in range
+                    state = ATTACK_DEMON;
+                    isAttacking = true;
+                    hasFinishedAttack = false;
+                    animations[state].currentFrame = 0;
+                    
+                    // Play attack sound
+                    if (!IsSoundPlaying(attackSound)) {
+                        PlaySound(attackSound);
+                    }
+                }
+                else if (distance <= chaseRange) {
+                    // Chase the target
+                    state = WALK_DEMON;
+                    
+                    // Calculate direction vector towards target
+                    Vector2 directionVector = Vector2Normalize(Vector2Subtract(targetPos, demonCenter));
+                    velocity.x = directionVector.x * moveSpeed;
+                }
+                else {
+                    // Idle when out of range
+                    state = IDLE_DEMON;
+                    velocity.x = 0;
+                }
+            }
+            
+            // Apply velocity
+            rect.x += velocity.x;
+            
+            // Map boundaries
+            const float mapWidth = 128 * 16;
+            if (rect.x < 0) rect.x = 0;
+            if (rect.x > mapWidth - rect.width) rect.x = mapWidth - rect.width;
+            
             updateAnimation();
+            updateCollisionBoxes();
+        }
+
+        // Original update method for backward compatibility
+        void update(float deltaTime) {
+            // Update chanting sound timer
+            chantTimer += deltaTime;
+            if (chantTimer >= chantInterval) {
+                chantTimer = 0.0f;
+                if (!IsSoundPlaying(chantSound) && !isDead) {
+                    PlaySound(chantSound);
+                }
+            }
+            
+            if (!isDead) {
+                move();  // Fall back to random movement
+                updateAnimation();
+                updateCollisionBoxes();
+            } else {
+                state = DEAD_DEMON;
+                updateAnimation(); // Continue death animation
+            }
         }
 
         CollisionBox* getCollisionBox(CollisionBoxType type) {

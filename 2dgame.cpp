@@ -164,6 +164,16 @@ void drawScaledDemon(const Demon& demon) {
     );
 }
 
+// Function to check if a file exists
+bool fileExists(const char* fileName) {
+    FILE* file = fopen(fileName, "r");
+    if (file) {
+        fclose(file);
+        return true;
+    }
+    return false;
+}
+
 int main() {
     // Set up error handling
     SetTraceLogLevel(LOG_WARNING);
@@ -211,29 +221,76 @@ int main() {
     camera.rotation = 0.0f;
     camera.zoom = 1.5f;  // Zoom in for better visibility
 
-    // Load the TMX map
-    const char* mapPath = "maps/Room3and4.tmx";
-    tmxMap = LoadTMX(mapPath);
+    // Keep the array of map paths for fallback loading
+    const char* mapPaths[] = {
+        "maps/Room1.tmx",
+        "maps/Room3and4.tmx",
+        "maps/Dungeon.tmx"
+    };
+    int numMapPaths = sizeof(mapPaths) / sizeof(mapPaths[0]);
     
-    if (tmxMap == NULL || tmxMap->fileName == NULL) {
-        printf("Failed to load TMX map: %s\n", mapPath);
-        // Continue using the fallback background
-    } else {
-        printf("Successfully loaded TMX map: %s\n", mapPath);
+    // Try to load any available map
+    tmxMap = NULL;
+    bool mapLoaded = false;
+    for (int i = 0; i < numMapPaths && !mapLoaded; i++) {
+        tmxMap = LoadTMX(mapPaths[i]);
+        if (tmxMap != NULL) {
+            mapLoaded = true;
+            printf("Successfully loaded TMX map: %s\n", mapPaths[i]);
+        } else {
+            printf("Failed to load TMX map: %s\n", mapPaths[i]);
+        }
     }
-
-    // Calculate the map dimensions in pixels
-    // Room1.tmx is 128x128 tiles with each tile being 16x16 pixels
+    
+    if (!mapLoaded) {
+        printf("Failed to load any TMX map. Exiting...\n");
+        exit(1);
+    }
+    
+    // Keep the tileset checking code but remove debug prints
+    const char* requiredTilesets[] = {
+        "maps/16 x16 Purple Dungeon Sprite Sheet.tsx"
+    };
+    int numRequiredTilesets = sizeof(requiredTilesets) / sizeof(requiredTilesets[0]);
+    
+    // Ensure needed tileset files exist
+    for (int i = 0; i < numRequiredTilesets; i++) {
+        if (!fileExists(requiredTilesets[i])) {
+            // Keep the TSX file creation code
+            FILE* file = fopen(requiredTilesets[i], "w");
+            if (file) {
+                fprintf(file, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+                fprintf(file, "<tileset version=\"1.10\" tiledversion=\"1.10.2\" name=\"16 x16 Purple Dungeon Sprite Sheet\" tilewidth=\"16\" tileh\n");
+                fprintf(file, "eight=\"16\" tilecount=\"60\" columns=\"6\">\n");
+                fprintf(file, " <image source=\"16 x16 Purple Dungeon Sprite Sheet.png\" width=\"96\" height=\"160\"/>\n");
+                fprintf(file, "</tileset>\n");
+                fclose(file);
+            } else {
+                printf("Failed to create tileset file: %s\n", requiredTilesets[i]);
+            }
+        }
+    }
+    
+    // Calculate the map dimensions in pixels based on the loaded TMX map
     const int mapTileSize = 16;
-    const int mapWidth = 1000;
-    const int mapHeight = 500;
+    int mapWidth = 128;  // Default map width in tiles
+    int mapHeight = 32;  // Default map height in tiles
+    
+    // Try to get actual dimensions from the loaded TMX map
+    if (tmxMap != NULL && tmxMap->fileName != NULL) {
+        // Get map dimensions from the loaded TMX file
+        mapWidth = tmxMap->width;
+        mapHeight = tmxMap->height;
+    } else {
+        printf("Using default map dimensions: %d x %d tiles\n", mapWidth, mapHeight);
+    }
+    
     const float mapWidthPixels = mapWidth * mapTileSize;
     const float mapHeightPixels = mapHeight * mapTileSize;
     
-    // Define floor level higher up on the screen (moved up by 100 pixels)
-    const float floorHeight = 50.0f;
-    const float floorOffset = 120.0f;  // Offset from the bottom to ensure visibility
-    const float floorLevel = screenHeight - floorHeight - floorOffset;
+    // Define floor level to match where the non-zero tiles (floor tiles) are in Room1.tmx
+    const float floorLevel = 380.0f; // Exact floor level matching the non-zero floor tiles in TMX
+    const float floorHeight = 50.0f; // Height of the floor rectangle if needed
 
     // Load key texture
     keyTexture = LoadTexture("assets/gameObjects/key/key.png");
@@ -245,11 +302,14 @@ int main() {
     // Place the key further in the map to encourage exploration
     keyPosition = { 1200, floorLevel - keyTexture.height };
 
-    // Initialize characters using stack allocation
+    // Initialize characters using stack allocation - all characters now use the same floorLevel
     Samurai samurai(100, floorLevel, floorLevel);
     
+    // Initialize dash sound volume to match master volume
+    samurai.setDashSoundVolume(0.8f * masterVolume);
+    
     // Position enemies across the map to demonstrate full map usage
-    // Each enemy is placed at different distances from the start
+    // Each enemy is placed at different distances from the start but at the same floor level
     Goblin goblin((Vector2){500, floorLevel});
     goblin.loadTextures();
     
@@ -261,6 +321,10 @@ int main() {
     
     // Create the demon at normal size at the far end of the map
     Demon demon((Vector2){1800, floorLevel});
+    
+    // Print initialization positions for debugging
+    printf("Floor level set to: %.1f\n", floorLevel);
+    printf("All characters initialized at floor level: %.1f\n", floorLevel);
 
     // Initialize health values for enemies
     int goblinHealth = 50;
@@ -289,6 +353,8 @@ int main() {
             if (masterVolume > 1.0f) masterVolume = 1.0f;
             SetMusicVolume(backgroundMusic, 0.5f * masterVolume);
             SetSoundVolume(demonChantSound, 0.6f * masterVolume);
+            // Apply master volume to dash sound
+            samurai.setDashSoundVolume(0.8f * masterVolume);
         }
         
         if (IsKeyPressed(KEY_MINUS)) { // - key
@@ -296,36 +362,12 @@ int main() {
             if (masterVolume < 0.0f) masterVolume = 0.0f;
             SetMusicVolume(backgroundMusic, 0.5f * masterVolume);
             SetSoundVolume(demonChantSound, 0.6f * masterVolume);
+            // Apply master volume to dash sound
+            samurai.setDashSoundVolume(0.8f * masterVolume);
         }
         
-        // Double jump height control with PAGE UP and PAGE DOWN keys
-        if (IsKeyPressed(KEY_PAGE_UP)) {
-            // Increase double jump height with a maximum limit
-            float currentHeight = samurai.getDoubleJumpHeight();
-            if (currentHeight < 100.0f) { // Increased maximum limit to match the doubled max height
-                samurai.setDoubleJumpHeight(currentHeight + 5.0f);
-            }
-        }
-        if (IsKeyPressed(KEY_PAGE_DOWN)) {
-            // Decrease double jump height (with minimum limit)
-            float currentHeight = samurai.getDoubleJumpHeight();
-            if (currentHeight > 40.0f) { // Don't go too low
-                samurai.setDoubleJumpHeight(currentHeight - 5.0f);
-            }
-        }
-        
-        // Adjust dash sound volume with [ and ] keys
-        if (IsKeyPressed(KEY_LEFT_BRACKET)) {
-            // Decrease dash sound volume
-            float currentVolume = samurai.getDashSoundVolume();
-            samurai.setDashSoundVolume(currentVolume - 0.1f);
-        }
-        
-        if (IsKeyPressed(KEY_RIGHT_BRACKET)) {
-            // Increase dash sound volume
-            float currentVolume = samurai.getDashSoundVolume();
-            samurai.setDashSoundVolume(currentVolume + 0.1f);
-        }
+        // Set double jump height to a fixed value of 45
+        samurai.setDoubleJumpHeight(45.0f);
         
         // Toggle collision box visibility with F1 key
         if (IsKeyPressed(KEY_F1)) {
@@ -338,13 +380,22 @@ int main() {
         
         // Update characters
         samurai.updateSamurai();
-        goblin.update();
-        werewolf.update();
-        wizard.update();
-        demon.update(deltaTime);
+
+        // Get samurai position for enemies to target
+        Vector2 samuraiPos = {0, 0};
+        CollisionBox* samuraiBody = samurai.getCollisionBox(BODY);
+        if (samuraiBody && samuraiBody->active) {
+            samuraiPos.x = samuraiBody->rect.x + samuraiBody->rect.width / 2;
+            samuraiPos.y = samuraiBody->rect.y + samuraiBody->rect.height / 2;
+        }
+
+        // Update enemies with the player's position as target
+        goblin.updateWithTarget(samuraiPos);
+        werewolf.updateWithTarget(samuraiPos);
+        wizard.update(samuraiPos);
+        demon.update(deltaTime, samuraiPos);
 
         // Check collision between samurai and key
-        CollisionBox* samuraiBody = samurai.getCollisionBox(BODY);
         if (samuraiBody && samuraiBody->active) {
             if (CheckCollisionRecs(samuraiBody->rect, keyCollisionRect) && !keyCollected) {
                 // Play key collection sound
@@ -493,6 +544,8 @@ int main() {
         
         // Draw the TMX map if loaded, otherwise fall back to the tiled background
         if (tmxMap != NULL && tmxMap->fileName != NULL) {
+            // Remove all debug prints about drawing TMX map
+            
             // Draw the TMX map
             DrawTMX(tmxMap, &camera, 0, 0, WHITE);
         } else {
@@ -693,37 +746,18 @@ int main() {
         // Draw UI elements on top of everything
         EndMode2D();
 
-        // Draw samurai health bar
-        DrawRectangle(10, 10, 200, 20, RED);
-        DrawRectangle(10, 10, 200 * ((float)samurai.getHealth() / 100.0f), 20, GREEN);
-        DrawText(TextFormat("Health: %d/100", samurai.getHealth()), 10, 35, 20, BLACK);
-
-        // Display debug information to help with map movement issue
-        DrawText(TextFormat("Samurai Position: (%.1f, %.1f)", samurai.getRect().x, samurai.getRect().y), 10, 60, 20, BLACK);
-        DrawText(TextFormat("Camera Target: (%.1f, %.1f)", camera.target.x, camera.target.y), 10, 85, 20, BLACK);
-        DrawText(TextFormat("Map Width: %.1f", mapWidthPixels), 10, 110, 20, BLACK);
-        DrawText(TextFormat("Screen Width: %d", screenWidth), 10, 135, 20, BLACK);
+        // Move keyboard instructions to bottom left corner
+        int instructionsY = screenHeight - 210; // Starting Y position for instructions
+        int lineHeight = 25; // Height of each line of text
         
-        // Key collected status - remove the HUD text
-        if (keyCollected) {
-            // Remove "Key Collected!" text from here
-        } else {
-            DrawText(TextFormat("Key at: (%.1f, %.1f)", keyPosition.x, keyPosition.y), 10, 160, 20, BLACK);
-        }
-        
-        // Show keyboard instructions
-        DrawText("Arrow Keys: Move", screenWidth - 220, 10, 20, BLACK);
-        DrawText("Z: Attack", screenWidth - 220, 35, 20, BLACK);
-        DrawText("X: Jump", screenWidth - 220, 60, 20, BLACK);
-        DrawText("C: Dash", screenWidth - 220, 85, 20, BLACK);
-        DrawText("F1: Toggle collision boxes", screenWidth - 220, 110, 20, BLACK);
-        DrawText("M: Toggle music", screenWidth - 220, 135, 20, BLACK);
-        
-        // Show camera controls
-        DrawText("Mouse Wheel: Zoom", screenWidth - 220, 160, 20, BLACK);
-
-        // Display double jump height
-        DrawText(TextFormat("Double Jump Height: %.1f", samurai.getDoubleJumpHeight()), 10, 185, 20, BLACK);
+        DrawText("GAME CONTROLS:", 10, instructionsY, 20, DARKGRAY);
+        DrawText("W or Up: Jump (press twice for double jump)", 10, instructionsY + lineHeight, 20, DARKGRAY);
+        DrawText("A/D or Left/Right: Move", 10, instructionsY + lineHeight*2, 20, DARKGRAY);
+        DrawText("Space: Attack", 10, instructionsY + lineHeight*3, 20, DARKGRAY);
+        DrawText("Double-tap A/D: Dash", 10, instructionsY + lineHeight*4, 20, DARKGRAY);
+        DrawText("F1: Toggle collision boxes", 10, instructionsY + lineHeight*5, 20, DARKGRAY);
+        DrawText("M: Toggle music", 10, instructionsY + lineHeight*6, 20, DARKGRAY);
+        DrawText("Mouse Wheel: Zoom", 10, instructionsY + lineHeight*7, 20, DARKGRAY);
 
         EndDrawing();
         

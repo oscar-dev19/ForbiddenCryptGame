@@ -450,10 +450,7 @@ private:
     // Helper function to play the dash sound with proper volume
     void playDashSound() {
         if (dashSound.frameCount > 0) {
-            // Set the volume for the dash sound
-            SetSoundVolume(dashSound, dashSoundVolume);
-            
-            // Play the sound
+            // Play the sound (volume already set through setSoundVolumes)
             PlaySound(dashSound);
             
             // Debug output
@@ -558,6 +555,25 @@ private:
         }
     }
 
+    // Helper function to set volume for all sound effects
+    void setSoundVolumes(float volume) {
+        // Clamp volume between 0.0 and 1.0
+        if (volume < 0.0f) volume = 0.0f;
+        if (volume > 1.0f) volume = 1.0f;
+        
+        // Store the dash sound volume for future reference
+        dashSoundVolume = volume;
+        
+        // Set volume for all sound effects
+        if (attackSound.frameCount > 0) SetSoundVolume(attackSound, volume);
+        if (jumpSound.frameCount > 0) SetSoundVolume(jumpSound, volume);
+        if (hurtSound.frameCount > 0) SetSoundVolume(hurtSound, volume);
+        if (runSound.frameCount > 0) SetSoundVolume(runSound, volume);
+        if (deadSound.frameCount > 0) SetSoundVolume(deadSound, volume);
+        if (landSound.frameCount > 0) SetSoundVolume(landSound, volume);
+        if (dashSound.frameCount > 0) SetSoundVolume(dashSound, volume);
+    }
+
 public:
     bool isDead = false; // Flag to indicate if the samurai is dead.
     bool showCollisionBoxes = false; // Flag to enable/disable collision box drawing
@@ -572,14 +588,10 @@ public:
         doubleJumpHeight = -height; // Store as negative value for upward velocity
     }
     
-    // Accessor for dash sound volume
+    // Accessor for dash sound volume (kept for compatibility)
     void setDashSoundVolume(float volume) {
-        // Clamp volume between 0.0 and 1.0
-        if (volume < 0.0f) volume = 0.0f;
-        if (volume > 1.0f) volume = 1.0f;
-        
-        dashSoundVolume = volume;
-        printf("Dash sound volume set to: %.2f\n", dashSoundVolume);
+        // Set volume for all sounds to maintain consistency
+        setSoundVolumes(volume);
     }
     
     float getDashSoundVolume() const {
@@ -784,9 +796,28 @@ public:
             }
         }
         
-        // Draw health bar
-        DrawRectangle(10, 10, (currentHealth * 200) / maxHealth, 20, RED);
-        DrawRectangleLines(10, 10, 200, 20, BLACK); // Border of health bar.
+        // Draw health bar above the character instead of top left corner
+        float healthBarWidth = rect.width;
+        float healthBarHeight = 5.0f;
+        float healthPercentage = (float)currentHealth / maxHealth;
+        
+        // Draw health bar background (red)
+        DrawRectangle(
+            rect.x, 
+            rect.y - healthBarHeight - 5, 
+            healthBarWidth, 
+            healthBarHeight, 
+            RED
+        );
+        
+        // Draw current health (green)
+        DrawRectangle(
+            rect.x, 
+            rect.y - healthBarHeight - 5, 
+            healthBarWidth * healthPercentage, 
+            healthBarHeight, 
+            GREEN
+        );
     }
 
     // Update the Samurai's state and position
