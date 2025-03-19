@@ -435,6 +435,10 @@ class Wizard {
             Vector2 wizardCenter = {rect.x + rect.width/2, rect.y + rect.height/2};
             float distance = Vector2Distance(wizardCenter, targetPos);
             
+            // Define optimal distance range for the wizard (they prefer to keep distance)
+            float optimalMinDistance = 150.0f;
+            float optimalMaxDistance = 200.0f;
+            
             // Update state based on AI behavior
             if (!isAttacking && hasFinishedAttack) {
                 // Update direction based on target position
@@ -450,11 +454,14 @@ class Wizard {
                 if (distance <= retreatRange) {
                     // Too close, need to retreat
                     aiState = AIState::RETREAT;
-                } else if (distance <= attackRange) {
-                    // In attack range
+                } else if (distance >= optimalMinDistance && distance <= attackRange) {
+                    // In attack range and not too close - optimal position for attacking
                     aiState = AIState::ATTACK;
-                } else if (distance <= chaseRange) {
-                    // Chase range
+                } else if (distance < optimalMinDistance) {
+                    // Too close for comfort but not in immediate retreat range
+                    aiState = AIState::RETREAT;
+                } else if (distance > attackRange && distance <= chaseRange) {
+                    // Too far to attack, need to get closer
                     aiState = AIState::CHASE;
                 } else {
                     // Too far, stay idle
@@ -472,7 +479,8 @@ class Wizard {
                     }
                     
                     case AIState::ATTACK: {
-                        // Attack the target
+                        // Attack the target, but stop moving
+                        velocity.x = 0;
                         int attackType = GetRandomValue(1, 2);
                         switch (attackType) {
                             case 1: state = ATTACK1_WIZARD; break;
@@ -490,10 +498,16 @@ class Wizard {
                     }
                     
                     case AIState::CHASE: {
-                        // Move toward target
-                        state = RUN_WIZARD;
-                        Vector2 directionVector = Vector2Normalize(Vector2Subtract(targetPos, wizardCenter));
-                        velocity.x = directionVector.x * moveSpeed;
+                        // Move toward target, but stop if we reach optimal distance
+                        if (distance > optimalMaxDistance) {
+                            state = RUN_WIZARD;
+                            Vector2 directionVector = Vector2Normalize(Vector2Subtract(targetPos, wizardCenter));
+                            velocity.x = directionVector.x * moveSpeed;
+                        } else {
+                            // We're at a good distance, stop moving
+                            state = IDLE_WIZARD;
+                            velocity.x = 0;
+                        }
                         break;
                     }
                     

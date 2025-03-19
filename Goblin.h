@@ -278,6 +278,9 @@ public:
         Vector2 goblinCenter = {goblinRect.x + goblinRect.width/2, goblinRect.y + goblinRect.height/2};
         float distanceToTarget = Vector2Distance(goblinCenter, targetPos);
         
+        // Define a minimum distance to keep from the target
+        float minDistance = 50.0f;
+        
         // Update state based on AI behavior
         if (!isAttacking && hasFinishedAttack) {
             // Update direction based on target position
@@ -300,12 +303,18 @@ public:
                 animations[state].currentFrame = 0;
             }
             else if (distanceToTarget <= chaseRange) {
-                // Chase the target
+                // Chase the target but maintain minimum distance
                 state = WALK_GOBLIN;
                 
-                // Calculate direction vector towards target
-                Vector2 directionVector = Vector2Normalize(Vector2Subtract(targetPos, goblinCenter));
-                velocity.x = directionVector.x * moveSpeed;
+                if (distanceToTarget > minDistance) {
+                    // Calculate direction vector towards target
+                    Vector2 directionVector = Vector2Normalize(Vector2Subtract(targetPos, goblinCenter));
+                    velocity.x = directionVector.x * moveSpeed;
+                } else {
+                    // Stop if we're already at minimum distance
+                    velocity.x = 0;
+                    state = IDLE_GOBLIN;
+                }
             }
             else {
                 // Idle when out of range

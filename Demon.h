@@ -430,6 +430,10 @@ class Demon {
             Vector2 demonCenter = {rect.x + rect.width/2, rect.y + rect.height/2};
             float distance = Vector2Distance(demonCenter, targetPos);
             
+            // Define a minimum distance to keep from the target
+            // The Demon is larger, so it needs a bigger minimum distance
+            float minDistance = 100.0f;
+            
             // Update state based on AI behavior
             if (!isAttacking && hasFinishedAttack) {
                 // Update direction based on target position
@@ -439,8 +443,8 @@ class Demon {
                     direction = RIGHT_DEMON;
                 }
                 
-                if (distance <= attackRange) {
-                    // Attack when in range
+                if (distance <= attackRange && distance >= minDistance) {
+                    // Attack when in range and not too close
                     state = ATTACK_DEMON;
                     isAttacking = true;
                     hasFinishedAttack = false;
@@ -451,13 +455,25 @@ class Demon {
                         PlaySound(attackSound);
                     }
                 }
+                else if (distance < minDistance) {
+                    // Too close, take a step back
+                    state = WALK_DEMON;
+                    Vector2 directionVector = Vector2Normalize(Vector2Subtract(demonCenter, targetPos));
+                    velocity.x = directionVector.x * moveSpeed * 0.5f; // Move back slowly
+                }
                 else if (distance <= chaseRange) {
-                    // Chase the target
+                    // Chase the target but maintain minimum distance
                     state = WALK_DEMON;
                     
-                    // Calculate direction vector towards target
-                    Vector2 directionVector = Vector2Normalize(Vector2Subtract(targetPos, demonCenter));
-                    velocity.x = directionVector.x * moveSpeed;
+                    // Only move if we're outside the minimum distance
+                    if (distance > minDistance) {
+                        // Calculate direction vector towards target
+                        Vector2 directionVector = Vector2Normalize(Vector2Subtract(targetPos, demonCenter));
+                        velocity.x = directionVector.x * moveSpeed;
+                    } else {
+                        velocity.x = 0;
+                        state = IDLE_DEMON;
+                    }
                 }
                 else {
                     // Idle when out of range

@@ -283,6 +283,9 @@ public:
         Vector2 wolfCenter = {wolfCenterX, wolfCenterY};
         float distanceToTarget = Vector2Distance(wolfCenter, targetPos);
         
+        // Define a minimum distance to keep from the target
+        float minDistance = 70.0f;
+        
         // Update state based on AI behavior
         if (!isAttacking && hasFinishedAttack) {
             // Update direction based on target position
@@ -310,18 +313,24 @@ public:
                 }
             }
             else if (distanceToTarget <= chaseRange) {
-                // Chase the target
+                // Chase the target but maintain minimum distance
                 state = RUN_WOLF;
                 
-                // Calculate direction vector towards target
-                Vector2 directionVector = Vector2Normalize(Vector2Subtract(targetPos, wolfCenter));
-                velocity.x = directionVector.x * moveSpeed;
-                
-                // Random chance to jump during pursuit
-                if (isOnGround && GetRandomValue(0, 100) < 2) {
-                    velocity.y = JUMP_FORCE;
-                    isOnGround = false;
-                    state = JUMP_WOLF;
+                if (distanceToTarget > minDistance) {
+                    // Calculate direction vector towards target
+                    Vector2 directionVector = Vector2Normalize(Vector2Subtract(targetPos, wolfCenter));
+                    velocity.x = directionVector.x * moveSpeed;
+                    
+                    // Random chance to jump during pursuit
+                    if (isOnGround && GetRandomValue(0, 100) < 2) {
+                        velocity.y = JUMP_FORCE;
+                        isOnGround = false;
+                        state = JUMP_WOLF;
+                    }
+                } else {
+                    // Stop if we're already at minimum distance
+                    velocity.x = 0;
+                    state = IDLE_WOLF;
                 }
             }
             else {
