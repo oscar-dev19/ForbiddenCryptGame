@@ -9,6 +9,12 @@
 #include <iostream>
 #include <vector>
 #include <stdlib.h> // For exit()
+#include <unistd.h> // For getcwd()
+#include <limits.h> // For PATH_MAX
+
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 // Define RAYTMX_IMPLEMENTATION to include the implementation of the library
 #define RAYTMX_IMPLEMENTATION
@@ -175,6 +181,14 @@ bool fileExists(const char* fileName) {
 }
 
 int main() {
+    // Print current working directory
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        printf("Current working directory: %s\n", cwd);
+    } else {
+        perror("getcwd() error");
+    }
+    
     // Set up error handling
     SetTraceLogLevel(LOG_WARNING);
     

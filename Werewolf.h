@@ -1,10 +1,17 @@
-#ifndef WEREWOLF_H
-#define WEREWOLF_H
+#pragma once
+#include <vector>
+#include <cmath>
+#include <algorithm>
+#include <unistd.h> // For getcwd()
+#include <limits.h> // For PATH_MAX
+
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 #include "raylib.h"
 #include "CollisionSystem.h"
 #include "CharacterAI.h"
-#include <vector>
 
 // Constants for physics
 const float GRAVITY = 800.0f;
@@ -24,7 +31,8 @@ enum CurrentStateWolf {
     IDLE_WOLF,
     JUMP_WOLF,
     RUN_WOLF,
-    WALK_WOLF
+    WALK_WOLF,
+    RUN_ATTACK_WOLF
 };
 
 enum AnimationTypeWolf {
@@ -72,15 +80,17 @@ public:
         this->groundLevel = groundLevel; // Set initial ground level.
 
         // Initialize animations for different states with correct frame counts
+        animations.resize(9); // Resize to include RUN_ATTACK_WOLF
         animations = {
-            {0, 6, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF}, // DEAD_WOLF - 7 frames
-            {0, 7, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF}, // ATTACK_SWIPE - 8 frames
-            {0, 5, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF}, // ATTACK_RUN - 6 frames
-            {0, 2, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF}, // HURT_WOLF - 3 frames
-            {0, 6, 0, 0, 0.1f, 0.1f, REPEATING_WOLF}, // IDLE_WOLF - 7 frames
-            {0, 8, 0, 0, 0.1f, 0.1f, REPEATING_WOLF}, // JUMP_WOLF - 9 frames
-            {0, 7, 0, 0, 0.1f, 0.1f, REPEATING_WOLF}, // RUN_WOLF - 8 frames
-            {0, 9, 0, 0, 0.1f, 0.1f, REPEATING_WOLF}  // WALK_WOLF - 10 frames
+            {0, 3, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF},    // DEAD_WOLF - 4 frames in Dead.png
+            {0, 5, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF},    // ATTACK_SWIPE - 6 frames in Attack_1.png
+            {0, 3, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF},    // ATTACK_RUN - 4 frames in Attack_2.png
+            {0, 2, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF},    // HURT_WOLF - 3 frames in Hurt.png
+            {0, 3, 0, 0, 0.1f, 0.1f, REPEATING_WOLF},  // IDLE_WOLF - 4 frames in Idle.png
+            {0, 3, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF},    // JUMP_WOLF - 4 frames in Jump.png
+            {0, 5, 0, 0, 0.1f, 0.1f, REPEATING_WOLF},  // RUN_WOLF - 6 frames in Run.png
+            {0, 7, 0, 0, 0.1f, 0.1f, REPEATING_WOLF},  // WALK_WOLF - 8 frames in walk.png
+            {0, 5, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF}     // RUN_ATTACK_WOLF - 6 frames in Run+Attack.png
         };
 
         // Initialize collision boxes with appropriate dimensions
@@ -121,21 +131,78 @@ public:
             }
         }
         
-        // Resize and load all textures
-        sprites.resize(8);
-        sprites[DEAD_WOLF] = LoadTexture("assets/Werewolf/dead/werewolf_dead.png");
-        sprites[ATTACK_SWIPE] = LoadTexture("assets/Werewolf/attack/werewolf_attack.png");
-        sprites[ATTACK_RUN] = LoadTexture("assets/Werewolf/attack/werewolf_attack_run.png");
-        sprites[HURT_WOLF] = LoadTexture("assets/Werewolf/hurt/werewolf_hurt.png");
-        sprites[IDLE_WOLF] = LoadTexture("assets/Werewolf/idle/werewolf_idle.png");
-        sprites[JUMP_WOLF] = LoadTexture("assets/Werewolf/jump/werewolf_jump.png");
-        sprites[RUN_WOLF] = LoadTexture("assets/Werewolf/run/werewolf_run.png");
-        sprites[WALK_WOLF] = LoadTexture("assets/Werewolf/walk/werewolf_walk.png");
+        printf("Loading Werewolf textures...\n");
         
-        // Print debug info about loaded textures
-        for (int i = 0; i < sprites.size(); i++) {
-            printf("Werewolf texture %d: %dx%d\n", i, sprites[i].width, sprites[i].height);
+        // Get current working directory
+        char cwd[PATH_MAX];
+        if (getcwd(cwd, sizeof(cwd)) == NULL) {
+            printf("Error getting current working directory\n");
+            return;
         }
+        
+        // Try different path formats
+        const char* pathFormats[] = {
+            "%s/2DGame/assets/Werewolf/%s",    // Absolute with 2DGame prefix
+            "%s/assets/Werewolf/%s",           // Absolute without 2DGame prefix
+            "2DGame/assets/Werewolf/%s",       // Relative with 2DGame prefix
+            "assets/Werewolf/%s"               // Relative without 2DGame prefix
+        };
+        
+        // Resize sprites vector
+        sprites.resize(9);
+        
+        // List of filenames to load
+        const char* fileNames[] = {
+            "Dead.png", "Attack_1.png", "Attack_2.png", "Hurt.png", 
+            "Idle.png", "Jump.png", "Run.png", "walk.png", "Run+Attack.png"
+        };
+        
+        // Corresponding sprite indices
+        int spriteIndices[] = {
+            DEAD_WOLF, ATTACK_SWIPE, ATTACK_RUN, HURT_WOLF,
+            IDLE_WOLF, JUMP_WOLF, RUN_WOLF, WALK_WOLF, RUN_ATTACK_WOLF
+        };
+        
+        int loadedCount = 0;
+        
+        // Try to load each texture with different path formats
+        for (int i = 0; i < 9; i++) {
+            bool loaded = false;
+            
+            // Try each path format
+            for (int p = 0; p < 4 && !loaded; p++) {
+                char fullPath[PATH_MAX];
+                if (p < 2) {
+                    // Absolute paths
+                    snprintf(fullPath, sizeof(fullPath), pathFormats[p], cwd, fileNames[i]);
+                } else {
+                    // Relative paths
+                    snprintf(fullPath, sizeof(fullPath), pathFormats[p], fileNames[i]);
+                }
+                
+                // Check if file exists before loading
+                if (FileExists(fullPath)) {
+                    sprites[spriteIndices[i]] = LoadTexture(fullPath);
+                    
+                    if (sprites[spriteIndices[i]].id != 0) {
+                        printf("Loaded %s: %dx%d\n", 
+                               fileNames[i], 
+                               sprites[spriteIndices[i]].width, 
+                               sprites[spriteIndices[i]].height);
+                        loaded = true;
+                        loadedCount++;
+                        break;
+                    }
+                }
+            }
+            
+            if (!loaded) {
+                printf("Failed to load texture: %s\n", fileNames[i]);
+            }
+        }
+        
+        // Print summary
+        printf("Werewolf textures loaded: %d/9\n", loadedCount);
     }
 
     void updateAnimation() {
@@ -173,32 +240,46 @@ public:
     }
 
     Rectangle getAnimationFrame() const {
-        // Safety check for valid state
-        if (state < 0 || state >= sprites.size() || state >= animations.size()) {
-            return Rectangle{0, 0, 128, 128}; // Return a default frame
+        Rectangle frame = {0, 0, 0, 0}; // Default empty frame
+        
+        // Check if state is valid
+        if (state < 0 || state >= sprites.size()) {
+            static std::vector<bool> reportedInvalidStates(sprites.size() + 1, false);
+            if (!reportedInvalidStates[state < 0 ? 0 : state]) {
+                printf("Error: Invalid state %d (sprites size: %zu)\n", state, sprites.size());
+                reportedInvalidStates[state < 0 ? 0 : state] = true;
+            }
+            return frame;
         }
         
-        const AnimationWolf& anim = animations[state];
-        
-        // Safety check for valid sprite
-        if (sprites[state].id == 0 || sprites[state].width <= 0 || sprites[state].height <= 0) {
-            return Rectangle{0, 0, 128, 128}; // Return a default frame
+        // Check if animations vector is properly sized
+        if (animations.size() <= state) {
+            static std::vector<bool> reportedMissingAnimations(sprites.size(), false);
+            if (!reportedMissingAnimations[state]) {
+                printf("Error: Animation not defined for state %d (animations size: %zu)\n", state, animations.size());
+                reportedMissingAnimations[state] = true;
+            }
+            return frame;
         }
         
-        int frameWidth = sprites[state].width / (anim.lastFrame + 1);
-        int frameHeight = sprites[state].height;
-        
-        // Safety check for valid frame dimensions
-        if (frameWidth <= 0 || frameHeight <= 0) {
-            return Rectangle{0, 0, 128, 128}; // Return a default frame
+        // Check if sprite is loaded
+        if (sprites[state].id == 0) {
+            static std::vector<bool> reportedMissingSprites(sprites.size(), false);
+            if (!reportedMissingSprites[state]) {
+                printf("Error: Sprite for state %d is not loaded (ID: 0)\n", state);
+                reportedMissingSprites[state] = true;
+            }
+            return frame;
         }
         
-        // Safety check for valid current frame
-        if (anim.currentFrame < 0 || anim.currentFrame > anim.lastFrame) {
-            return Rectangle{0, 0, (float)frameWidth, (float)frameHeight}; // Return the first frame
-        }
-
-        return { (float)frameWidth * anim.currentFrame, 0, (float)frameWidth, (float)frameHeight };
+        // For Werewolf, each sprite is a single frame, not a spritesheet
+        // So we return the entire sprite as the frame
+        frame.x = 0;
+        frame.y = 0;
+        frame.width = sprites[state].width;
+        frame.height = sprites[state].height;
+        
+        return frame;
     }
 
     void draw() const {
@@ -477,14 +558,12 @@ public:
         }
     }
 
-    CollisionBox* getCollisionBox(CollisionBoxType type) {
+    CollisionBox* getCollisionBox(CollisionBoxType type) const {
         for (auto& box : collisionBoxes) {
             if (box.type == type) {
-                return &box;
+                return const_cast<CollisionBox*>(&box);
             }
         }
         return nullptr;
     }
 };
-
-#endif // WEREWOLF_H

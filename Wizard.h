@@ -1,10 +1,17 @@
-#ifndef WIZARD_H
-#define WIZARD_H
+#pragma once
 
 #include "raylib.h"
 #include "CollisionSystem.h"
 #include "CharacterAI.h"
 #include <vector>
+#include <cmath>
+#include <algorithm>
+#include <unistd.h> // For getcwd()
+#include <limits.h> // For PATH_MAX
+
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 const float GRAVITY_WIZARD = 800.0f;
 const float JUMP_FORCE_WIZARD = -400.0f;
@@ -85,9 +92,9 @@ class Wizard {
             };
 
             // Load sounds
-            attackSound = LoadSound("sounds/wizard/magic-strike-5856.mp3");
-            hurtSound = LoadSound("sounds/samurai/female-hurt-2-94301.wav"); // Using samurai hurt sound as fallback
-            deadSound = LoadSound("sounds/samurai/female-death.wav"); // Using samurai death sound as fallback
+            attackSound = LoadSound("2DGame/assets/sounds/wizard/magic-strike-5856.mp3");
+            hurtSound = LoadSound("2DGame/assets/sounds/samurai/female-hurt-2-94301.wav"); // Using samurai hurt sound as fallback
+            deadSound = LoadSound("2DGame/assets/sounds/samurai/female-death.wav"); // Using samurai death sound as fallback
             
             // Set sound volume
             SetSoundVolume(attackSound, 0.7f);
@@ -133,7 +140,7 @@ class Wizard {
             }
         }
 
-        void loadTextures()  {
+        void loadTextures() {
             // Clear any existing textures
             for (auto& sprite : sprites) {
                 if (sprite.id != 0) {
@@ -141,20 +148,78 @@ class Wizard {
                 }
             }
             
-            // Resize and load all textures
-            sprites.resize(7);
-            sprites[DEAD_WIZARD] = LoadTexture("assets/Wizard/Sprites/Death.png");
-            sprites[ATTACK1_WIZARD] = LoadTexture("assets/Wizard/Sprites/Attack1.png");
-            sprites[ATTACK2_WIZARD] = LoadTexture("assets/Wizard/Sprites/Attack2.png");
-            sprites[HURT_WIZARD] = LoadTexture("assets/Wizard/Sprites/Take hit.png");
-            sprites[IDLE_WIZARD] = LoadTexture("assets/Wizard/Sprites/Idle.png");
-            sprites[JUMP_WIZARD] = LoadTexture("assets/Wizard/Sprites/Jump.png");
-            sprites[RUN_WIZARD] = LoadTexture("assets/Wizard/Sprites/Run.png");
+            printf("Loading Wizard textures...\n");
             
-            // Print debug info about loaded textures
-            for (int i = 0; i < sprites.size(); i++) {
-                printf("Wizard texture %d: %dx%d\n", i, sprites[i].width, sprites[i].height);
+            // Get current working directory
+            char cwd[PATH_MAX];
+            if (getcwd(cwd, sizeof(cwd)) == NULL) {
+                printf("Error getting current working directory\n");
+                return;
             }
+            
+            // Try different path formats
+            const char* pathFormats[] = {
+                "%s/2DGame/assets/Wizard/Sprites/%s",    // Absolute with 2DGame prefix
+                "%s/assets/Wizard/Sprites/%s",           // Absolute without 2DGame prefix
+                "2DGame/assets/Wizard/Sprites/%s",       // Relative with 2DGame prefix
+                "assets/Wizard/Sprites/%s"               // Relative without 2DGame prefix
+            };
+            
+            // Resize sprites vector
+            sprites.resize(7);
+            
+            // List of filenames to load
+            const char* fileNames[] = {
+                "Death.png", "Attack1.png", "Attack2.png", "Take hit.png", 
+                "Idle.png", "Jump.png", "Run.png"
+            };
+            
+            // Corresponding sprite indices
+            int spriteIndices[] = {
+                DEAD_WIZARD, ATTACK1_WIZARD, ATTACK2_WIZARD, HURT_WIZARD,
+                IDLE_WIZARD, JUMP_WIZARD, RUN_WIZARD
+            };
+            
+            int loadedCount = 0;
+            
+            // Try to load each texture with different path formats
+            for (int i = 0; i < 7; i++) {
+                bool loaded = false;
+                
+                // Try each path format
+                for (int p = 0; p < 4 && !loaded; p++) {
+                    char fullPath[PATH_MAX];
+                    if (p < 2) {
+                        // Absolute paths
+                        snprintf(fullPath, sizeof(fullPath), pathFormats[p], cwd, fileNames[i]);
+                    } else {
+                        // Relative paths
+                        snprintf(fullPath, sizeof(fullPath), pathFormats[p], fileNames[i]);
+                    }
+                    
+                    // Check if file exists before loading
+                    if (FileExists(fullPath)) {
+                        sprites[spriteIndices[i]] = LoadTexture(fullPath);
+                        
+                        if (sprites[spriteIndices[i]].id != 0) {
+                            printf("Loaded %s: %dx%d\n", 
+                                   fileNames[i], 
+                                   sprites[spriteIndices[i]].width, 
+                                   sprites[spriteIndices[i]].height);
+                            loaded = true;
+                            loadedCount++;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!loaded) {
+                    printf("Failed to load texture: %s\n", fileNames[i]);
+                }
+            }
+            
+            // Print summary
+            printf("Wizard textures loaded: %d/7\n", loadedCount);
         }
 
         void updateAnimation() {
@@ -553,5 +618,3 @@ class Wizard {
             return nullptr;
         }
 };
-
-#endif // WIZARD_H

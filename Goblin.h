@@ -123,12 +123,12 @@ public:
         
         // Resize and load all textures
         sprites.resize(6);
-        sprites[DEAD_GOBLIN] = LoadTexture("assets/Goblin/Hobgoblin Die/Hobgoblin KO.png");
-        sprites[ATTACK_CLUB] = LoadTexture("assets/Goblin/Hobgoblin Attack 1 & 2/Hobgoblin Attack 1 and 2.png");
-        sprites[ATTACK_STOMP] = LoadTexture("assets/Goblin/Hobgoblin Attack 3/Hobgoblin Attack 3.png");
-        sprites[ATTACK_AOE] = LoadTexture("assets/Goblin/Hobgoblin Attack 4/Hobgoblin Fourth Attack.png");
-        sprites[IDLE_GOBLIN] = LoadTexture("assets/Goblin/Hobgoblin Idle/GoblinK Idle.png");
-        sprites[WALK_GOBLIN] = LoadTexture("assets/Goblin/Hobgoblin Walk/Hobgoblin Walk.png");
+        sprites[DEAD_GOBLIN] = LoadTexture("2DGame/assets/Goblin/Hobgoblin Die/Hobgoblin KO.png");
+        sprites[ATTACK_CLUB] = LoadTexture("2DGame/assets/Goblin/Hobgoblin Attack 1 & 2/Hobgoblin Attack 1 and 2.png");
+        sprites[ATTACK_STOMP] = LoadTexture("2DGame/assets/Goblin/Hobgoblin Attack 3/Hobgoblin Attack 3.png");
+        sprites[ATTACK_AOE] = LoadTexture("2DGame/assets/Goblin/Hobgoblin Attack 4/Hobgoblin Fourth Attack.png");
+        sprites[IDLE_GOBLIN] = LoadTexture("2DGame/assets/Goblin/Hobgoblin Idle/GoblinK Idle.png");
+        sprites[WALK_GOBLIN] = LoadTexture("2DGame/assets/Goblin/Hobgoblin Walk/Hobgoblin Walk.png");
         
         // Print debug info about loaded textures
         for (int i = 0; i < sprites.size(); i++) {

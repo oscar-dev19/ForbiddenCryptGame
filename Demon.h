@@ -141,9 +141,9 @@ class Demon {
             std::cout << "Demon collision boxes initialized. Count: " << collisionBoxes.size() << std::endl;
 
             // Load sounds
-            chantSound = LoadSound("sounds/misc/demon-chant-latin-14489.mp3");
-            hurtSound = LoadSound("sounds/samurai/female-hurt-2-94301.wav"); // Using samurai hurt sound as fallback
-            deadSound = LoadSound("sounds/samurai/female-death.wav"); // Using samurai death sound as fallback
+            chantSound = LoadSound("2DGame/assets/sounds/misc/demon-chant-latin-14489.mp3");
+            hurtSound = LoadSound("2DGame/assets/sounds/samurai/female-hurt-2-94301.wav"); // Using samurai hurt sound as fallback
+            deadSound = LoadSound("2DGame/assets/sounds/samurai/female-death.wav"); // Using samurai death sound as fallback
             
             // Set sound volume
             SetSoundVolume(chantSound, 0.7f);

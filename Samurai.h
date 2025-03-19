@@ -1,11 +1,16 @@
-#ifndef SAMURAI_H
-#define SAMURAI_H
+#pragma once
 
 #include "raylib.h"
 #include "CollisionSystem.h"
 #include <vector>
 #include <cmath>   // For sinf
 #include <cstdlib> // For system
+#include <unistd.h> // For getcwd()
+#include <limits.h> // For PATH_MAX
+
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 // Define PI if not already defined
 #ifndef PI
@@ -494,13 +499,13 @@ private:
     // Helper function to create a simple sound file if the dash sound is not found
     void createDefaultDashSound() {
         // Create a sounds directory if it doesn't exist
-        if (!DirectoryExists("sounds")) {
+        if (!DirectoryExists("2DGame/assets/sounds")) {
             printf("Creating sounds directory...\n");
             bool success = false;
             #if defined(_WIN32)
-                success = (system("mkdir sounds") == 0);
+                success = (system("mkdir 2DGame\\assets\\sounds") == 0);
             #else
-                success = (system("mkdir -p sounds") == 0);
+                success = (system("mkdir -p 2DGame/assets/sounds") == 0);
             #endif
             
             if (!success) {
@@ -540,19 +545,13 @@ private:
         
         // Export wave as sound file
         printf("Creating default dash sound file...\n");
-        ExportWave(wave, "sounds/whoosh (phaser).wav");
+        ExportWave(wave, "2DGame/assets/sounds/whoosh (phaser).wav");
         
         // Load the newly created sound
-        dashSound = LoadSound("sounds/whoosh (phaser).wav");
+        dashSound = LoadSound("2DGame/assets/sounds/whoosh (phaser).wav");
         
         // Free wave data
-        free(wave.data);
-        
-        if (dashSound.frameCount > 0) {
-            printf("Created and loaded default dash sound successfully!\n");
-        } else {
-            printf("Failed to create default dash sound!\n");
-        }
+        UnloadWave(wave);
     }
 
     // Helper function to set volume for all sound effects
@@ -572,6 +571,88 @@ private:
         if (deadSound.frameCount > 0) SetSoundVolume(deadSound, volume);
         if (landSound.frameCount > 0) SetSoundVolume(landSound, volume);
         if (dashSound.frameCount > 0) SetSoundVolume(dashSound, volume);
+    }
+
+    void loadTextures() {
+        // Clear any existing textures
+        for (auto& sprite : sprites) {
+            if (sprite.id != 0) {
+                UnloadTexture(sprite);
+            }
+        }
+        
+        printf("Loading Samurai textures...\n");
+        
+        // Get current working directory
+        char cwd[PATH_MAX];
+        if (getcwd(cwd, sizeof(cwd)) == NULL) {
+            printf("Error getting current working directory\n");
+            return;
+        }
+        
+        // Try different path formats
+        const char* pathFormats[] = {
+            "%s/2DGame/assets/Samurai/%s",    // Absolute with 2DGame prefix
+            "%s/assets/Samurai/%s",           // Absolute without 2DGame prefix
+            "2DGame/assets/Samurai/%s",       // Relative with 2DGame prefix
+            "assets/Samurai/%s"               // Relative without 2DGame prefix
+        };
+        
+        // Resize sprites vector
+        sprites.resize(6);
+        
+        // List of filenames to load
+        const char* fileNames[] = {
+            "Dead.png", "Attack_1.png", "Hurt.png", 
+            "Idle.png", "Jump.png", "Run.png"
+        };
+        
+        // Corresponding sprite indices
+        int spriteIndices[] = {
+            DEAD_STATE, ATTACK_STATE, HURT_STATE,
+            IDLE_STATE, JUMP_STATE, RUN_STATE
+        };
+        
+        int loadedCount = 0;
+        
+        // Try to load each texture with different path formats
+        for (int i = 0; i < 6; i++) {
+            bool loaded = false;
+            
+            // Try each path format
+            for (int p = 0; p < 4 && !loaded; p++) {
+                char fullPath[PATH_MAX];
+                if (p < 2) {
+                    // Absolute paths
+                    snprintf(fullPath, sizeof(fullPath), pathFormats[p], cwd, fileNames[i]);
+                } else {
+                    // Relative paths
+                    snprintf(fullPath, sizeof(fullPath), pathFormats[p], fileNames[i]);
+                }
+                
+                // Check if file exists before loading
+                if (FileExists(fullPath)) {
+                    sprites[spriteIndices[i]] = LoadTexture(fullPath);
+                    
+                    if (sprites[spriteIndices[i]].id != 0) {
+                        printf("Loaded %s: %dx%d\n", 
+                               fileNames[i], 
+                               sprites[spriteIndices[i]].width, 
+                               sprites[spriteIndices[i]].height);
+                        loaded = true;
+                        loadedCount++;
+                        break;
+                    }
+                }
+            }
+            
+            if (!loaded) {
+                printf("Failed to load texture: %s\n", fileNames[i]);
+            }
+        }
+        
+        // Print summary
+        printf("Samurai textures loaded: %d/6\n", loadedCount);
     }
 
 public:
@@ -614,14 +695,7 @@ public:
         doubleJumpMaxHeight = groundLevel - 300.0f; // 300 pixels above ground level (double height)
 
         // Load textures for each state.
-        sprites = {
-            LoadTexture("assets/Samurai/Dead.png"),    // DEAD_STATE
-            LoadTexture("assets/Samurai/Attack_1.png"), // ATTACK_STATE
-            LoadTexture("assets/Samurai/Hurt.png"),    // HURT_STATE
-            LoadTexture("assets/Samurai/Idle.png"),    // IDLE_STATE
-            LoadTexture("assets/Samurai/Jump.png"),    // JUMP_STATE
-            LoadTexture("assets/Samurai/Run.png")      // RUN_STATE
-        };
+        loadTextures();
 
         // Initialize animations for each state.
         animations = {
@@ -634,44 +708,39 @@ public:
         };
 
         // Load sound effects with error checking
-        attackSound = LoadSound("sounds/attack.mp3");
-        jumpSound = LoadSound("sounds/jump.mp3");
-        hurtSound = LoadSound("sounds/hurt.mp3");
-        runSound = LoadSound("sounds/run.mp3");
-        deadSound = LoadSound("sounds/dead.mp3");
-        landSound = LoadSound("sounds/land.mp3");
+        attackSound = LoadSound("2DGame/assets/sounds/attack.mp3");
+        jumpSound = LoadSound("2DGame/assets/sounds/jump.mp3");
+        hurtSound = LoadSound("2DGame/assets/sounds/hurt.mp3");
+        runSound = LoadSound("2DGame/assets/sounds/run.mp3");
+        deadSound = LoadSound("2DGame/assets/sounds/dead.mp3");
+        landSound = LoadSound("2DGame/assets/sounds/land.mp3");
         
         // Try to load the dash sound from various possible locations
-        dashSound = LoadSound("sounds/whoosh (phaser).wav");
+        dashSound = LoadSound("2DGame/assets/sounds/whoosh (phaser).wav");
         if (dashSound.frameCount > 0) {
-            printf("Loaded dash sound from: sounds/whoosh (phaser).wav\n");
+            printf("Loaded dash sound from: 2DGame/assets/sounds/whoosh (phaser).wav\n");
         } else {
             // Try alternative paths
-            dashSound = LoadSound("sounds/misc/whoosh (phaser).wav");
+            dashSound = LoadSound("2DGame/assets/sounds/misc/whoosh (phaser).wav");
             if (dashSound.frameCount > 0) {
-                printf("Loaded dash sound from: sounds/misc/whoosh (phaser).wav\n");
+                printf("Loaded dash sound from: 2DGame/assets/sounds/misc/whoosh (phaser).wav\n");
             } else {
-                dashSound = LoadSound("assets/sounds/whoosh (phaser).wav");
+                dashSound = LoadSound("2DGame/assets/sounds/whoosh(phaser).wav");
                 if (dashSound.frameCount > 0) {
-                    printf("Loaded dash sound from: assets/sounds/whoosh (phaser).wav\n");
+                    printf("Loaded dash sound from: 2DGame/assets/sounds/whoosh(phaser).wav\n");
                 } else {
-                    dashSound = LoadSound("assets/sounds/misc/whoosh (phaser).wav");
+                    // If all paths fail, try without spaces in filename
+                    dashSound = LoadSound("2DGame/assets/sounds/misc/whoosh(phaser).wav");
                     if (dashSound.frameCount > 0) {
-                        printf("Loaded dash sound from: assets/sounds/misc/whoosh (phaser).wav\n");
+                        printf("Loaded dash sound from: 2DGame/assets/sounds/misc/whoosh(phaser).wav\n");
                     } else {
-                        // If all paths fail, try without spaces in filename
-                        dashSound = LoadSound("sounds/whoosh(phaser).wav");
-                        if (dashSound.frameCount > 0) {
-                            printf("Loaded dash sound from: sounds/whoosh(phaser).wav\n");
-                        } else {
-                            printf("Warning: Could not load dash sound effect! Trying to download...\n");
-                            
-                            // Try to download the sound file
-                            if (!tryDownloadDashSound()) {
-                                // If download fails, create a default sound
-                                printf("Creating a default dash sound...\n");
-                                createDefaultDashSound();
-                            }
+                        printf("Warning: Could not load dash sound effect! Trying to download...\n");
+                        
+                        // Try to download the sound file
+                        if (!tryDownloadDashSound()) {
+                            // If download fails, create a default sound
+                            printf("Creating a default dash sound...\n");
+                            createDefaultDashSound();
                         }
                     }
                 }
@@ -899,5 +968,3 @@ public:
         }
     }
 };
-
-#endif // SAMURAI_H
