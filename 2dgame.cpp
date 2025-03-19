@@ -183,8 +183,17 @@ int main() {
     const int screenHeight = 550;
     InitWindow(screenWidth, screenHeight, "2D Game");
 
+    // Define floor level to match where the non-zero tiles (floor tiles) are in Room1.tmx
+    // This value is used for all characters to ensure consistent vertical positioning
+    const float floorLevel = 380.0f; // Exact floor level matching the non-zero floor tiles in TMX
+    const float floorHeight = 50.0f; // Height of the floor rectangle if needed
+    
+    // Update constant values in other files to match our floor level
+    // These are compile-time constants, but we're making this note for clarity
+    // GROUND_LEVEL and GROUND_LEVEL_WIZARD should be equal to floorLevel for consistency
+    
     // Initialize audio device before loading music
-    InitAudioDevice(); 
+    InitAudioDevice();
 
     // Load background music
     backgroundMusic = LoadMusicStream("music/Lady Maria of the Astral Clocktower.mp3");
@@ -249,7 +258,7 @@ int main() {
     
     // Keep the tileset checking code but remove debug prints
     const char* requiredTilesets[] = {
-        "maps/16 x16 Purple Dungeon Sprite Sheet.tsx"
+        "maps/16 x16 Purple Dungeon Sprite Sheet copy.png"
     };
     int numRequiredTilesets = sizeof(requiredTilesets) / sizeof(requiredTilesets[0]);
     
@@ -288,10 +297,6 @@ int main() {
     const float mapWidthPixels = mapWidth * mapTileSize;
     const float mapHeightPixels = mapHeight * mapTileSize;
     
-    // Define floor level to match where the non-zero tiles (floor tiles) are in Room1.tmx
-    const float floorLevel = 380.0f; // Exact floor level matching the non-zero floor tiles in TMX
-    const float floorHeight = 50.0f; // Height of the floor rectangle if needed
-
     // Load key texture
     keyTexture = LoadTexture("assets/gameObjects/key/key.png");
     if (keyTexture.id == 0) {
@@ -310,21 +315,32 @@ int main() {
     
     // Position enemies across the map to demonstrate full map usage
     // Each enemy is placed at different distances from the start but at the same floor level
-    Goblin goblin((Vector2){500, floorLevel});
+    // This ensures all enemies are aligned on the same horizontal plane
+    
+    // For each enemy, explicitly set Y position = floorLevel - height
+    // This ensures the bottom of all enemies aligns with floorLevel
+    float goblinHeight = 64.0f * SPRITE_SCALE;
+    float werewolfHeight = 64.0f * SPRITE_SCALE;
+    float wizardHeight = 64.0f * SPRITE_SCALE;
+    float demonHeight = 64.0f * SPRITE_SCALE;
+    
+    Goblin goblin((Vector2){500, floorLevel - goblinHeight});
     goblin.loadTextures();
     
-    Werewolf werewolf(1000, floorLevel, floorLevel);  // Further away
+    Werewolf werewolf(1000, floorLevel - werewolfHeight, floorLevel);  // Further away
     werewolf.loadTextures();
     
-    Wizard wizard((Vector2){1500, floorLevel});  // Even further
+    Wizard wizard((Vector2){1500, floorLevel - wizardHeight});  // Even further
     wizard.loadTextures();
     
-    // Create the demon at normal size at the far end of the map
-    Demon demon((Vector2){1800, floorLevel});
+    // Create the demon at the same floor level at the far end of the map
+    Demon demon((Vector2){1800, floorLevel - demonHeight});
     
     // Print initialization positions for debugging
     printf("Floor level set to: %.1f\n", floorLevel);
     printf("All characters initialized at floor level: %.1f\n", floorLevel);
+    printf("Samurai Y: %.1f, Goblin Y: %.1f, Werewolf Y: %.1f, Wizard Y: %.1f, Demon Y: %.1f\n", 
+           samurai.getRect().y, goblin.rect.y, werewolf.rect.y, wizard.rect.y, demon.rect.y);
 
     // Initialize health values for enemies
     int goblinHealth = 50;
@@ -334,6 +350,23 @@ int main() {
 
     // Game loop
     while (!WindowShouldClose()) {
+        // First frame debug: print all character Y positions 
+        static bool firstFrame = true;
+        if (firstFrame) {
+            printf("Initial positions:\n");
+            printf("Floor level: %.1f\n", floorLevel);
+            printf("Samurai Y: %.1f (bottom: %.1f)\n", 
+                   samurai.getRect().y, samurai.getRect().y + samurai.getRect().height);
+            printf("Goblin Y: %.1f (bottom: %.1f)\n", 
+                   goblin.rect.y, goblin.rect.y + goblin.rect.height);
+            printf("Werewolf Y: %.1f (bottom: %.1f)\n", 
+                   werewolf.rect.y, werewolf.rect.y + werewolf.rect.height);
+            printf("Wizard Y: %.1f (bottom: %.1f)\n", 
+                   wizard.rect.y, wizard.rect.y + wizard.rect.height);
+            printf("Demon Y: %.1f (bottom: %.1f)\n", 
+                   demon.rect.y, demon.rect.y + demon.rect.height);
+            firstFrame = false;
+        }
 
         // Update music stream
         UpdateMusicStream(backgroundMusic);

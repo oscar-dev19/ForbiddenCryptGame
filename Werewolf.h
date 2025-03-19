@@ -321,12 +321,8 @@ public:
                     Vector2 directionVector = Vector2Normalize(Vector2Subtract(targetPos, wolfCenter));
                     velocity.x = directionVector.x * moveSpeed;
                     
-                    // Random chance to jump during pursuit
-                    if (isOnGround && GetRandomValue(0, 100) < 2) {
-                        velocity.y = JUMP_FORCE;
-                        isOnGround = false;
-                        state = JUMP_WOLF;
-                    }
+                    // Removed random jumping behavior to keep all enemies on the same level
+                    // No more jumping during pursuit to maintain consistent floor level with other enemies
                 } else {
                     // Stop if we're already at minimum distance
                     velocity.x = 0;
@@ -353,7 +349,11 @@ public:
 
     void applyVelocity() {
         rect.x += velocity.x;
-        rect.y += velocity.y;
+        
+        // Always keep werewolf at the ground level to ensure consistent positioning with other enemies
+        rect.y = groundLevel - rect.height;
+        velocity.y = 0;
+        isOnGround = true;
 
         // Use map boundaries instead of screen bounds
         // Map dimensions are 128 tiles * 16 pixels = 2048 pixels wide
@@ -368,12 +368,12 @@ public:
             direction = LEFT_WOLF;
         }
         
-        // Check if werewolf has landed on the ground
-        if (rect.y >= groundLevel - rect.height) {
-            rect.y = groundLevel - rect.height;
-            velocity.y = 0;
-            isOnGround = true;
-        }
+        // Check if werewolf has landed on the ground - no longer needed as we always set position to ground level
+        // if (rect.y >= groundLevel - rect.height) {
+        //    rect.y = groundLevel - rect.height;
+        //    velocity.y = 0;
+        //    isOnGround = true;
+        // }
     }
 
     void updateCollisionBoxes() {

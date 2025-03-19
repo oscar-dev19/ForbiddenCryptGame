@@ -327,6 +327,12 @@ class Demon {
             float deltaTime = GetFrameTime();
             rect.x += velocity.x * deltaTime;
             
+            // Keep demon's feet exactly at floor level
+            // This ensures consistent Y position with other enemies
+            const float floorLevel = 380.0f; // Same as in main.cpp
+            rect.y = floorLevel - rect.height;
+            velocity.y = 0;
+            
             // Add map boundary checks
             // Map dimensions are 128 tiles * 16 pixels = 2048 pixels wide
             const float mapWidth = 128 * 16;

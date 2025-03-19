@@ -331,7 +331,13 @@ public:
 
     void applyVelocity() {
         rect.x += velocity.x;
-        rect.y += velocity.y;
+        
+        // Keep goblin's feet exactly at floor level
+        // This ensures consistent Y position with other enemies
+        // Note: we need to ensure this is initialized correctly at creation time
+        const float floorLevel = 380.0f; // Use the same value as in main.cpp
+        rect.y = floorLevel - rect.height;
+        velocity.y = 0; // Never fall or rise
 
         // Use map boundaries instead of screen bounds
         // Map dimensions are 128 tiles * 16 pixels = 2048 pixels wide

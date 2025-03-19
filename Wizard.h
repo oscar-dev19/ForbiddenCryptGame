@@ -294,7 +294,13 @@ class Wizard {
 
         void applyVelocity() {
             rect.x += velocity.x;
-            rect.y += velocity.y;
+            
+            // Always keep wizard at the floor level to match other enemies
+            // Use the same constant as all other enemies
+            const float floorLevel = 380.0f; // Same as in main.cpp
+            rect.y = floorLevel - rect.height;
+            velocity.y = 0;
+            isOnGround = true;
 
             // Use map boundaries instead of screen bounds
             // Map dimensions are 128 tiles * 16 pixels = 2048 pixels wide
