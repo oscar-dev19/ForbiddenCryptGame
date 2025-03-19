@@ -205,35 +205,37 @@ public:
         printf("Werewolf textures loaded: %d/9\n", loadedCount);
     }
 
-    void updateAnimation() {
+    void updateAnimation(float deltaTime) {
         // Safety check for valid state
         if (state < 0 || state >= animations.size()) {
-            state = IDLE_WOLF; // Reset to idle if state is invalid
+            return;
         }
         
         AnimationWolf& anim = animations[state];
-        float deltaTime = GetFrameTime();
-
         anim.timeLeft -= deltaTime;
+        
+        // Since we're using single frame sprites now, we don't need to cycle through frames
+        // But we'll still handle animation type and timing for state transitions
+        
         if (anim.timeLeft <= 0) {
-            anim.timeLeft = anim.speed;
-
-            if (anim.currentFrame < anim.lastFrame) {
-                anim.currentFrame++;
-            } else {
-                if (anim.type == REPEATING_WOLF) {
-                    anim.currentFrame = anim.firstFrame;
-                } else if (state == ATTACK_SWIPE || state == ATTACK_RUN) {
-                    state = IDLE_WOLF;
+            anim.timeLeft = anim.speed;  // Reset timer
+            
+            // No need to advance frames for single frame sprites
+            // Instead, handle state transitions
+            
+            // Handle one-shot animations
+            if (anim.type == ONESHOT_WOLF) {
+                if (state == ATTACK_SWIPE || state == ATTACK_RUN) {
+                    // Attack animation complete, back to idle
                     isAttacking = false;
                     hasFinishedAttack = true;
+                    setState(IDLE_WOLF);
                 } else if (state == HURT_WOLF) {
-                    state = IDLE_WOLF; // Return to idle after hurt animation
+                    // Hurt animation complete, back to idle
+                    setState(IDLE_WOLF);
                 } else if (state == DEAD_WOLF) {
-                    // Stay on the last frame if dead
-                    anim.currentFrame = anim.lastFrame;
-                } else if (state == JUMP_WOLF && isOnGround) {
-                    state = IDLE_WOLF; // Return to idle after landing
+                    // Dead state persists
+                    isDead = true;
                 }
             }
         }
@@ -288,7 +290,9 @@ public:
             return; // Don't draw if state is invalid or texture not loaded
         }
         
-        Rectangle source = getAnimationFrame();
+        // For Werewolf, we're loading individual frame sprites rather than spritesheets
+        // So we just draw the entire sprite
+        Rectangle source = { 0, 0, (float)sprites[state].width, (float)sprites[state].height };
         Rectangle dest = { rect.x, rect.y, rect.width, rect.height };
         Vector2 origin = { 0, 0 };
         float rotation = 0.0f;
@@ -296,7 +300,8 @@ public:
         if (direction == RIGHT_WOLF) {
             DrawTexturePro(sprites[state], source, dest, origin, rotation, WHITE);
         } else {
-            Rectangle flippedSource = { source.x + source.width, source.y, -source.width, source.height };
+            // To flip horizontally, we need to use a negative width in the source rectangle
+            Rectangle flippedSource = { source.width, source.y, -source.width, source.height };
             DrawTexturePro(sprites[state], flippedSource, dest, origin, rotation, WHITE);
         }
 
@@ -354,7 +359,7 @@ public:
     void updateWithTarget(Vector2 targetPos) {
         if (isDead) {
             state = DEAD_WOLF;
-            updateAnimation();
+            updateAnimation(GetFrameTime());
             return;
         }
 
@@ -424,7 +429,7 @@ public:
         
         // Apply velocity
         applyVelocity();
-        updateAnimation();
+        updateAnimation(GetFrameTime());
         updateCollisionBoxes();
     }
 
@@ -550,11 +555,11 @@ public:
             }
             
             move();  // Fall back to random movement if no target is provided
-            updateAnimation();
+            updateAnimation(GetFrameTime());
             updateCollisionBoxes();
         } else {
             state = DEAD_WOLF;
-            updateAnimation(); // Continue death animation
+            updateAnimation(GetFrameTime()); // Continue death animation
         }
     }
 
@@ -565,5 +570,9 @@ public:
             }
         }
         return nullptr;
+    }
+
+    void setState(CurrentStateWolf newState) {
+        state = newState;
     }
 };
