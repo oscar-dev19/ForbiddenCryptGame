@@ -19,3 +19,10 @@
 # Ignore Makefiles
 Makefiles
 makefile
+
+# Ignore Oscar Files.
+/game
+/hoxml.h
+/raylib.h
+/raytmx.h
+/rlgl.h

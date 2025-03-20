@@ -5,6 +5,7 @@
 #include "CollisionSystem.h"
 #include <vector>
 #include "CharacterAI.h" // Include the CharacterAI header
+#include <cstdio>
 
 // Directions for Goblin movement (LEFT_GOBLIN or RIGHT_GOBLIN)
 enum DirectionGoblin {

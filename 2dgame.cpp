@@ -11,6 +11,7 @@
 #include <stdlib.h> // For exit()
 #include <unistd.h> // For getcwd()
 #include <limits.h> // For PATH_MAX
+#include <cstdio>
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096

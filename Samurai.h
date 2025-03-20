@@ -7,6 +7,7 @@
 #include <cstdlib> // For system
 #include <unistd.h> // For getcwd()
 #include <limits.h> // For PATH_MAX
+#include <cstdio>
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096

@@ -10,6 +10,7 @@
 // Remove or comment out the filesystem include if it's not supported
 // #include <filesystem>
 #include <algorithm>  // For sorting files by name
+#include <cstdio>
 
 // Comment out the namespace alias since we won't be using filesystem
 // namespace fs = std::filesystem;

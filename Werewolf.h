@@ -12,6 +12,7 @@
 #include "raylib.h"
 #include "CollisionSystem.h"
 #include "CharacterAI.h"
+#include <cstdio>
 
 // Constants for physics
 const float GRAVITY = 800.0f;
