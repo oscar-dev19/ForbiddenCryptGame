@@ -83,15 +83,15 @@ public:
         // Initialize animations for different states with correct frame counts
         animations.resize(9); // Resize to include RUN_ATTACK_WOLF
         animations = {
-            {0, 3, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF},    // DEAD_WOLF - 4 frames in Dead.png
+            {0, 1, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF},    // DEAD_WOLF - 4 frames in Dead.png
             {0, 5, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF},    // ATTACK_SWIPE - 6 frames in Attack_1.png
             {0, 3, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF},    // ATTACK_RUN - 4 frames in Attack_2.png
-            {0, 2, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF},    // HURT_WOLF - 3 frames in Hurt.png
-            {0, 3, 0, 0, 0.1f, 0.1f, REPEATING_WOLF},  // IDLE_WOLF - 4 frames in Idle.png
-            {0, 3, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF},    // JUMP_WOLF - 4 frames in Jump.png
-            {0, 5, 0, 0, 0.1f, 0.1f, REPEATING_WOLF},  // RUN_WOLF - 6 frames in Run.png
-            {0, 7, 0, 0, 0.1f, 0.1f, REPEATING_WOLF},  // WALK_WOLF - 8 frames in walk.png
-            {0, 5, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF}     // RUN_ATTACK_WOLF - 6 frames in Run+Attack.png
+            {0, 1, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF},    // HURT_WOLF - 3 frames in Hurt.png
+            {0, 7, 0, 0, 0.1f, 0.1f, REPEATING_WOLF},  // IDLE_WOLF - 4 frames in Idle.png
+            {0, 10, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF},    // JUMP_WOLF - 4 frames in Jump.png
+            {0, 8, 0, 0, 0.1f, 0.1f, REPEATING_WOLF},  // RUN_WOLF - 6 frames in Run.png
+            {0, 10, 0, 0, 0.1f, 0.1f, REPEATING_WOLF},  // WALK_WOLF - 8 frames in walk.png
+            {0, 6, 0, 0, 0.1f, 0.1f, ONESHOT_WOLF}     // RUN_ATTACK_WOLF - 6 frames in Run+Attack.png
         };
 
         // Initialize collision boxes with appropriate dimensions
@@ -207,40 +207,18 @@ public:
     }
 
     void updateAnimation(float deltaTime) {
-        // Safety check for valid state
-        if (state < 0 || state >= animations.size()) {
-            return;
-        }
-        
         AnimationWolf& anim = animations[state];
         anim.timeLeft -= deltaTime;
         
-        // Since we're using single frame sprites now, we don't need to cycle through frames
-        // But we'll still handle animation type and timing for state transitions
-        
         if (anim.timeLeft <= 0) {
             anim.timeLeft = anim.speed;  // Reset timer
+            anim.currentFrame++;  // Move to next frame
             
-            // No need to advance frames for single frame sprites
-            // Instead, handle state transitions
-            
-            // Handle one-shot animations
-            if (anim.type == ONESHOT_WOLF) {
-                if (state == ATTACK_SWIPE || state == ATTACK_RUN) {
-                    // Attack animation complete, back to idle
-                    isAttacking = false;
-                    hasFinishedAttack = true;
-                    setState(IDLE_WOLF);
-                } else if (state == HURT_WOLF) {
-                    // Hurt animation complete, back to idle
-                    setState(IDLE_WOLF);
-                } else if (state == DEAD_WOLF) {
-                    // Dead state persists
-                    isDead = true;
-                }
+            if (anim.currentFrame > anim.lastFrame) {
+                anim.currentFrame = (anim.type == REPEATING_WOLF) ? anim.firstFrame : anim.lastFrame;
             }
         }
-    }
+    }    
 
     Rectangle getAnimationFrame() const {
         Rectangle frame = {0, 0, 0, 0}; // Default empty frame
@@ -286,41 +264,27 @@ public:
     }
 
     void draw() const {
-        // Safety check for valid state
-        if (state < 0 || state >= sprites.size() || sprites[state].id == 0) {
-            return; // Don't draw if state is invalid or texture not loaded
-        }
+        if (state < 0 || state >= animations.size()) return;
+
+        const AnimationWolf& anim = animations[state];
         
-        // For Werewolf, we're loading individual frame sprites rather than spritesheets
-        // So we just draw the entire sprite
-        Rectangle source = { 0, 0, (float)sprites[state].width, (float)sprites[state].height };
-        Rectangle dest = { rect.x, rect.y, rect.width, rect.height };
-        Vector2 origin = { 0, 0 };
-        float rotation = 0.0f;
-
-        if (direction == RIGHT_WOLF) {
-            DrawTexturePro(sprites[state], source, dest, origin, rotation, WHITE);
-        } else {
-            // To flip horizontally, we need to use a negative width in the source rectangle
-            Rectangle flippedSource = { source.width, source.y, -source.width, source.height };
-            DrawTexturePro(sprites[state], flippedSource, dest, origin, rotation, WHITE);
-        }
-
-        // Draw collision boxes for debugging
-        if (showCollisionBoxes) {
-            for (const auto& box : collisionBoxes) {
-                if (box.active) {
-                    Color color;
-                    switch (box.type) {
-                        case BODY: color = BLUE; break;
-                        case ATTACK: color = RED; break;
-                        case HURTBOX: color = GREEN; break;
-                        default: color = PURPLE; break;
-                    }
-                    DrawRectangleLines(box.rect.x, box.rect.y, box.rect.width, box.rect.height, color);
-                }
-            }
-        }
+        // Calculate frame width and height
+        int frameWidth = sprites[state].width / (anim.lastFrame + 1); // Assuming horizontal layout
+        int frameHeight = sprites[state].height;
+    
+        // Get the current frame's source rectangle
+        Rectangle sourceRect = {
+            frameWidth * anim.currentFrame, // X offset
+            0,                              // Y offset (assuming all frames are on one row)
+            (float)frameWidth,              // Frame width
+            (float)frameHeight              // Frame height
+        };
+    
+        // Flip if facing left
+        bool flip = (direction == LEFT_WOLF);
+        Rectangle destRect = {rect.x, rect.y, rect.width, rect.height};
+        Vector2 origin = {0, 0}; // Adjust if necessary
+        DrawTexturePro(sprites[state], sourceRect, destRect, origin, 0, WHITE);
     }
 
     void move() {
