@@ -209,13 +209,24 @@ public:
     void updateAnimation(float deltaTime) {
         AnimationWolf& anim = animations[state];
         anim.timeLeft -= deltaTime;
-        
+    
         if (anim.timeLeft <= 0) {
             anim.timeLeft = anim.speed;  // Reset timer
             anim.currentFrame++;  // Move to next frame
-            
+    
             if (anim.currentFrame > anim.lastFrame) {
-                anim.currentFrame = (anim.type == REPEATING_WOLF) ? anim.firstFrame : anim.lastFrame;
+                if (anim.type == REPEATING_WOLF) {
+                    anim.currentFrame = anim.firstFrame;  // Loop animation
+                } else {
+                    anim.currentFrame = anim.lastFrame;  // Stay on last frame
+    
+                    // **Ensure it returns to idle after finishing attack**
+                    if (state == ATTACK_SWIPE || state == ATTACK_RUN || state == RUN_ATTACK_WOLF) {
+                        hasFinishedAttack = true;
+                        isAttacking = false;
+                        state = IDLE_WOLF;  // Reset to idle after attack
+                    }
+                }
             }
         }
     }    
@@ -298,6 +309,7 @@ public:
             if (GetRandomValue(0, 100) < 1) {
                 // Choose a random attack
                 int attackType = GetRandomValue(1, 2);
+                velocity.x = 0;
                 switch (attackType) {
                     case 1: state = ATTACK_SWIPE; break;
                     case 2: state = ATTACK_RUN; break;
