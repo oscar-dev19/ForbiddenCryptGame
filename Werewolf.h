@@ -535,8 +535,8 @@ public:
     void takeDamage(int damage) {
         if (!isDead) {
             // Set to hurt state temporarily
-            state = HURT_WOLF;
             PlaySound(hurtSound);
+            state = HURT_WOLF;
             StopSound(walkSound);
             animations[state].currentFrame = 0;
             
