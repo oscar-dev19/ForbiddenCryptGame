@@ -73,6 +73,10 @@ public:
 
     float groundLevel;
 
+    Sound walkSound;
+    Sound hurtSound;
+    Sound attackSound;
+
     Werewolf(float x, float y, float groundLevel) {
         rect = (Rectangle){x, y, 64.0f * SPRITE_SCALE, 64.0f * SPRITE_SCALE}; // Scale the sprite size
         velocity = (Vector2){0.0f, 0.0f}; // Initialize velocity.
@@ -122,6 +126,10 @@ public:
         for (auto& sprite : sprites) {
             UnloadTexture(sprite);
         }
+
+        UnloadSound(attackSound);
+        UnloadSound(walkSound);
+        UnloadSound(hurtSound);
     }
 
     void loadTextures() {
@@ -204,6 +212,10 @@ public:
         
         // Print summary
         printf("Werewolf textures loaded: %d/9\n", loadedCount);
+
+        attackSound = LoadSound("sounds/werewolf/movement-swipe-whoosh-3-186577.wav");
+        walkSound = LoadSound("sounds/werewolf/run-112647.wav");
+        hurtSound = LoadSound("sounds/werewolf/whimper-104684.wav");
     }
 
     void updateAnimation(float deltaTime) {
@@ -219,7 +231,7 @@ public:
                     anim.currentFrame = anim.firstFrame;  // Loop animation
                 } else {
                     anim.currentFrame = anim.lastFrame;  // Stay on last frame
-    
+
                     // **Ensure it returns to idle after finishing attack**
                     if (state == ATTACK_SWIPE || state == ATTACK_RUN || state == RUN_ATTACK_WOLF) {
                         hasFinishedAttack = true;
@@ -317,14 +329,17 @@ public:
                 isAttacking = true;
                 hasFinishedAttack = false;
                 animations[state].currentFrame = 0;
+                PlaySound(attackSound);
             } else {
                 // Move in the current direction
                 velocity.x = direction * moveSpeed;  // Werewolf moves faster than goblin
                 state = RUN_WOLF;
+                PlaySound(walkSound);
             }
         } else if (isDead) {
             velocity.x = 0;  // Stop moving when dead
             state = DEAD_WOLF;
+            PlaySound(hurtSound);
         } else {
             velocity.x = 0;  // Stop moving while attacking
         }
@@ -359,6 +374,8 @@ public:
             }
             
             if (distanceToTarget <= attackRange) {
+                PlaySound(attackSound);
+                StopSound(walkSound);
                 // Attack when in range
                 int attackType = GetRandomValue(1, 2);
                 switch (attackType) {
@@ -505,6 +522,8 @@ public:
         if (!isDead) {
             // Set to hurt state temporarily
             state = HURT_WOLF;
+            PlaySound(hurtSound);
+            StopSound(walkSound);
             animations[state].currentFrame = 0;
             
             // Random chance to die
