@@ -73,6 +73,8 @@ public:
 
     float groundLevel;
 
+    bool isSoundPlaying = false;
+
     Sound walkSound;
     Sound hurtSound;
     Sound attackSound;
@@ -219,6 +221,19 @@ public:
     }
 
     void updateAnimation(float deltaTime) {
+        // Handle state transition to walking/running
+        if (state == RUN_WOLF || state == WALK_WOLF) {
+            if (!isSoundPlaying) {
+                PlaySound(walkSound);  // Trigger sound when starting walk/run
+                isSoundPlaying = true;
+            }
+        } else {
+            if (isSoundPlaying) {
+                StopSound(walkSound);  // Stop the sound if not walking/running
+                isSoundPlaying = false;
+            }
+        }
+    
         AnimationWolf& anim = animations[state];
         anim.timeLeft -= deltaTime;
     
@@ -231,8 +246,7 @@ public:
                     anim.currentFrame = anim.firstFrame;  // Loop animation
                 } else {
                     anim.currentFrame = anim.lastFrame;  // Stay on last frame
-
-                    // **Ensure it returns to idle after finishing attack**
+                    // Reset to idle after attack or specific state transition
                     if (state == ATTACK_SWIPE || state == ATTACK_RUN || state == RUN_ATTACK_WOLF) {
                         hasFinishedAttack = true;
                         isAttacking = false;
