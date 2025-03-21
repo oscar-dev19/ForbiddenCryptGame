@@ -507,6 +507,9 @@ int main() {
                     DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.5f));
                     DrawText("PAUSED", GetScreenWidth()/2 - 50, GetScreenHeight()/2 - 10, 30, WHITE);
                     DrawText("Press 'P' to resume", GetScreenWidth()/2 - 100, GetScreenHeight()/2 + 30, 20, WHITE);
+                    samurai.pauseSounds();
+                } else {
+                    samurai.resumeSound();
                 }
 
                 EndDrawing();

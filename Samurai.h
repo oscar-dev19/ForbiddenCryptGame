@@ -729,4 +729,22 @@ public:
             }
         }
     }
+
+    void pauseSounds() {
+        PauseSound(runSound);
+        PauseSound(attackSound);
+        PauseSound(hurtSound);
+        PauseSound(deadSound);
+        PauseSound(dashSound);
+        PauseSound(jumpSound);
+    }
+
+    void resumeSound() {
+        ResumeSound(runSound);
+        ResumeSound(attackSound);
+        ResumeSound(hurtSound);
+        ResumeSound(deadSound);
+        ResumeSound(dashSound);
+        ResumeSound(jumpSound);
+    }
 };
