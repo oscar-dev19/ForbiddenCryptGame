@@ -2,10 +2,6 @@
 #include "raymath.h"
 #include "CollisionSystem.h"
 #include "Samurai.h"
-#include "Goblin.h"
-#include "Werewolf.h"
-#include "Wizard.h"
-#include "Demon.h"
 #include <iostream>
 #include <vector>
 #include <stdlib.h> // For exit()
