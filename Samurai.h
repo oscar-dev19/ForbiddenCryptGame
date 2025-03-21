@@ -254,43 +254,33 @@ private:
         float currentTime = GetTime();
         
         // Handle left/right movement with double tap dash
-        if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT)) {
+        if ((IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT)) && state != ATTACK_STATE) {
             PlaySound(runSound);
-            // Check for double tap (if the last press was recent enough)
             if (canDash && (currentTime - lastAKeyPressTime) <= doubleTapTimeThreshold) {
-                // Initiate dash to the left
                 isDashing = true;
                 dashTimer = dashDuration;
                 canDash = false;
                 dashCooldownTimer = dashCooldown;
                 direction = LEFT;
-                
-                // Play dash sound effect
                 playDashSound();
+                StopSound(runSound);
             }
-            
-            // Update the last key press time
             lastAKeyPressTime = currentTime;
-        }
+        }        
         
-        if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT)) {
+        if ((IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT)) && state != ATTACK_STATE) {
             PlaySound(runSound);
-            // Check for double tap (if the last press was recent enough)
             if (canDash && (currentTime - lastDKeyPressTime) <= doubleTapTimeThreshold) {
-                // Initiate dash to the right
                 isDashing = true;
                 dashTimer = dashDuration;
                 canDash = false;
                 dashCooldownTimer = dashCooldown;
                 direction = RIGHT;
-                
-                // Play dash sound effect
                 playDashSound();
+                StopSound(runSound);
             }
-            
-            // Update the last key press time
             lastDKeyPressTime = currentTime;
-        }
+        }        
         
         // Handle movement based on key press and dash state
         if ((IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) && !isDashing && state != ATTACK_STATE) {
@@ -307,15 +297,19 @@ private:
             if (state != JUMP_STATE && state != HURT_STATE && state != DEAD_STATE) {
                 state = RUN_STATE;
             }
-        } else if (state != ATTACK_STATE) {
-            // Stop movement only if not attacking
+        } else if (!isDashing && state != ATTACK_STATE) { // Only stop movement if not dashing
             velocity.x = 0;
-            
-            if (state == RUN_STATE && !isDashing) {
+            if (state == RUN_STATE) {
                 state = IDLE_STATE;
                 StopSound(runSound);
             }
         }
+
+        // Apply dash movement
+        if (isDashing) {
+            velocity.x = (direction == RIGHT) ? dashSpeed : -dashSpeed;
+        }
+
         
 
         // Check for attack input.
