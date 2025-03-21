@@ -382,11 +382,30 @@ int main() {
                     }
                 }
 
+                // Check for collisions between Samurai's attack and enemies
+                CollisionBox* samuraiAttack = samurai.getCollisionBox(ATTACK);
+
+                // Check for enemy attacks hitting Samurai
+                CollisionBox* samuraiHurtbox = samurai.getCollisionBox(HURTBOX);
+
                 // Update animations and collision rectangles
                 keyFrameTime += deltaTime;
                 if (keyFrameTime >= KEY_FRAME_DURATION) {
                     keyFrameTime = 0.0f;
                     keyCurrentFrame = (keyCurrentFrame + 1) % KEY_FRAME_COUNT;
+                }
+
+                // Update key collision rectangle
+                keyCollisionRect = (Rectangle){
+                    keyPosition.x + (KEY_FRAME_WIDTH),              // Center horizontally on the scaled key
+                    keyPosition.y + (KEY_FRAME_HEIGHT),             // Center vertically on the scaled key
+                    (float)KEY_FRAME_WIDTH,                         // Keep original collision size
+                    (float)KEY_FRAME_HEIGHT
+                };
+
+                // Update TMX animations
+                if (tmxMap != NULL && tmxMap->fileName != NULL) {
+                    AnimateTMX(tmxMap);
                 }
 
                 // Update camera to follow player, ensuring it stays within map boundaries
