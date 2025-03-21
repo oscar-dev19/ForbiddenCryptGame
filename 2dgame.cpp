@@ -51,6 +51,7 @@ Sound keySound = { 0 }; // Sound to play when key is collected
 bool keyCollected = false; // Flag to track if key has been collected
 
 enum GameState {START_SCREEN, MAIN_GAME, EXIT};
+bool isPaused = false;
 
 // Helper function to check collision between two collision boxes
 bool checkCharacterCollision(const CollisionBox& box1, const CollisionBox& box2) {
@@ -324,6 +325,11 @@ int main() {
             }
 
             case MAIN_GAME: {
+
+                if (IsKeyPressed(KEY_P)) {
+                    isPaused = !isPaused;
+                }
+
                 // Update music stream
                 UpdateMusicStream(backgroundMusic);
                 
@@ -362,8 +368,10 @@ int main() {
                 // Get frame time for updates
                 float deltaTime = GetFrameTime();
 
-                // Update samurai character
-                samurai.updateSamurai();
+                if (!isPaused) {
+                    // Update samurai character
+                    samurai.updateSamurai();
+                }
 
                 // Get samurai position for collision detection
                 Vector2 samuraiPos = {0, 0};
@@ -451,8 +459,10 @@ int main() {
                     }
                 }
 
-                // Draw characters and key
+               
                 samurai.draw();
+            
+
                 if (!keyCollected) {
                     Rectangle keySource = {
                         (float)(keyCurrentFrame * KEY_FRAME_WIDTH), 0.0f, 
@@ -492,6 +502,15 @@ int main() {
                 DrawText("F1: Toggle collision boxes", 10, instructionsY + lineHeight*5, 20, DARKGRAY);
                 DrawText("M: Toggle music", 10, instructionsY + lineHeight*6, 20, DARKGRAY);
                 DrawText("Mouse Wheel: Zoom", 10, instructionsY + lineHeight*7, 20, DARKGRAY);
+
+                if (isPaused) {
+                    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.5f));
+                    DrawText("PAUSED", GetScreenWidth()/2 - 50, GetScreenHeight()/2 - 10, 30, WHITE);
+                    DrawText("Press 'P' to resume", GetScreenWidth()/2 - 100, GetScreenHeight()/2 + 30, 20, WHITE);
+                    samurai.pauseSounds();
+                } else {
+                    samurai.resumeSound();
+                }
 
                 EndDrawing();
 
