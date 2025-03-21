@@ -26,3 +26,4 @@ makefile
 /raylib.h
 /raytmx.h
 /rlgl.h
+/raymath.h
