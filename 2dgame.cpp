@@ -541,7 +541,7 @@ int main() {
         int lineHeight = 25; // Height of each line of text
         
         DrawText("GAME CONTROLS:", 10, instructionsY, 20, DARKGRAY);
-        DrawText("W or Up: Jump (press twice for double jump)", 10, instructionsY + lineHeight, 20, DARKGRAY);
+        DrawText("W or Up: Jump ", 10, instructionsY + lineHeight, 20, DARKGRAY);
         DrawText("A/D or Left/Right: Move", 10, instructionsY + lineHeight*2, 20, DARKGRAY);
         DrawText("Space: Attack", 10, instructionsY + lineHeight*3, 20, DARKGRAY);
         DrawText("Double-tap A/D: Dash", 10, instructionsY + lineHeight*4, 20, DARKGRAY);
