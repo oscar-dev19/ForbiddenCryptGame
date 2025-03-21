@@ -162,8 +162,8 @@ int main() {
     SetTraceLogLevel(LOG_WARNING);
     
     // Initialize window
-    const int screenWidth = 800;
-    const int screenHeight = 550;
+    const int screenWidth = 1280;
+    const int screenHeight = 720;
     InitWindow(screenWidth, screenHeight, "2D Game");
 
     // Define floor level to match where the non-zero tiles (floor tiles) are in Room1.tmx
@@ -328,9 +328,6 @@ int main() {
             // Apply master volume to dash sound
             samurai.setDashSoundVolume(0.8f * masterVolume);
         }
-        
-        // Set double jump height to a fixed value of 45
-        samurai.setDoubleJumpHeight(45.0f);
         
         // Toggle collision box visibility with F1 key
         if (IsKeyPressed(KEY_F1)) {

@@ -66,13 +66,6 @@ private:
     int currentHealth = 100; // Current health of the samurai.
     bool wasInAir = false; // Flag to indicate if the character was in the air.
     
-    // Double jump variables
-    bool canDoubleJump = false; // Flag to track if double jump is available
-    bool hasDoubleJumped = false; // Flag to track if double jump has been used
-    float doubleJumpHeight = -60.0f; // Reduced from -80.0f to prevent flying off screen
-    float singleJumpMaxHeight; // Maximum height for a single jump
-    float doubleJumpMaxHeight; // Maximum height for a double jump
-    
     // Double dash variables
     float dashSpeed = 15.0f; // Speed multiplier when dashing
     float dashDuration = 0.3f; // How long the dash lasts in seconds
@@ -97,7 +90,7 @@ private:
     Sound runSound;
     Sound deadSound;
     Sound landSound;
-    Sound dashSound; // New sound for dash ability
+    Sound dashSound;
 
     // Collision boxes for different purposes
     std::vector<CollisionBox> collisionBoxes;
@@ -216,10 +209,6 @@ private:
             velocity.y = 0;
             rect.y = groundLevel;  // Ensure character is on ground.
             
-            // Reset double jump flags when landed
-            canDoubleJump = false;
-            hasDoubleJumped = false;
-            
             // Only transition from JUMP_STATE to IDLE_STATE when landing
             if (state == JUMP_STATE) {
                 state = IDLE_STATE;
@@ -242,26 +231,11 @@ private:
                     PlaySound(jumpSound);
                 }
                 wasInAir = true;
-                canDoubleJump = true; // Enable double jump after first jump
                 
                 // Set state to JUMP_STATE and reset animation
                 if (state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
                     state = JUMP_STATE;
                     animations[state].currentFrame = 0;  // Reset animation frame
-                }
-            }
-            // Double jump (in mid-air)
-            else if (canDoubleJump && !hasDoubleJumped) {
-                velocity.y = doubleJumpHeight;  // Apply double jump velocity
-                if (jumpSound.frameCount > 0) {
-                    PlaySound(jumpSound);
-                }
-                hasDoubleJumped = true; // Mark double jump as used
-                canDoubleJump = false; // Prevent further jumps
-                
-                // Reset jump animation for the double jump
-                if (state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
-                    animations[JUMP_STATE].currentFrame = 0;  // Reset animation frame
                 }
             }
         }
@@ -369,15 +343,6 @@ private:
         
         if (rect.x < 0) rect.x = 0;
         if (rect.x > mapWidth - rect.width) rect.x = mapWidth - rect.width;
-        
-        // Apply different maximum height limits depending on whether double jump was used
-        float currentMaxHeight = hasDoubleJumped ? doubleJumpMaxHeight : singleJumpMaxHeight;
-        
-        // Ensure character doesn't go too high - limit the maximum jump height
-        if (rect.y < currentMaxHeight) {
-            rect.y = currentMaxHeight;
-            velocity.y = 0; // Stop upward movement when hitting the ceiling
-        }
     }
 
     // Helper method to handle taking damage.
@@ -486,100 +451,21 @@ private:
     }
 
     void loadTextures() {
-        // Clear any existing textures
-        for (auto& sprite : sprites) {
-            if (sprite.id != 0) {
-                UnloadTexture(sprite);
-            }
-        }
-        
-        printf("Loading Samurai textures...\n");
-        
-        // Get current working directory
-        char cwd[PATH_MAX];
-        if (getcwd(cwd, sizeof(cwd)) == NULL) {
-            printf("Error getting current working directory\n");
-            return;
-        }
-        
-        // Try different path formats
-        const char* pathFormats[] = {
-            "%s/2DGame/assets/Samurai/%s",    // Absolute with 2DGame prefix
-            "%s/assets/Samurai/%s",           // Absolute without 2DGame prefix
-            "2DGame/assets/Samurai/%s",       // Relative with 2DGame prefix
-            "assets/Samurai/%s"               // Relative without 2DGame prefix
-        };
-        
-        // Resize sprites vector
         sprites.resize(6);
-        
-        // List of filenames to load
-        const char* fileNames[] = {
-            "Dead.png", "Attack_1.png", "Hurt.png", 
-            "Idle.png", "Jump.png", "Run.png"
-        };
-        
-        // Corresponding sprite indices
-        int spriteIndices[] = {
-            DEAD_STATE, ATTACK_STATE, HURT_STATE,
-            IDLE_STATE, JUMP_STATE, RUN_STATE
-        };
-        
-        int loadedCount = 0;
-        
-        // Try to load each texture with different path formats
-        for (int i = 0; i < 6; i++) {
-            bool loaded = false;
-            
-            // Try each path format
-            for (int p = 0; p < 4 && !loaded; p++) {
-                char fullPath[PATH_MAX];
-                if (p < 2) {
-                    // Absolute paths
-                    snprintf(fullPath, sizeof(fullPath), pathFormats[p], cwd, fileNames[i]);
-                } else {
-                    // Relative paths
-                    snprintf(fullPath, sizeof(fullPath), pathFormats[p], fileNames[i]);
-                }
-                
-                // Check if file exists before loading
-                if (FileExists(fullPath)) {
-                    sprites[spriteIndices[i]] = LoadTexture(fullPath);
-                    
-                    if (sprites[spriteIndices[i]].id != 0) {
-                        printf("Loaded %s: %dx%d\n", 
-                               fileNames[i], 
-                               sprites[spriteIndices[i]].width, 
-                               sprites[spriteIndices[i]].height);
-                        loaded = true;
-                        loadedCount++;
-                        break;
-                    }
-                }
-            }
-            
-            if (!loaded) {
-                printf("Failed to load texture: %s\n", fileNames[i]);
-            }
-        }
-        
-        // Print summary
-        printf("Samurai textures loaded: %d/6\n", loadedCount);
+
+        // Load textures for different states (idle, attack, etc.).
+        sprites[DEAD_STATE] = LoadTexture("assets/Samurai/Dead.png");
+        sprites[ATTACK_STATE] = LoadTexture("assets/Samurai/Attack_1.png");
+        sprites[HURT_STATE] = LoadTexture("assets/Samurai/Hurt.png");
+        sprites[IDLE_STATE] = LoadTexture("assets/Samurai/Idle.png");
+        sprites[JUMP_STATE] = LoadTexture("assets/Samurai/Jump.png");
+        sprites[RUN_STATE] = LoadTexture("assets/Samurai/Run.png");
     }
 
 public:
     bool isDead = false; // Flag to indicate if the samurai is dead.
     bool showCollisionBoxes = false; // Flag to enable/disable collision box drawing
     bool isDashing = false; // Flag to indicate if the character is currently dashing
-
-    // Accessors for double jump height
-    float getDoubleJumpHeight() const {
-        return -doubleJumpHeight; // Return positive value for easier understanding
-    }
-    
-    void setDoubleJumpHeight(float height) {
-        doubleJumpHeight = -height; // Store as negative value for upward velocity
-    }
     
     // Accessor for dash sound volume (kept for compatibility)
     void setDashSoundVolume(float volume) {
@@ -601,20 +487,16 @@ public:
         currentHealth = maxHealth = 100;
         isDead = false;
         wasInAir = false;
-        
-        // Set maximum jump heights
-        singleJumpMaxHeight = groundLevel - 150.0f; // 150 pixels above ground level
-        doubleJumpMaxHeight = groundLevel - 300.0f; // 300 pixels above ground level (double height)
 
         // Load textures for each state.
         loadTextures();
 
         // Initialize animations for each state.
         animations = {
-            {0, 2, 0, 0, 0.2f, 0.2f, ONESHOT},    // DEAD_STATE - Changed to use all 3 frames (0, 1, 2)
+            {0, 2, 0, 0, 0.1f, 0.1f, ONESHOT},    // DEAD_STATE - Changed to use all 3 frames (0, 1, 2)
             {0, 5, 0, 0, 0.1f, 0.1f, ONESHOT},  // ATTACK_STATE
-            {0, 2, 0, 0, 0.2f, 0.2f, ONESHOT},  // HURT_STATE
-            {0, 5, 0, 0, 0.2f, 0.2f, LOOP},     // IDLE_STATE
+            {0, 1, 0, 0, 0.1f, 0.1f, ONESHOT},  // HURT_STATE
+            {0, 5, 0, 0, 0.1f, 0.1f, LOOP},     // IDLE_STATE
             {0, 11, 0, 0, 0.1f, 0.1f, ONESHOT}, // JUMP_STATE - 12 frames (0-11) based on 1536/128 = 12
             {0, 7, 0, 0, 0.1f, 0.1f, LOOP}      // RUN_STATE
         };
