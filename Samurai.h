@@ -709,44 +709,13 @@ public:
         };
 
         // Load sound effects with error checking
-        attackSound = LoadSound("2DGame/assets/sounds/attack.mp3");
-        jumpSound = LoadSound("2DGame/assets/sounds/jump.mp3");
-        hurtSound = LoadSound("2DGame/assets/sounds/hurt.mp3");
-        runSound = LoadSound("2DGame/assets/sounds/run.mp3");
-        deadSound = LoadSound("2DGame/assets/sounds/dead.mp3");
-        landSound = LoadSound("2DGame/assets/sounds/land.mp3");
-        
-        // Try to load the dash sound from various possible locations
-        dashSound = LoadSound("2DGame/assets/sounds/whoosh (phaser).wav");
-        if (dashSound.frameCount > 0) {
-            printf("Loaded dash sound from: 2DGame/assets/sounds/whoosh (phaser).wav\n");
-        } else {
-            // Try alternative paths
-            dashSound = LoadSound("2DGame/assets/sounds/misc/whoosh (phaser).wav");
-            if (dashSound.frameCount > 0) {
-                printf("Loaded dash sound from: 2DGame/assets/sounds/misc/whoosh (phaser).wav\n");
-            } else {
-                dashSound = LoadSound("2DGame/assets/sounds/whoosh(phaser).wav");
-                if (dashSound.frameCount > 0) {
-                    printf("Loaded dash sound from: 2DGame/assets/sounds/whoosh(phaser).wav\n");
-                } else {
-                    // If all paths fail, try without spaces in filename
-                    dashSound = LoadSound("2DGame/assets/sounds/misc/whoosh(phaser).wav");
-                    if (dashSound.frameCount > 0) {
-                        printf("Loaded dash sound from: 2DGame/assets/sounds/misc/whoosh(phaser).wav\n");
-                    } else {
-                        printf("Warning: Could not load dash sound effect! Trying to download...\n");
-                        
-                        // Try to download the sound file
-                        if (!tryDownloadDashSound()) {
-                            // If download fails, create a default sound
-                            printf("Creating a default dash sound...\n");
-                            createDefaultDashSound();
-                        }
-                    }
-                }
-            }
-        }
+        attackSound = LoadSound("sounds/samurai/sword-sound-2-36274.wav");
+        jumpSound = LoadSound("sounds/samurai/female-jump.wav");
+        hurtSound = LoadSound("sounds/samurai/female-hurt-2-94301.wav");
+        runSound = LoadSound("sounds/samurai/running-on-concrete-268478.wav");
+        deadSound = LoadSound("sounds/samurai/female-death.wav");
+        landSound = LoadSound("sounds/samurai/land2-43790.wav");
+        dashSound = LoadSound("sounds/samurai/whoosh (phaser).wav");
 
         // Initialize collision boxes with scaled dimensions
         float bodyOffsetX = 16.0f * SPRITE_SCALE;
