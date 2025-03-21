@@ -211,7 +211,7 @@ int main() {
     camera.target = (Vector2){ 0, 0 };
     camera.offset = (Vector2){ screenWidth/2.0f, screenHeight/2.0f };
     camera.rotation = 0.0f;
-    camera.zoom = 1.5f;  // Zoom in for better visibility
+    camera.zoom = 1.0f;  // Zoom in for better visibility
 
     // Keep the array of map paths for fallback loading
     const char* mapPaths[] = {
