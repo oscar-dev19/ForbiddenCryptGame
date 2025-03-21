@@ -507,6 +507,22 @@ int main() {
                     DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.5f));
                     DrawText("PAUSED", GetScreenWidth()/2 - 50, GetScreenHeight()/2 - 10, 30, WHITE);
                     DrawText("Press 'P' to resume", GetScreenWidth()/2 - 100, GetScreenHeight()/2 + 30, 20, WHITE);
+
+                    // Define the exit button area
+                    Rectangle exitButton = { static_cast<float>(GetScreenWidth()) / 2 - 75, 
+                        static_cast<float>(GetScreenHeight()) / 2 + 60, 
+                        150.0f, 40.0f };
+
+
+                    // Draw the exit button
+                    DrawRectangleRec(exitButton, DARKGRAY);
+                    DrawText("Exit", GetScreenWidth()/2 - 20, GetScreenHeight()/2 + 70, 20, WHITE);
+
+                    // Check if the exit button is clicked
+                    if (CheckCollisionPointRec(GetMousePosition(), exitButton) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                        CloseWindow();  // Close the game window
+                    }
+
                     samurai.pauseSounds();
                 } else {
                     samurai.resumeSound();
