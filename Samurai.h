@@ -223,9 +223,8 @@ private:
         }
 
         // Check for jump input.
-        if (IsKeyPressed(KEY_W)) {
+        if (IsKeyPressed(KEY_W) && state != ATTACK_STATE) {
             StopSound(runSound);
-            // First jump (from ground)
             if (rect.y >= groundLevel) {
                 velocity.y = -15.0f;  // Apply upward velocity.
                 if (jumpSound.frameCount > 0) {
@@ -233,13 +232,12 @@ private:
                 }
                 wasInAir = true;
                 
-                // Set state to JUMP_STATE and reset animation
-                if (state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
+                if (state != HURT_STATE && state != DEAD_STATE) {
                     state = JUMP_STATE;
-                    animations[state].currentFrame = 0;  // Reset animation frame
+                    animations[state].currentFrame = 0;
                 }
             }
-        }
+        }        
 
         // Apply gravity.
         if (rect.y < groundLevel) {
@@ -295,33 +293,30 @@ private:
         }
         
         // Handle movement based on key press and dash state
-        if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
-            // Apply dash speed if dashing, otherwise normal speed
-            velocity.x = isDashing && direction == LEFT ? -dashSpeed : -5.0f;
+        if ((IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) && !isDashing && state != ATTACK_STATE) {
+            velocity.x = -5.0f;  // Move left normally
             direction = LEFT;
-            if (state != JUMP_STATE && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
-                state = RUN_STATE;  // Set to run state.
+            
+            if (state != JUMP_STATE && state != HURT_STATE && state != DEAD_STATE) {
+                state = RUN_STATE;
             }
-        } else if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) {
-            // Apply dash speed if dashing, otherwise normal speed
-            velocity.x = isDashing && direction == RIGHT ? dashSpeed : 5.0f;
+        } else if ((IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) && !isDashing && state != ATTACK_STATE) {
+            velocity.x = 5.0f;  // Move right normally
             direction = RIGHT;
-            if (state != JUMP_STATE && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
-                state = RUN_STATE;  // Set to run state.
+            
+            if (state != JUMP_STATE && state != HURT_STATE && state != DEAD_STATE) {
+                state = RUN_STATE;
             }
-        } else {
-            // When no movement keys are pressed but still dashing
-            if (isDashing) {
-                velocity.x = (direction == RIGHT) ? dashSpeed : -dashSpeed;
-            } else {
-                velocity.x = 0;  // Stop horizontal movement if not dashing
-            }
+        } else if (state != ATTACK_STATE) {
+            // Stop movement only if not attacking
+            velocity.x = 0;
             
             if (state == RUN_STATE && !isDashing) {
-                state = IDLE_STATE;  // Return to idle if not running and not dashing
+                state = IDLE_STATE;
                 StopSound(runSound);
             }
         }
+        
 
         // Check for attack input.
         if (IsKeyPressed(KEY_SPACE) && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
