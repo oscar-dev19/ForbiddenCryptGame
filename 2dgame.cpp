@@ -520,7 +520,7 @@ int main() {
 
                     // Check if the exit button is clicked
                     if (CheckCollisionPointRec(GetMousePosition(), exitButton) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-                        CloseWindow();  // Close the game window
+                        safeExit();
                     }
 
                     samurai.pauseSounds();
