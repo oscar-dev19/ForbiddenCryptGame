@@ -224,9 +224,10 @@ private:
 
         // Check for jump input.
         if (IsKeyPressed(KEY_W)) {
+            StopSound(runSound);
             // First jump (from ground)
             if (rect.y >= groundLevel) {
-                velocity.y = -100.0f;  // Apply upward velocity.
+                velocity.y = -15.0f;  // Apply upward velocity.
                 if (jumpSound.frameCount > 0) {
                     PlaySound(jumpSound);
                 }
@@ -256,6 +257,7 @@ private:
         
         // Handle left/right movement with double tap dash
         if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT)) {
+            PlaySound(runSound);
             // Check for double tap (if the last press was recent enough)
             if (canDash && (currentTime - lastAKeyPressTime) <= doubleTapTimeThreshold) {
                 // Initiate dash to the left
@@ -274,6 +276,7 @@ private:
         }
         
         if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT)) {
+            PlaySound(runSound);
             // Check for double tap (if the last press was recent enough)
             if (canDash && (currentTime - lastDKeyPressTime) <= doubleTapTimeThreshold) {
                 // Initiate dash to the right
@@ -316,15 +319,18 @@ private:
             
             if (state == RUN_STATE && !isDashing) {
                 state = IDLE_STATE;  // Return to idle if not running and not dashing
+                StopSound(runSound);
             }
         }
 
         // Check for attack input.
         if (IsKeyPressed(KEY_SPACE) && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
+            velocity.x = 0;
             state = ATTACK_STATE;  // Set to attack state.
             animations[state].currentFrame = 0;  // Reset animation frame.
             if (attackSound.frameCount > 0) {
                 PlaySound(attackSound);
+                StopSound(runSound);
             }
         }
 
@@ -716,12 +722,14 @@ public:
                 animations[state].timer = 0;  // Reset timer for smooth animation
                 if (deadSound.frameCount > 0) {
                     PlaySound(deadSound);
+                    StopSound(runSound);
                 }
             } else {
                 state = HURT_STATE;
                 animations[state].currentFrame = 0;  // Reset hurt animation.
                 if (hurtSound.frameCount > 0) {
                     PlaySound(hurtSound);
+                    StopSound(runSound);
                 }
                 
                 // Activate invincibility frames
