@@ -338,7 +338,7 @@ private:
         // Map Width.
         const float mapWidth = 16700;
         
-        if (rect.x < 300) rect.x = 300;
+        if (rect.x < 500) rect.x = 500;
         if (rect.x > mapWidth - rect.width) rect.x = mapWidth - rect.width;
     }
 

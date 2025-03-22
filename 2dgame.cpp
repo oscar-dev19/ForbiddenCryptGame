@@ -215,8 +215,8 @@ int main() {
     SetTraceLogLevel(LOG_WARNING);
     
     // Initialize window
-    const int screenWidth = 1280;
-    const int screenHeight = 720;
+    const int screenWidth = 1920;
+    const int screenHeight = 1080;
     InitWindow(screenWidth, screenHeight, "2D Game");
 
     // Define floor level to match where the non-zero tiles (floor tiles) are in Room1.tmx
@@ -249,7 +249,7 @@ int main() {
     camera.target = (Vector2){ 100, 0 };
     camera.offset = (Vector2){ screenWidth/2.0f, screenHeight/2.0f };
     camera.rotation = 0.0f;
-    camera.zoom = 2.3f;  // Zoom in for better visibility
+    camera.zoom = 3.3f;  // Zoom in for better visibility
 
     // Load key texture
     keyTexture = LoadTexture("assets/gameObjects/key/key.png");
@@ -445,7 +445,7 @@ int main() {
                 EndMode2D();
 
                 // UI controls instructions
-                int instructionsY = screenHeight - 700;
+                int instructionsY = screenHeight - 1050;
                 int lineHeight = 25;
 
                 DrawText("GAME CONTROLS:", 10, instructionsY, 20, WHITE);
