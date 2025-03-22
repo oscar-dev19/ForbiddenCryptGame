@@ -226,7 +226,7 @@ private:
         if (IsKeyPressed(KEY_W) && state != ATTACK_STATE) {
             StopSound(runSound);
             if (rect.y >= groundLevel) {
-                velocity.y = -15.0f;  // Apply upward velocity.
+                velocity.y = -10.0f;  // Apply upward velocity.
                 if (jumpSound.frameCount > 0) {
                     PlaySound(jumpSound);
                 }
