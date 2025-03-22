@@ -748,7 +748,11 @@ public:
         ResumeSound(jumpSound);
     }
 
-    int getPos() {
-        return rect.x;
+    void setRect(const Rectangle& newRect) { rect = newRect; }
+
+    void setVelocity(const Vector2& newVel) { velocity = newVel; }
+
+    Vector2 getVelocity() const {
+        return velocity;
     }
 };

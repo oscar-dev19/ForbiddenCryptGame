@@ -320,6 +320,7 @@ int main() {
                     samuraiPos.y = samuraiBody->rect.y + samuraiBody->rect.height / 2;
                 }
 
+                
                 // Check for key collection
                 if (samuraiBody && samuraiBody->active) {
                     if (CheckCollisionRecs(samuraiBody->rect, keyCollisionRect) && !keyCollected) {
@@ -328,10 +329,10 @@ int main() {
                         keyCollected = true;
                     }
                 }
-
+                
                 // Check for collisions between Samurai's attack and enemies
                 CollisionBox* samuraiAttack = samurai.getCollisionBox(ATTACK);
-
+                
                 // Check for enemy attacks hitting Samurai
                 CollisionBox* samuraiHurtbox = samurai.getCollisionBox(HURTBOX);
 
