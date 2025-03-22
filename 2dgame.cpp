@@ -223,7 +223,7 @@ int main() {
     camera.offset = (Vector2){ screenWidth/2.0f, screenHeight/2.0f };
     camera.rotation = 0.0f;
     camera.zoom = 1.0f;  // Zoom in for better visibility
-    
+
     // Load key texture
     keyTexture = LoadTexture("assets/gameObjects/key/key.png");
     if (keyTexture.id == 0) {
@@ -355,7 +355,11 @@ int main() {
 
                 // Update camera to follow player, ensuring it stays within map boundaries
                 Rectangle samuraiRect = samurai.getRect();
-                camera.target = (Vector2){ samuraiRect.x, samuraiRect.y };
+                camera.target = (Vector2){ samuraiPos.x, samuraiPos.y };
+                // Add some camera boundary checks to avoid the camera going out of bounds:
+                camera.target.x = Clamp(camera.target.x, 0, map->width * map->tileWidth - screenWidth);
+                camera.target.y = Clamp(camera.target.y, 0, map->height * map->tileHeight - screenHeight);
+
 
                 float halfScreenWidth = screenWidth / (2.0f * camera.zoom);
                 float halfScreenHeight = screenHeight / (2.0f * camera.zoom);
@@ -366,18 +370,21 @@ int main() {
 
                 // Camera zoom controls
                 camera.zoom += ((float)GetMouseWheelMove() * 0.1f);
-                if (camera.zoom < 0.5f) camera.zoom = 0.5f;
-                if (camera.zoom > 3.0f) camera.zoom = 3.0f;
+                if (camera.target.x < halfScreenWidth) camera.target.x = halfScreenWidth;
+                if (camera.target.x > map->width * 16 - halfScreenWidth) camera.target.x = map->width * 16 - halfScreenWidth;
+                if (camera.target.y < halfScreenHeight) camera.target.y = halfScreenHeight;
+                if (camera.target.y > map->height * 16 - halfScreenHeight) camera.target.y = map->height * 16 - halfScreenHeight;
 
                 // Begin drawing
                 BeginDrawing();
                 ClearBackground(RAYWHITE);
-
                 
                 // 2D camera mode for proper drawing
                 BeginMode2D(camera);
 
                 renderLevel();
+
+                std::cout << samurai.getPos() << std::endl;
 
                 // Draw Samurai.
                 samurai.draw();
@@ -466,6 +473,7 @@ int main() {
     // Unload sounds
     UnloadSound(keySound);
 
+    // Unload map.
     UnloadTMX(map);
 
     // This code should never be reached because we call safeExit() when WindowShouldClose() is true
