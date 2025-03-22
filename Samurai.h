@@ -256,6 +256,7 @@ private:
         // Handle left/right movement with double tap dash
         if ((IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT)) && state != ATTACK_STATE) {
             PlaySound(runSound);
+
             if (canDash && (currentTime - lastAKeyPressTime) <= doubleTapTimeThreshold) {
                 isDashing = true;
                 dashTimer = dashDuration;
@@ -337,7 +338,7 @@ private:
         // Map Width.
         const float mapWidth = 16700;
         
-        if (rect.x < 0) rect.x = 0;
+        if (rect.x < 300) rect.x = 300;
         if (rect.x > mapWidth - rect.width) rect.x = mapWidth - rect.width;
     }
 

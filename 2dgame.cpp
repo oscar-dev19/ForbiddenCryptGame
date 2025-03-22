@@ -26,9 +26,6 @@ Music backgroundMusic = { 0 };
 Sound demonChantSound = { 0 };
 float masterVolume = 0.7f;
 
-// Define a scale factor for the demon (visual only)
-float demonScaleFactor = 1.3f;
-
 // Global background texture
 Texture2D backgroundTexture = { 0 };
 Camera2D camera = { 0 };
@@ -194,7 +191,7 @@ int main() {
 
     // Define floor level to match where the non-zero tiles (floor tiles) are in Room1.tmx
     // This value is used for all characters to ensure consistent vertical positioning
-    const float floorLevel = 2095.0f; // Exact floor level matching the non-zero floor tiles in TMX
+    const float floorLevel = 2223.0f; // Exact floor level matching the non-zero floor tiles in TMX
     const float floorHeight = 50.0f; // Height of the floor rectangle if needed
     
     // Update constant values in other files to match our floor level
@@ -219,10 +216,10 @@ int main() {
     SetTargetFPS(60);
     
     // Initialize camera
-    camera.target = (Vector2){ 0, 0 };
+    camera.target = (Vector2){ 100, 0 };
     camera.offset = (Vector2){ screenWidth/2.0f, screenHeight/2.0f };
     camera.rotation = 0.0f;
-    camera.zoom = 1.0f;  // Zoom in for better visibility
+    camera.zoom = 2.3f;  // Zoom in for better visibility
 
     // Load key texture
     keyTexture = LoadTexture("assets/gameObjects/key/key.png");
@@ -235,7 +232,7 @@ int main() {
     keyPosition = { 1200, floorLevel - keyTexture.height };
 
     // Initialize characters using stack allocation - all characters now use the same floorLevel
-    Samurai samurai(100, floorLevel, floorLevel);
+    Samurai samurai(400, floorLevel, floorLevel);
     
     // Initialize dash sound volume to match master volume
     samurai.setDashSoundVolume(0.8f * masterVolume);
@@ -352,20 +349,20 @@ int main() {
                     (float)KEY_FRAME_WIDTH,                         // Keep original collision size
                     (float)KEY_FRAME_HEIGHT
                 };
-
                 // Update camera to follow player, ensuring it stays within map boundaries
                 Rectangle samuraiRect = samurai.getRect();
                 camera.target = (Vector2){ samuraiPos.x, samuraiPos.y };
+
                 // Add some camera boundary checks to avoid the camera going out of bounds:
-                camera.target.x = Clamp(camera.target.x, 0, map->width * map->tileWidth - screenWidth);
-                camera.target.y = Clamp(camera.target.y, 0, map->height * map->tileHeight - screenHeight);
-
-
                 float halfScreenWidth = screenWidth / (2.0f * camera.zoom);
                 float halfScreenHeight = screenHeight / (2.0f * camera.zoom);
 
+                // Clamp X and Y positions with easing towards boundaries
+                camera.target.x = Lerp(camera.target.x, Clamp(camera.target.x, halfScreenWidth, map->width * map->tileWidth - halfScreenWidth), 0.1f);
+                camera.target.y = Lerp(camera.target.y, Clamp(camera.target.y, halfScreenHeight, map->height * map->tileHeight - halfScreenHeight), 0.1f);
+
                 // Ensure camera doesn't go out of bounds
-                if (camera.target.x < halfScreenWidth) camera.target.x = halfScreenWidth;
+                if (camera.target.x < halfScreenWidth) camera.target.x = halfScreenWidth + 100;
                 if (camera.target.y < halfScreenHeight) camera.target.y = halfScreenHeight;
 
                 // Camera zoom controls
@@ -377,14 +374,12 @@ int main() {
 
                 // Begin drawing
                 BeginDrawing();
-                ClearBackground(RAYWHITE);
+                ClearBackground(BLACK);
                 
                 // 2D camera mode for proper drawing
                 BeginMode2D(camera);
 
                 renderLevel();
-
-                std::cout << samurai.getPos() << std::endl;
 
                 // Draw Samurai.
                 samurai.draw();
@@ -417,17 +412,17 @@ int main() {
                 EndMode2D();
 
                 // UI controls instructions
-                int instructionsY = screenHeight - 210;
+                int instructionsY = screenHeight - 700;
                 int lineHeight = 25;
 
-                DrawText("GAME CONTROLS:", 10, instructionsY, 20, DARKGRAY);
-                DrawText("W or Up: Jump ", 10, instructionsY + lineHeight, 20, DARKGRAY);
-                DrawText("A/D or Left/Right: Move", 10, instructionsY + lineHeight*2, 20, DARKGRAY);
-                DrawText("Space: Attack", 10, instructionsY + lineHeight*3, 20, DARKGRAY);
-                DrawText("Double-tap A/D: Dash", 10, instructionsY + lineHeight*4, 20, DARKGRAY);
-                DrawText("F1: Toggle collision boxes", 10, instructionsY + lineHeight*5, 20, DARKGRAY);
-                DrawText("M: Toggle music", 10, instructionsY + lineHeight*6, 20, DARKGRAY);
-                DrawText("Mouse Wheel: Zoom", 10, instructionsY + lineHeight*7, 20, DARKGRAY);
+                DrawText("GAME CONTROLS:", 10, instructionsY, 20, WHITE);
+                DrawText("W or Up: Jump ", 10, instructionsY + lineHeight, 20, WHITE);
+                DrawText("A/D or Left/Right: Move", 10, instructionsY + lineHeight*2, 20, WHITE);
+                DrawText("Space: Attack", 10, instructionsY + lineHeight*3, 20, WHITE);
+                DrawText("Double-tap A/D: Dash", 10, instructionsY + lineHeight*4, 20, WHITE);
+                DrawText("F1: Toggle collision boxes", 10, instructionsY + lineHeight*5, 20, WHITE);
+                DrawText("M: Toggle music", 10, instructionsY + lineHeight*6, 20, WHITE);
+                DrawText("Mouse Wheel: Zoom", 10, instructionsY + lineHeight*7, 20, WHITE);
 
                 if (isPaused) {
                     DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.5f));
