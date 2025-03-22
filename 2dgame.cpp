@@ -33,8 +33,7 @@ float demonScaleFactor = 1.3f;
 Texture2D backgroundTexture = { 0 };
 Camera2D camera = { 0 };
 
-// Global TMX map variable
-TmxMap* tmxMap = NULL;
+TmxMap* map = NULL;
 
 // Key variables
 Texture2D keyTexture = { 0 };
@@ -94,12 +93,6 @@ void safeExit() {
         UnloadTexture(backgroundTexture);
     }
     
-    // Unload the TMX map
-    if (tmxMap != NULL) {
-        UnloadTMX(tmxMap);
-        tmxMap = NULL;
-    }
-    
     // Clean up Raylib
     CloseAudioDevice();
     CloseWindow();
@@ -153,6 +146,35 @@ bool fileExists(const char* fileName) {
     return false;
 }
 
+void loadLevel() {
+    map = LoadTMX("maps/Room1.tmx");
+    if (!map) {
+        printf("Failed to Load TMX File.\n");
+        exit (1);
+    } else {
+        printf("Loaded TMX File.");
+    }
+
+    // Loop through tilesets (assuming map->tilesets is a pointer to an array of TmxTileset)
+    for (int i = 0; i < map->tilesetsLength; i++) {
+        TmxTileset* tileset = &map->tilesets[i];  // Accessing tileset by pointer
+
+        // Check if the image source is valid (not empty)
+        if (tileset->image.source[0] != '\0') {  // Using image.source to check validity
+            Texture2D tilesetTexture = LoadTexture("maps/16 x16 Purple Dungeon Sprite Sheet.png");
+            if (tilesetTexture.id == 0) {
+                std::cout << "Error loading tileset image" << std::endl;
+            }
+        }
+    }
+}
+
+void renderLevel() {
+    if (map) {
+        DrawTMX(map, &camera, 0, 0, WHITE);
+    }
+}
+
 int main() {
     // Print current working directory
     char cwd[PATH_MAX];
@@ -172,7 +194,7 @@ int main() {
 
     // Define floor level to match where the non-zero tiles (floor tiles) are in Room1.tmx
     // This value is used for all characters to ensure consistent vertical positioning
-    const float floorLevel = 380.0f; // Exact floor level matching the non-zero floor tiles in TMX
+    const float floorLevel = 2095.0f; // Exact floor level matching the non-zero floor tiles in TMX
     const float floorHeight = 50.0f; // Height of the floor rectangle if needed
     
     // Update constant values in other files to match our floor level
@@ -195,94 +217,12 @@ int main() {
     keySound = LoadSound("sounds/key/keysound.mp3");
     
     SetTargetFPS(60);
-
-    // Load background texture
-    // Try to load from maps directory first
-    backgroundTexture = LoadTexture("maps/64 x 64 Blue Dungeon Sprite Sheet.png");
-    if (backgroundTexture.id == 0) {
-        // If failed, try assets directory
-        backgroundTexture = LoadTexture("assets/background/dungeon_background.png");
-        if (backgroundTexture.id == 0) {
-            printf("Failed to load background texture! Creating a default one.\n");
-            // Create a default background texture with a simple pattern
-            Image checkerImage = GenImageChecked(800, 600, 64, 64, DARKGRAY, GRAY);
-            backgroundTexture = LoadTextureFromImage(checkerImage);
-            UnloadImage(checkerImage);
-        }
-    }
     
     // Initialize camera
     camera.target = (Vector2){ 0, 0 };
     camera.offset = (Vector2){ screenWidth/2.0f, screenHeight/2.0f };
     camera.rotation = 0.0f;
     camera.zoom = 1.0f;  // Zoom in for better visibility
-
-    // Keep the array of map paths for fallback loading
-    const char* mapPaths[] = {
-        "maps/Room1.tmx",
-        "maps/Room3and4.tmx",
-        "maps/Dungeon.tmx"
-    };
-    int numMapPaths = sizeof(mapPaths) / sizeof(mapPaths[0]);
-    
-    // Try to load any available map
-    tmxMap = NULL;
-    bool mapLoaded = false;
-    for (int i = 0; i < numMapPaths && !mapLoaded; i++) {
-        tmxMap = LoadTMX(mapPaths[i]);
-        if (tmxMap != NULL) {
-            mapLoaded = true;
-            printf("Successfully loaded TMX map: %s\n", mapPaths[i]);
-        } else {
-            printf("Failed to load TMX map: %s\n", mapPaths[i]);
-        }
-    }
-    
-    if (!mapLoaded) {
-        printf("Failed to load any TMX map. Exiting...\n");
-        exit(1);
-    }
-    
-    // Keep the tileset checking code but remove debug prints
-    const char* requiredTilesets[] = {
-        "maps/16 x16 Purple Dungeon Sprite Sheet copy.png"
-    };
-    int numRequiredTilesets = sizeof(requiredTilesets) / sizeof(requiredTilesets[0]);
-    
-    // Ensure needed tileset files exist
-    for (int i = 0; i < numRequiredTilesets; i++) {
-        if (!fileExists(requiredTilesets[i])) {
-            // Keep the TSX file creation code
-            FILE* file = fopen(requiredTilesets[i], "w");
-            if (file) {
-                fprintf(file, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-                fprintf(file, "<tileset version=\"1.10\" tiledversion=\"1.10.2\" name=\"16 x16 Purple Dungeon Sprite Sheet\" tilewidth=\"16\" tileh\n");
-                fprintf(file, "eight=\"16\" tilecount=\"60\" columns=\"6\">\n");
-                fprintf(file, " <image source=\"16 x16 Purple Dungeon Sprite Sheet.png\" width=\"96\" height=\"160\"/>\n");
-                fprintf(file, "</tileset>\n");
-                fclose(file);
-            } else {
-                printf("Failed to create tileset file: %s\n", requiredTilesets[i]);
-            }
-        }
-    }
-    
-    // Calculate the map dimensions in pixels based on the loaded TMX map
-    const int mapTileSize = 16;
-    int mapWidth = 128;  // Default map width in tiles
-    int mapHeight = 32;  // Default map height in tiles
-    
-    // Try to get actual dimensions from the loaded TMX map
-    if (tmxMap != NULL && tmxMap->fileName != NULL) {
-        // Get map dimensions from the loaded TMX file
-        mapWidth = tmxMap->width;
-        mapHeight = tmxMap->height;
-    } else {
-        printf("Using default map dimensions: %d x %d tiles\n", mapWidth, mapHeight);
-    }
-    
-    const float mapWidthPixels = mapWidth * mapTileSize;
-    const float mapHeightPixels = mapHeight * mapTileSize;
     
     // Load key texture
     keyTexture = LoadTexture("assets/gameObjects/key/key.png");
@@ -302,6 +242,8 @@ int main() {
 
     StartScreen startScreen;
     GameState gameState = START_SCREEN;
+
+    loadLevel();
 
     // Game loop
     while (!WindowShouldClose()) {
@@ -411,11 +353,6 @@ int main() {
                     (float)KEY_FRAME_HEIGHT
                 };
 
-                // Update TMX animations
-                if (tmxMap != NULL && tmxMap->fileName != NULL) {
-                    AnimateTMX(tmxMap);
-                }
-
                 // Update camera to follow player, ensuring it stays within map boundaries
                 Rectangle samuraiRect = samurai.getRect();
                 camera.target = (Vector2){ samuraiRect.x, samuraiRect.y };
@@ -425,9 +362,7 @@ int main() {
 
                 // Ensure camera doesn't go out of bounds
                 if (camera.target.x < halfScreenWidth) camera.target.x = halfScreenWidth;
-                if (camera.target.x > mapWidthPixels - halfScreenWidth) camera.target.x = mapWidthPixels - halfScreenWidth;
                 if (camera.target.y < halfScreenHeight) camera.target.y = halfScreenHeight;
-                if (camera.target.y > mapHeightPixels - halfScreenHeight) camera.target.y = mapHeightPixels - halfScreenHeight;
 
                 // Camera zoom controls
                 camera.zoom += ((float)GetMouseWheelMove() * 0.1f);
@@ -438,30 +373,14 @@ int main() {
                 BeginDrawing();
                 ClearBackground(RAYWHITE);
 
+                
                 // 2D camera mode for proper drawing
                 BeginMode2D(camera);
 
-                // Draw background
-                if (tmxMap != NULL && tmxMap->fileName != NULL) {
-                    DrawTMX(tmxMap, &camera, 0, 0, WHITE);
-                } else {
-                    float tileWidth = backgroundTexture.width;
-                    float tileHeight = backgroundTexture.height;
-                    int tilesX = (int)((screenWidth / camera.zoom) / tileWidth) + 2;
-                    int tilesY = (int)((screenHeight / camera.zoom) / tileHeight) + 2;
-                    float startX = (int)(camera.target.x / 2 - (tilesX * tileWidth) / 2);
-                    float startY = (int)(camera.target.y / 2 - (tilesY * tileHeight) / 2);
+                renderLevel();
 
-                    for (int y = 0; y < tilesY; y++) {
-                        for (int x = 0; x < tilesX; x++) {
-                            DrawTexture(backgroundTexture, startX + x * tileWidth, startY + y * tileHeight, WHITE);
-                        }
-                    }
-                }
-
-               
+                // Draw Samurai.
                 samurai.draw();
-            
 
                 if (!keyCollected) {
                     Rectangle keySource = {
@@ -546,6 +465,8 @@ int main() {
 
     // Unload sounds
     UnloadSound(keySound);
+
+    UnloadTMX(map);
 
     // This code should never be reached because we call safeExit() when WindowShouldClose() is true
     return 0;
