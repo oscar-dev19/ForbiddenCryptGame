@@ -147,18 +147,31 @@ bool fileExists(const char* fileName) {
 }
 
 void loadLevel() {
-    map = LoadTMX("maps/leveldesign.tmx");
+    map = LoadTMX("maps/Room1.tmx");
     if (!map) {
         printf("Failed to Load TMX File.\n");
         exit (1);
     } else {
         printf("Loaded TMX File.");
     }
+
+    // Loop through tilesets (assuming map->tilesets is a pointer to an array of TmxTileset)
+    for (int i = 0; i < map->tilesetsLength; i++) {
+        TmxTileset* tileset = &map->tilesets[i];  // Accessing tileset by pointer
+
+        // Check if the image source is valid (not empty)
+        if (tileset->image.source[0] != '\0') {  // Using image.source to check validity
+            Texture2D tilesetTexture = LoadTexture("maps/16 x16 Purple Dungeon Sprite Sheet.png");
+            if (tilesetTexture.id == 0) {
+                std::cout << "Error loading tileset image" << std::endl;
+            }
+        }
+    }
 }
 
 void renderLevel() {
     if (map) {
-        DrawTMX(map, &camera, 0, 0, DARKGRAY);
+        DrawTMX(map, &camera, 0, 0, WHITE);
     }
 }
 
@@ -181,7 +194,7 @@ int main() {
 
     // Define floor level to match where the non-zero tiles (floor tiles) are in Room1.tmx
     // This value is used for all characters to ensure consistent vertical positioning
-    const float floorLevel = 380.0f; // Exact floor level matching the non-zero floor tiles in TMX
+    const float floorLevel = 2095.0f; // Exact floor level matching the non-zero floor tiles in TMX
     const float floorHeight = 50.0f; // Height of the floor rectangle if needed
     
     // Update constant values in other files to match our floor level
@@ -436,6 +449,8 @@ int main() {
 
     // Unload sounds
     UnloadSound(keySound);
+
+    UnloadTMX(map);
 
     // This code should never be reached because we call safeExit() when WindowShouldClose() is true
     return 0;
