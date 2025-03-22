@@ -755,4 +755,19 @@ public:
     Vector2 getVelocity() const {
         return velocity;
     }
+
+    bool isJumping() {
+        return state == JUMP_STATE;
+    }
+
+    bool isFalling() {
+        return wasInAir;
+    }
+
+    void land() {
+        if (isJumping() || isFalling()) {
+            wasInAir = false;
+            rect.y = groundLevel;
+        }
+    }
 };

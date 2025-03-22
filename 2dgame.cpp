@@ -172,6 +172,36 @@ void renderLevel() {
     }
 }
 
+void checkTileCollisions(TmxMap* map, Samurai& player) {
+    for (unsigned int i = 0; i < map->layersLength; i++) {
+      TraceLog(LOG_DEBUG, "current layer is %d: %s", i, map->layers[i].name);
+      if (strcmp(map->layers[i].name, "Object Layer 1") == 0 && map->layers[i].type == LAYER_TYPE_OBJECT_GROUP) 
+      {
+          TmxObject col;
+          if (CheckCollisionTMXObjectGroupRec(map->layers[i].exact.objectGroup, player.getRect(), &col))
+          {
+            TraceLog(LOG_DEBUG, "We've made contact!");
+            std::cout << "Made Contact.\n";
+
+            if (player.isJumping() || player.isFalling()) {
+                Vector2 newVel = player.getVelocity();
+                newVel.y = 0;
+                player.setVelocity(newVel);
+    
+                Rectangle newRect = player.getRect();
+                newRect.y = (col.aabb.y - newRect.height);
+                player.setRect(newRect);
+
+                if (player.isJumping()) {
+                    player.land();
+                }
+            }
+          }
+      }
+    }
+    return;
+} 
+
 int main() {
     // Print current working directory
     char cwd[PATH_MAX];
@@ -335,6 +365,8 @@ int main() {
                 
                 // Check for enemy attacks hitting Samurai
                 CollisionBox* samuraiHurtbox = samurai.getCollisionBox(HURTBOX);
+
+                checkTileCollisions(map, samurai);
 
                 // Update animations and collision rectangles
                 keyFrameTime += deltaTime;
