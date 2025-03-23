@@ -221,25 +221,21 @@ int main() {
     const float floorHeight = 50.0f; // Height of the floor rectangle if needed
     
     // Loading the Background.
-    Texture2D background1 = LoadTexture("maps/background/0.png");
-    Texture2D background2 = LoadTexture("maps/background/1.png");
-    Texture2D background3 = LoadTexture("maps/background/2.png");
-    Texture2D background4 = LoadTexture("maps/background/3.png");
-    Texture2D background5 = LoadTexture("maps/background/4.png");
+    Texture2D background = LoadTexture("maps/Dungeon_brick_wall_purple.png.png");
 
     // Background Scale Factors.
-    float scalebgx = (float)screenWidth / (float)background1.width;
-    float scalebgy = (float)screenHeight / (float)background1.height;
+    float scalebgx = (float)screenWidth / (float)background.width;
+    float scalebgy = (float)screenHeight / (float)background.height;
     float scalebg = (scalebgx < scalebgy) ? scalebgx : scalebgy;
     scalebg /= 3.0f;
 
     // Positions for Background Positions.
-    float bgposX = ((screenWidth - background1.width * scalebg) / 2) - 400;
-    float bgposY = ((screenHeight - background1.height * scalebg) / 2) - 210;
+    float bgposX = ((screenWidth - background.width * scalebg) / 2) - 400;
+    float bgposY = ((screenHeight - background.height * scalebg) / 2) - 210;
     
     // Horizontal and Vertical Sliders for Background.
-    int scaledW = background1.width * scalebg;
-    int scaledH = background1.height * scalebg;
+    int scaledW = background.width * scalebg;
+    int scaledH = background.height * scalebg;
     int tilesX = (screenWidth / scaledW) + 23;
     int tilesY = (screenHeight / scaledH) + 5;
     
@@ -424,11 +420,7 @@ int main() {
                         float posX = x * scaledW;
                         float posY = y * scaledH;
 
-                        DrawTextureEx(background1, Vector2{posX + bgposX, posY + bgposY}, 0.0f, scalebg, WHITE);
-                        DrawTextureEx(background2, Vector2{posX + bgposX, posY + bgposY}, 0.0f, scalebg, WHITE);
-                        DrawTextureEx(background3, Vector2{posX + bgposX, posY + bgposY}, 0.0f, scalebg, WHITE);
-                        DrawTextureEx(background4, Vector2{posX + bgposX, posY + bgposY}, 0.0f, scalebg, WHITE);
-                        DrawTextureEx(background5, Vector2{posX + bgposX, posY + bgposY}, 0.0f, scalebg, WHITE);
+                        DrawTextureEx(background, Vector2{posX + bgposX, posY + bgposY}, 0.0f, scalebg, WHITE);
                     }
                 }
                 
@@ -526,11 +518,7 @@ int main() {
     UnloadTMX(map);
 
     // Unload Background.
-    UnloadTexture(background1);
-    UnloadTexture(background2);
-    UnloadTexture(background3);
-    UnloadTexture(background4);
-    UnloadTexture(background5);
+    UnloadTexture(background);
 
     // This code should never be reached because we call safeExit() when WindowShouldClose() is true
     return 0;
