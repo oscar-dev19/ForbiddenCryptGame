@@ -420,7 +420,7 @@ int main() {
                         float posX = x * scaledW;
                         float posY = y * scaledH;
 
-                        DrawTextureEx(background, Vector2{posX + bgposX, posY + bgposY}, 0.0f, scalebg, WHITE);
+                        DrawTextureEx(background, Vector2{posX + bgposX, posY + bgposY}, 0.0f, scalebg, GRAY);
                     }
                 }
                 
