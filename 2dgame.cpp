@@ -35,7 +35,7 @@ TmxMap* map = NULL;
 enum GameState {START_SCREEN, MAIN_GAME, EXIT};
 bool isPaused = false;
 bool isComplete = false;
-bool goMain = false;
+bool gameover = false;
 
 // Helper function to check collision between two collision boxes
 bool checkCharacterCollision(const CollisionBox& box1, const CollisionBox& box2) {
@@ -259,7 +259,6 @@ int main() {
         // Handle game state updates based on current game state
         switch(gameState) {
             case START_SCREEN: {
-                goMain = false;
                 if (!isPlayingMenuMusic) {
                     PlayMusicStream(menuMusic);
                     isPlayingMenuMusic = true;
@@ -314,8 +313,6 @@ int main() {
                 }
 
                 samurai.deathBarrier();
-                std::cout << "X: " << samurai.getRect().x << std::endl;
-                std::cout << "Y: " <<samurai.getRect().y << std::endl;
 
                 // Get samurai position for collision detection
                 Vector2 samuraiPos = {0, 0};
@@ -359,6 +356,10 @@ int main() {
                 } else {
                     // Stop moving the camera when the player is dead
                     camera.target = camera.target; // Keeps the camera locked in place
+                }
+
+                if(samurai.checkDeath()) {
+                    gameover = true;
                 }
 
                 if(samurai.getRect().x >= 10980) {
@@ -460,7 +461,38 @@ int main() {
                             safeExit();
                         }
                     }
-                } else {
+                } else if(gameover) {
+                    // Draw Game Over screen
+                    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.8f)); // Dark background overlay
+
+                    // Center coordinates
+                    const int centerX = GetScreenWidth() / 2;
+                    const int centerY = GetScreenHeight() / 2;
+
+                    // Draw Game Over text
+                    DrawText("GAME OVER", centerX - MeasureText("GAME OVER", 50) / 2, centerY - 100, 50, RED);
+                    DrawText("Better luck next time!", centerX - MeasureText("Better luck next time!", 25) / 2, centerY - 50, 25, WHITE);
+
+                    // Define the Exit button
+                    Rectangle exitButton = { static_cast<float>(centerX - 100), 
+                                            static_cast<float>(centerY + 30), 
+                                            200.0f, 50.0f };
+
+                    // Draw the Exit button with hover effect
+                    Color exitButtonColor = CheckCollisionPointRec(GetMousePosition(), exitButton) ? LIGHTGRAY : DARKGRAY;
+                    DrawRectangleRec(exitButton, exitButtonColor);
+                    DrawText("Exit", centerX - MeasureText("Exit", 25) / 2, centerY + 45, 25, WHITE);
+
+                    // Check if the Exit button is clicked
+                    if (CheckCollisionPointRec(GetMousePosition(), exitButton) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                        safeExit(); // Close the game window
+                    }
+
+                    // Handle key press for exiting
+                    if (IsKeyPressed(KEY_E)) {
+                        safeExit();
+                    }
+                }else {
                     samurai.resumeSound();
                 }
 
