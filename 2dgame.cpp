@@ -227,17 +227,17 @@ int main() {
     float scalebgx = (float)screenWidth / (float)background.width;
     float scalebgy = (float)screenHeight / (float)background.height;
     float scalebg = (scalebgx < scalebgy) ? scalebgx : scalebgy;
-    scalebg /= 3.0f;
+    scalebg /= 4.5f;
 
     // Positions for Background Positions.
-    float bgposX = ((screenWidth - background.width * scalebg) / 2) - 400;
+    float bgposX = ((screenWidth - background.width * scalebg) / 2) - 600;
     float bgposY = ((screenHeight - background.height * scalebg) / 2) - 210;
     
     // Horizontal and Vertical Sliders for Background.
     int scaledW = background.width * scalebg;
     int scaledH = background.height * scalebg;
-    int tilesX = (screenWidth / scaledW) + 23;
-    int tilesY = (screenHeight / scaledH) + 5;
+    int tilesX = (screenWidth / scaledW) + 40;
+    int tilesY = (screenHeight / scaledH) + 10;
     
     // Initialize audio device before loading music
     InitAudioDevice();
