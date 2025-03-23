@@ -349,6 +349,7 @@ private:
         const float mapWidth = 16700;
         
         if (rect.x < 500) rect.x = 500;
+        if (rect.x > 10984) rect.x = 10984;
         if (rect.x > mapWidth - rect.width) rect.x = mapWidth - rect.width;
     }
 
@@ -786,7 +787,11 @@ public:
     }
 
     void deathBarrier() {
-        if (rect.y == groundLevel) {
+        if (rect.x >= 400 && rect.x <= 4096 && rect.y >= 2340) {
+            takeDamage(1000000);
+        } else if(rect.x >= 4096 && rect.y >= 2639 && rect.x <= 5860) {
+            takeDamage(1000000);
+        } else if (rect.x >= 5860 && rect.y >= 4030) {
             takeDamage(1000000);
         }
     }

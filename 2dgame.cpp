@@ -214,7 +214,7 @@ int main() {
 
     // Define floor level to match where the non-zero tiles (floor tiles) are in Room1.tmx
     // This value is used for all characters to ensure consistent vertical positioning
-    const float floorLevel = 2350.0f; // Exact floor level matching the non-zero floor tiles in TMX
+    const float floorLevel = 5000.0f; // Exact floor level matching the non-zero floor tiles in TMX
     const float floorHeight = 50.0f; // Height of the floor rectangle if needed
     
     // Loading the Background.
@@ -342,6 +342,8 @@ int main() {
                 }
 
                 samurai.deathBarrier();
+                std::cout << "X: " << samurai.getRect().x << std::endl;
+                std::cout << "Y: " <<samurai.getRect().y << std::endl;
 
                 // Get samurai position for collision detection
                 Vector2 samuraiPos = {0, 0};
