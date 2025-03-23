@@ -225,6 +225,8 @@ private:
         // Check for jump input.
         if (IsKeyPressed(KEY_W) && state != ATTACK_STATE) {
             StopSound(runSound);
+            state = JUMP_STATE;
+
             if (rect.y >= groundLevel) {
                 velocity.y = -10.0f;  // Apply upward velocity.
                 if (jumpSound.frameCount > 0) {
@@ -256,6 +258,7 @@ private:
         // Handle left/right movement with double tap dash
         if ((IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT)) && state != ATTACK_STATE) {
             PlaySound(runSound);
+            state = RUN_STATE;
 
             if (canDash && (currentTime - lastAKeyPressTime) <= doubleTapTimeThreshold) {
                 isDashing = true;
@@ -271,6 +274,8 @@ private:
         
         if ((IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT)) && state != ATTACK_STATE) {
             PlaySound(runSound);
+            state = RUN_STATE;
+
             if (canDash && (currentTime - lastDKeyPressTime) <= doubleTapTimeThreshold) {
                 isDashing = true;
                 dashTimer = dashDuration;
@@ -287,6 +292,7 @@ private:
         if ((IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) && !isDashing && state != ATTACK_STATE) {
             velocity.x = -5.0f;  // Move left normally
             direction = LEFT;
+            state = RUN_STATE;
             
             if (state != JUMP_STATE && state != HURT_STATE && state != DEAD_STATE) {
                 state = RUN_STATE;
@@ -294,6 +300,7 @@ private:
         } else if ((IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) && !isDashing && state != ATTACK_STATE) {
             velocity.x = 5.0f;  // Move right normally
             direction = RIGHT;
+            state = RUN_STATE;
             
             if (state != JUMP_STATE && state != HURT_STATE && state != DEAD_STATE) {
                 state = RUN_STATE;
@@ -360,6 +367,7 @@ private:
     // Helper method to check for damage input (for testing).
     void checkForDamage() {
         if (IsKeyPressed(KEY_K)) {
+            state = HURT_STATE;
             takeDamage(10);  // Take 10 damage.
         }
     }
@@ -767,6 +775,7 @@ public:
     void land() {
         if (isJumping() || isFalling()) {
             wasInAir = false;
+            state = IDLE_STATE;
         }
     }
 
