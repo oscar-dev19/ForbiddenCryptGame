@@ -177,7 +177,6 @@ void checkTileCollisions(TmxMap* map, Samurai& player) {
           if (CheckCollisionTMXObjectGroupRec(map->layers[i].exact.objectGroup, player.getRect(), &col))
           {
             TraceLog(LOG_DEBUG, "We've made contact!");
-            std::cout << "Made Contact.\n";
             
             Vector2 newVel = player.getVelocity();
             newVel.y = 0;
