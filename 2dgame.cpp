@@ -48,6 +48,8 @@ bool keyCollected = false; // Flag to track if key has been collected
 
 enum GameState {START_SCREEN, MAIN_GAME, EXIT};
 bool isPaused = false;
+bool isComplete = false;
+bool goMain = false;
 
 // Helper function to check collision between two collision boxes
 bool checkCharacterCollision(const CollisionBox& box1, const CollisionBox& box2) {
@@ -285,9 +287,14 @@ int main() {
         // Update currently playing music
         UpdateMusicStream(isPlayingMenuMusic ? menuMusic : backgroundMusic);
 
+        if (goMain) {
+            gameState = START_SCREEN;
+        }
+
         // Handle game state updates based on current game state
         switch(gameState) {
             case START_SCREEN: {
+                goMain = false;
                 if (!isPlayingMenuMusic) {
                     PlayMusicStream(menuMusic);
                     isPlayingMenuMusic = true;
@@ -336,7 +343,7 @@ int main() {
                 // Get frame time for updates
                 float deltaTime = GetFrameTime();
 
-                if (!isPaused) {
+                if (!isPaused && !isComplete) {
                     // Update samurai character
                     samurai.updateSamurai();
                 }
@@ -352,16 +359,6 @@ int main() {
                     samuraiPos.x = samuraiBody->rect.x + samuraiBody->rect.width / 2;
                     samuraiPos.y = samuraiBody->rect.y + samuraiBody->rect.height / 2;
                 }
-
-                
-                // Check for key collection
-                if (samuraiBody && samuraiBody->active) {
-                    if (CheckCollisionRecs(samuraiBody->rect, keyCollisionRect) && !keyCollected) {
-                        // Play key collection sound
-                        PlaySound(keySound);
-                        keyCollected = true;
-                    }
-                }
                 
                 // Check for collisions between Samurai's attack and enemies
                 CollisionBox* samuraiAttack = samurai.getCollisionBox(ATTACK);
@@ -371,20 +368,6 @@ int main() {
 
                 checkTileCollisions(map, samurai);
 
-                // Update animations and collision rectangles
-                keyFrameTime += deltaTime;
-                if (keyFrameTime >= KEY_FRAME_DURATION) {
-                    keyFrameTime = 0.0f;
-                    keyCurrentFrame = (keyCurrentFrame + 1) % KEY_FRAME_COUNT;
-                }
-
-                // Update key collision rectangle
-                keyCollisionRect = (Rectangle){
-                    keyPosition.x + (KEY_FRAME_WIDTH),              // Center horizontally on the scaled key
-                    keyPosition.y + (KEY_FRAME_HEIGHT),             // Center vertically on the scaled key
-                    (float)KEY_FRAME_WIDTH,                         // Keep original collision size
-                    (float)KEY_FRAME_HEIGHT
-                };
                 // Update camera to follow player, ensuring it stays within map boundaries
                 Rectangle samuraiRect = samurai.getRect();
                 
@@ -413,6 +396,10 @@ int main() {
                     camera.target = camera.target; // Keeps the camera locked in place
                 }
 
+                if(samurai.getRect().x >= 10980) {
+                    isComplete = true;
+                }
+
                 // Begin drawing
                 BeginDrawing();
                 ClearBackground(BLACK);
@@ -434,30 +421,6 @@ int main() {
 
                 // Draw Samurai.
                 samurai.draw();
-
-                if (!keyCollected) {
-                    Rectangle keySource = {
-                        (float)(keyCurrentFrame * KEY_FRAME_WIDTH), 0.0f, 
-                        (float)KEY_FRAME_WIDTH, (float)KEY_FRAME_HEIGHT
-                    };
-                    DrawTexturePro(keyTexture, keySource, (Rectangle){ keyPosition.x, keyPosition.y, (float)KEY_FRAME_WIDTH, (float)KEY_FRAME_HEIGHT }, (Vector2){0, 0}, keyRotation, WHITE);
-                } else {
-                    CollisionBox* samuraiBody = samurai.getCollisionBox(BODY);
-                    if (samuraiBody && samuraiBody->active) {
-                        Rectangle keySource = { (float)(keyCurrentFrame * KEY_FRAME_WIDTH), 0.0f, (float)KEY_FRAME_WIDTH, (float)KEY_FRAME_HEIGHT };
-                        DrawTexturePro(keyTexture, keySource, (Rectangle){ samuraiBody->rect.x + samuraiBody->rect.width/2 - KEY_FRAME_WIDTH/2, samuraiBody->rect.y - KEY_FRAME_HEIGHT - 10, (float)KEY_FRAME_WIDTH, (float)KEY_FRAME_HEIGHT }, (Vector2){0, 0}, keyRotation, WHITE);
-                    }
-                }
-
-                // Draw collision boxes if enabled
-                if (showCollisionBoxes) {
-                    if (!keyCollected) {
-                        DrawRectangleLines(keyCollisionRect.x, keyCollisionRect.y, keyCollisionRect.width, keyCollisionRect.height, PURPLE);
-                    }
-                    drawCollisionBox(*samurai.getCollisionBox(BODY));
-                    drawCollisionBox(*samurai.getCollisionBox(ATTACK));
-                    drawCollisionBox(*samurai.getCollisionBox(HURTBOX));
-                }
 
                 // End camera mode and finalize drawing
                 EndMode2D();
@@ -497,6 +460,41 @@ int main() {
                     }
 
                     samurai.pauseSounds();
+                } else if(isComplete) {
+                    // Draw completion screen with improved UI layout
+                    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.8f)); // Darker background for emphasis
+
+                    // Centered text
+                    const int centerX = GetScreenWidth() / 2;
+                    const int centerY = GetScreenHeight() / 2;
+
+                    DrawText("GAME COMPLETED!", centerX - MeasureText("GAME COMPLETED!", 40) / 2, centerY - 100, 40, GOLD);
+                    DrawText("Congratulations!", centerX - MeasureText("Congratulations!", 30) / 2, centerY - 50, 30, WHITE);
+                    DrawText("Press 'E' to exit", centerX - MeasureText("Press 'E' to exit", 20) / 2, centerY + 20, 20, LIGHTGRAY);
+
+                    // Define the exit button
+                    Rectangle exitButton = { static_cast<float>(centerX - 100), 
+                                            static_cast<float>(centerY + 60), 
+                                            200.0f, 50.0f };
+
+                    // Draw the exit button with a hover effect
+                    Color exitButtonColor = CheckCollisionPointRec(GetMousePosition(), exitButton) ? LIGHTGRAY : DARKGRAY;
+                    DrawRectangleRec(exitButton, exitButtonColor);
+                    DrawText("Exit", centerX - MeasureText("Exit", 25) / 2, centerY + 75, 25, WHITE);
+
+                    // Check if the exit button is clicked
+                    if (CheckCollisionPointRec(GetMousePosition(), exitButton) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                        if (startScreen.ShouldStartGame()) {
+                            safeExit();
+                        }
+                    }
+
+                    // Handle key press for exiting
+                    if (IsKeyPressed(KEY_E)) {
+                        if (startScreen.ShouldStartGame()) {
+                            safeExit();
+                        }
+                    }
                 } else {
                     samurai.resumeSound();
                 }
@@ -513,18 +511,6 @@ int main() {
             }
         }
     }
-
-    // Unload key texture
-    UnloadTexture(keyTexture);
-
-    // Unload sounds
-    UnloadSound(keySound);
-
-    // Unload map.
-    UnloadTMX(map);
-
-    // Unload Background.
-    UnloadTexture(background);
 
     // This code should never be reached because we call safeExit() when WindowShouldClose() is true
     return 0;
