@@ -225,7 +225,6 @@ private:
         // Check for jump input.
         if (IsKeyPressed(KEY_W) && state != ATTACK_STATE) {
             StopSound(runSound);
-            state = JUMP_STATE;
 
             if (rect.y >= groundLevel) {
                 velocity.y = -10.0f;  // Apply upward velocity.
@@ -367,7 +366,6 @@ private:
     // Helper method to check for damage input (for testing).
     void checkForDamage() {
         if (IsKeyPressed(KEY_K)) {
-            state = HURT_STATE;
             takeDamage(10);  // Take 10 damage.
         }
     }
@@ -790,4 +788,6 @@ public:
     }
 
     bool checkDeath() const { return isDead; }
+
+    bool isIdle() const { return state == IDLE_STATE; }
 };

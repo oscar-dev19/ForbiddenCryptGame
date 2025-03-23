@@ -178,20 +178,17 @@ void checkTileCollisions(TmxMap* map, Samurai& player) {
           {
             TraceLog(LOG_DEBUG, "We've made contact!");
             std::cout << "Made Contact.\n";
+            
+            Vector2 newVel = player.getVelocity();
+            newVel.y = 0;
+            player.setVelocity(newVel);
 
-            if (player.isJumping() || player.isFalling()) {
-                Vector2 newVel = player.getVelocity();
-                newVel.y = 0;
-                player.setVelocity(newVel);
-    
-                Rectangle newRect = player.getRect();
-                newRect.y = (col.aabb.y - newRect.height);
-                player.setRect(newRect);
+            Rectangle newRect = player.getRect();
+            newRect.y = (col.aabb.y - newRect.height);
+            player.setRect(newRect);
 
-                if (player.isJumping()) {
-                    player.land();
-                }
-
+            if (player.isJumping()) {
+                player.land();
             }
           }
       }
