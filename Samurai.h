@@ -291,7 +291,9 @@ private:
         if ((IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) && !isDashing && state != ATTACK_STATE) {
             velocity.x = -5.0f;  // Move left normally
             direction = LEFT;
-            state = RUN_STATE;
+            if (!wasInAir) {
+                state = RUN_STATE;
+            }
             
             if (state != JUMP_STATE && state != HURT_STATE && state != DEAD_STATE) {
                 state = RUN_STATE;
@@ -299,7 +301,9 @@ private:
         } else if ((IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) && !isDashing && state != ATTACK_STATE) {
             velocity.x = 5.0f;  // Move right normally
             direction = RIGHT;
-            state = RUN_STATE;
+            if (!wasInAir) {
+                state = RUN_STATE;
+            }
             
             if (state != JUMP_STATE && state != HURT_STATE && state != DEAD_STATE) {
                 state = RUN_STATE;
