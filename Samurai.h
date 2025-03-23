@@ -219,7 +219,7 @@ private:
                     }
                     wasInAir = false;
                 }
-            } 
+            }
         }
 
         // Check for jump input.
@@ -227,7 +227,6 @@ private:
             StopSound(runSound);
 
             if (!wasInAir) {
-                printf("Jumping");
                 velocity.y = -10.0f;  // Apply upward velocity.
                 if (jumpSound.frameCount > 0) {
                     PlaySound(jumpSound);
@@ -292,15 +291,17 @@ private:
         if ((IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) && !isDashing && state != ATTACK_STATE) {
             velocity.x = -5.0f;  // Move left normally
             direction = LEFT;
+            state = RUN_STATE;
             
-            if (state != JUMP_STATE && state != HURT_STATE && state != DEAD_STATE && state != IDLE_STATE) {
+            if (state != JUMP_STATE && state != HURT_STATE && state != DEAD_STATE) {
                 state = RUN_STATE;
             }
         } else if ((IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) && !isDashing && state != ATTACK_STATE) {
             velocity.x = 5.0f;  // Move right normally
             direction = RIGHT;
+            state = RUN_STATE;
             
-            if (state != JUMP_STATE && state != HURT_STATE && state != DEAD_STATE && state != IDLE_STATE) {
+            if (state != JUMP_STATE && state != HURT_STATE && state != DEAD_STATE) {
                 state = RUN_STATE;
             }
         } else if (!isDashing && state != ATTACK_STATE) { // Only stop movement if not dashing
