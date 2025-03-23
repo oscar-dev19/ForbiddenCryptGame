@@ -23,7 +23,7 @@ bool showCollisionBoxes = false;
 
 // Global audio variables
 Music backgroundMusic = { 0 };
-Sound demonChantSound = { 0 };
+Music menuMusic = { 0 };
 float masterVolume = 0.7f;
 
 // Global background texture
@@ -75,10 +75,6 @@ void safeExit() {
     if (backgroundMusic.ctxData != NULL) {
         StopMusicStream(backgroundMusic);
         UnloadMusicStream(backgroundMusic);
-    }
-    
-    if (demonChantSound.stream.buffer) {
-        UnloadSound(demonChantSound);
     }
     
     if (keySound.stream.buffer) {
@@ -224,21 +220,35 @@ int main() {
     const float floorLevel = 2223.0f; // Exact floor level matching the non-zero floor tiles in TMX
     const float floorHeight = 50.0f; // Height of the floor rectangle if needed
     
-    // Update constant values in other files to match our floor level
-    // These are compile-time constants, but we're making this note for clarity
-    // GROUND_LEVEL and GROUND_LEVEL_WIZARD should be equal to floorLevel for consistency
+    // Loading the Background.
+    Texture2D background1 = LoadTexture("maps/background/0.png");
+    Texture2D background2 = LoadTexture("maps/background/1.png");
+    Texture2D background3 = LoadTexture("maps/background/2.png");
+    Texture2D background4 = LoadTexture("maps/background/3.png");
+    Texture2D background5 = LoadTexture("maps/background/4.png");
+
+    // Background Scale Factors.
+    float scalebgx = (float)screenWidth / (float)background1.width;
+    float scalebgy = (float)screenHeight / (float)background1.height;
+    float scalebg = (scalebgx < scalebgy) ? scalebgx : scalebgy;
+    scalebg /= 3.0f;
+
+    // Positions for Background Positions.
+    float bgposX = ((screenWidth - background1.width * scalebg) / 2) - 400;
+    float bgposY = ((screenHeight - background1.height * scalebg) / 2) - 210;
+    
+    // Horizontal and Vertical Sliders for Background.
+    int scaledW = background1.width * scalebg;
+    int scaledH = background1.height * scalebg;
+    int tilesX = (screenWidth / scaledW) + 23;
+    int tilesY = (screenHeight / scaledH) + 5;
     
     // Initialize audio device before loading music
     InitAudioDevice();
 
-    // Load background music
+    // Load Music.
     backgroundMusic = LoadMusicStream("music/Lady Maria of the Astral Clocktower.mp3");
-    PlayMusicStream(backgroundMusic);  // Start playing the music
-    SetMusicVolume(backgroundMusic, 0.5f * masterVolume);
-    
-    // Load demon chant sound
-    demonChantSound = LoadSound("sounds/misc/demon-chant-latin-14489.mp3");
-    SetSoundVolume(demonChantSound, 0.6f * masterVolume);
+    menuMusic = LoadMusicStream("music/Soul Of Cinder.mp3");
     
     // Load key sound
     keySound = LoadSound("sounds/key/keysound.mp3");
@@ -272,12 +282,24 @@ int main() {
 
     loadLevel();
 
+    // Start playing menu music initially
+    PlayMusicStream(menuMusic);
+    SetMusicVolume(menuMusic, 0.5f * masterVolume);
+    bool isPlayingMenuMusic = true;
+
     // Game loop
     while (!WindowShouldClose()) {
+        // Update currently playing music
+        UpdateMusicStream(isPlayingMenuMusic ? menuMusic : backgroundMusic);
 
         // Handle game state updates based on current game state
         switch(gameState) {
             case START_SCREEN: {
+                if (!isPlayingMenuMusic) {
+                    PlayMusicStream(menuMusic);
+                    isPlayingMenuMusic = true;
+                }
+
                 startScreen.Update();
 
                 if (startScreen.ShouldStartGame()) {
@@ -294,13 +316,14 @@ int main() {
             }
 
             case MAIN_GAME: {
+                if (isPlayingMenuMusic) {
+                    PlayMusicStream(backgroundMusic);
+                    isPlayingMenuMusic = false;
+                }
 
                 if (IsKeyPressed(KEY_P)) {
                     isPaused = !isPaused;
                 }
-
-                // Update music stream
-                UpdateMusicStream(backgroundMusic);
                 
                 // Toggle music with M key
                 if (IsKeyPressed(KEY_M)) {
@@ -309,23 +332,6 @@ int main() {
                     } else {
                         ResumeMusicStream(backgroundMusic);
                     }
-                }
-
-                // Volume control with + and - keys
-                if (IsKeyPressed(KEY_EQUAL)) { // + key
-                    masterVolume += 0.1f;
-                    if (masterVolume > 1.0f) masterVolume = 1.0f;
-                    SetMusicVolume(backgroundMusic, 0.5f * masterVolume);
-                    SetSoundVolume(demonChantSound, 0.6f * masterVolume);
-                    samurai.setDashSoundVolume(0.8f * masterVolume);
-                }
-
-                if (IsKeyPressed(KEY_MINUS)) { // - key
-                    masterVolume -= 0.1f;
-                    if (masterVolume < 0.0f) masterVolume = 0.0f;
-                    SetMusicVolume(backgroundMusic, 0.5f * masterVolume);
-                    SetSoundVolume(demonChantSound, 0.6f * masterVolume);
-                    samurai.setDashSoundVolume(0.8f * masterVolume);
                 }
 
                 // Toggle collision box visibility with F1 key
@@ -412,6 +418,20 @@ int main() {
                 // 2D camera mode for proper drawing
                 BeginMode2D(camera);
 
+                // Draw Background.
+                for (int x = 0; x < tilesX; x++) {
+                    for (int y = 0; y < tilesY; y++) {
+                        float posX = x * scaledW;
+                        float posY = y * scaledH;
+
+                        DrawTextureEx(background1, Vector2{posX + bgposX, posY + bgposY}, 0.0f, scalebg, WHITE);
+                        DrawTextureEx(background2, Vector2{posX + bgposX, posY + bgposY}, 0.0f, scalebg, WHITE);
+                        DrawTextureEx(background3, Vector2{posX + bgposX, posY + bgposY}, 0.0f, scalebg, WHITE);
+                        DrawTextureEx(background4, Vector2{posX + bgposX, posY + bgposY}, 0.0f, scalebg, WHITE);
+                        DrawTextureEx(background5, Vector2{posX + bgposX, posY + bgposY}, 0.0f, scalebg, WHITE);
+                    }
+                }
+                
                 renderLevel();
 
                 // Draw Samurai.
@@ -456,6 +476,7 @@ int main() {
                 DrawText("F1: Toggle collision boxes", 10, instructionsY + lineHeight*5, 20, WHITE);
                 DrawText("M: Toggle music", 10, instructionsY + lineHeight*6, 20, WHITE);
                 DrawText("Mouse Wheel: Zoom", 10, instructionsY + lineHeight*7, 20, WHITE);
+                DrawText("P: Pause", 10, instructionsY + lineHeight*8, 20, WHITE);
 
                 if (isPaused) {
                     DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.5f));
@@ -503,6 +524,13 @@ int main() {
 
     // Unload map.
     UnloadTMX(map);
+
+    // Unload Background.
+    UnloadTexture(background1);
+    UnloadTexture(background2);
+    UnloadTexture(background3);
+    UnloadTexture(background4);
+    UnloadTexture(background5);
 
     // This code should never be reached because we call safeExit() when WindowShouldClose() is true
     return 0;
