@@ -767,7 +767,18 @@ public:
     void land() {
         if (isJumping() || isFalling()) {
             wasInAir = false;
-            rect.y = groundLevel;
         }
     }
+
+    void setAnimationState(CurrentState type) {
+        state = type;
+    }
+
+    void deathBarrier() {
+        if (rect.y == groundLevel) {
+            takeDamage(1000000);
+        }
+    }
+
+    bool checkDeath() const { return isDead; }
 };

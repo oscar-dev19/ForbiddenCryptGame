@@ -140,7 +140,7 @@ bool fileExists(const char* fileName) {
 }
 
 void loadLevel() {
-    map = LoadTMX("maps/Room1.tmx");
+    map = LoadTMX("maps/LevelDesign.tmx");
     if (!map) {
         printf("Failed to Load TMX File.\n");
         exit (1);
@@ -191,6 +191,7 @@ void checkTileCollisions(TmxMap* map, Samurai& player) {
                 if (player.isJumping()) {
                     player.land();
                 }
+
             }
           }
       }
@@ -217,7 +218,7 @@ int main() {
 
     // Define floor level to match where the non-zero tiles (floor tiles) are in Room1.tmx
     // This value is used for all characters to ensure consistent vertical positioning
-    const float floorLevel = 2223.0f; // Exact floor level matching the non-zero floor tiles in TMX
+    const float floorLevel = 2350.0f; // Exact floor level matching the non-zero floor tiles in TMX
     const float floorHeight = 50.0f; // Height of the floor rectangle if needed
     
     // Loading the Background.
@@ -268,7 +269,7 @@ int main() {
     keyPosition = { 1200, floorLevel - keyTexture.height };
 
     // Initialize characters using stack allocation - all characters now use the same floorLevel
-    Samurai samurai(400, floorLevel, floorLevel);
+    Samurai samurai(400, 2223, floorLevel);
     
     // Initialize dash sound volume to match master volume
     samurai.setDashSoundVolume(0.8f * masterVolume);
@@ -344,6 +345,8 @@ int main() {
                     samurai.updateSamurai();
                 }
 
+                samurai.deathBarrier();
+
                 // Get samurai position for collision detection
                 Vector2 samuraiPos = {0, 0};
                 CollisionBox* samuraiBody = samurai.getCollisionBox(BODY);
@@ -386,26 +389,31 @@ int main() {
                 };
                 // Update camera to follow player, ensuring it stays within map boundaries
                 Rectangle samuraiRect = samurai.getRect();
-                camera.target = (Vector2){ samuraiPos.x, samuraiPos.y };
-
-                // Add some camera boundary checks to avoid the camera going out of bounds:
-                float halfScreenWidth = screenWidth / (2.0f * camera.zoom);
-                float halfScreenHeight = screenHeight / (2.0f * camera.zoom);
-
-                // Clamp X and Y positions with easing towards boundaries
-                camera.target.x = Lerp(camera.target.x, Clamp(camera.target.x, halfScreenWidth, map->width * map->tileWidth - halfScreenWidth), 0.1f);
-                camera.target.y = Lerp(camera.target.y, Clamp(camera.target.y, halfScreenHeight, map->height * map->tileHeight - halfScreenHeight), 0.1f);
-
-                // Ensure camera doesn't go out of bounds
-                if (camera.target.x < halfScreenWidth) camera.target.x = halfScreenWidth + 100;
-                if (camera.target.y < halfScreenHeight) camera.target.y = halfScreenHeight;
-
-                // Camera zoom controls
-                camera.zoom += ((float)GetMouseWheelMove() * 0.1f);
-                if (camera.target.x < halfScreenWidth) camera.target.x = halfScreenWidth;
-                if (camera.target.x > map->width * 16 - halfScreenWidth) camera.target.x = map->width * 16 - halfScreenWidth;
-                if (camera.target.y < halfScreenHeight) camera.target.y = halfScreenHeight;
-                if (camera.target.y > map->height * 16 - halfScreenHeight) camera.target.y = map->height * 16 - halfScreenHeight;
+                
+                if (!samurai.checkDeath()) {
+                    camera.target = (Vector2){ samuraiPos.x, samuraiPos.y };
+                    // Add some camera boundary checks to avoid the camera going out of bounds:
+                    float halfScreenWidth = screenWidth / (2.0f * camera.zoom);
+                    float halfScreenHeight = screenHeight / (2.0f * camera.zoom);
+    
+                    // Clamp X and Y positions with easing towards boundaries
+                    camera.target.x = Lerp(camera.target.x, Clamp(camera.target.x, halfScreenWidth, map->width * map->tileWidth - halfScreenWidth), 0.1f);
+                    camera.target.y = Lerp(camera.target.y, Clamp(camera.target.y, halfScreenHeight, map->height * map->tileHeight - halfScreenHeight), 0.1f);
+    
+                    // Ensure camera doesn't go out of bounds
+                    if (camera.target.x < halfScreenWidth) camera.target.x = halfScreenWidth + 100;
+                    if (camera.target.y < halfScreenHeight) camera.target.y = halfScreenHeight;
+    
+                    // Camera zoom controls
+                    camera.zoom += ((float)GetMouseWheelMove() * 0.1f);
+                    if (camera.target.x < halfScreenWidth) camera.target.x = halfScreenWidth;
+                    if (camera.target.x > map->width * 16 - halfScreenWidth) camera.target.x = map->width * 16 - halfScreenWidth;
+                    if (camera.target.y < halfScreenHeight) camera.target.y = halfScreenHeight;
+                    if (camera.target.y > map->height * 16 - halfScreenHeight) camera.target.y = map->height * 16 - halfScreenHeight;
+                } else {
+                    // Stop moving the camera when the player is dead
+                    camera.target = camera.target; // Keeps the camera locked in place
+                }
 
                 // Begin drawing
                 BeginDrawing();
