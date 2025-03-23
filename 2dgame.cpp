@@ -32,20 +32,6 @@ Camera2D camera = { 0 };
 
 TmxMap* map = NULL;
 
-// Key variables
-Texture2D keyTexture = { 0 };
-Vector2 keyPosition = { 0, 0 };
-float keyRotation = 0.0f;
-float keyFrameTime = 0.0f;
-int keyCurrentFrame = 0;
-const int KEY_FRAME_COUNT = 17;  // Number of frames in the sprite sheet
-const float KEY_FRAME_DURATION = 0.1f;  // Duration for each frame in seconds
-const int KEY_FRAME_WIDTH = 32;  // Width of each frame in pixels
-const int KEY_FRAME_HEIGHT = 32; // Height of each frame in pixels
-Rectangle keyCollisionRect = { 0 }; // Collision rectangle for the key
-Sound keySound = { 0 }; // Sound to play when key is collected
-bool keyCollected = false; // Flag to track if key has been collected
-
 enum GameState {START_SCREEN, MAIN_GAME, EXIT};
 bool isPaused = false;
 bool isComplete = false;
@@ -77,10 +63,6 @@ void safeExit() {
     if (backgroundMusic.ctxData != NULL) {
         StopMusicStream(backgroundMusic);
         UnloadMusicStream(backgroundMusic);
-    }
-    
-    if (keySound.stream.buffer) {
-        UnloadSound(keySound);
     }
     
     // Unload the background texture
@@ -245,26 +227,13 @@ int main() {
     backgroundMusic = LoadMusicStream("music/Lady Maria of the Astral Clocktower.mp3");
     menuMusic = LoadMusicStream("music/Soul Of Cinder.mp3");
     
-    // Load key sound
-    keySound = LoadSound("sounds/key/keysound.mp3");
-    
     SetTargetFPS(60);
     
     // Initialize camera
     camera.target = (Vector2){ 100, 0 };
     camera.offset = (Vector2){ screenWidth/2.0f, screenHeight/2.0f };
     camera.rotation = 0.0f;
-    camera.zoom = 3.3f;  // Zoom in for better visibility
-
-    // Load key texture
-    keyTexture = LoadTexture("assets/gameObjects/key/key.png");
-    if (keyTexture.id == 0) {
-        printf("Failed to load key texture!\n");
-        CloseWindow();
-        return -1;
-    }
-    // Place the key further in the map to encourage exploration
-    keyPosition = { 1200, floorLevel - keyTexture.height };
+    camera.zoom = 3.3f;  // Zoom in for better visibility.
 
     // Initialize characters using stack allocation - all characters now use the same floorLevel
     Samurai samurai(400, 2223, floorLevel);
@@ -286,10 +255,6 @@ int main() {
     while (!WindowShouldClose()) {
         // Update currently playing music
         UpdateMusicStream(isPlayingMenuMusic ? menuMusic : backgroundMusic);
-
-        if (goMain) {
-            gameState = START_SCREEN;
-        }
 
         // Handle game state updates based on current game state
         switch(gameState) {
