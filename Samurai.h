@@ -3,20 +3,7 @@
 #include "raylib.h"
 #include "CollisionSystem.h"
 #include <vector>
-#include <cmath>   // For sinf
-#include <cstdlib> // For system
-#include <unistd.h> // For getcwd()
-#include <limits.h> // For PATH_MAX
 #include <cstdio>
-
-#ifndef PATH_MAX
-#define PATH_MAX 4096
-#endif
-
-// Define PI if not already defined
-#ifndef PI
-#define PI 3.14159265358979323846f
-#endif
 
 // Direction of the Character.
 enum Direction {
@@ -91,6 +78,8 @@ private:
     Sound deadSound;
     Sound landSound;
     Sound dashSound;
+
+    bool isRunning = false;
 
     // Collision boxes for different purposes
     std::vector<CollisionBox> collisionBoxes;
@@ -213,13 +202,13 @@ private:
             if (state == JUMP_STATE) {
                 state = IDLE_STATE;
                 animations[state].currentFrame = 0;  // Reset animation frame
-                if (wasInAir) {
-                    if (landSound.frameCount > 0) {
-                        PlaySound(landSound);
-                    }
-                    wasInAir = false;
-                }
+                wasInAir = false;
+                PlaySound(landSound);
             }
+        }
+
+        if (wasInAir || isDashing) {
+            StopSound(runSound);
         }
 
         // Check for jump input.
@@ -256,7 +245,6 @@ private:
         
         // Handle left/right movement with double tap dash
         if ((IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT)) && state != ATTACK_STATE) {
-            PlaySound(runSound);
             state = RUN_STATE;
 
             if (canDash && (currentTime - lastAKeyPressTime) <= doubleTapTimeThreshold) {
@@ -272,7 +260,6 @@ private:
         }        
         
         if ((IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT)) && state != ATTACK_STATE) {
-            PlaySound(runSound);
             state = RUN_STATE;
 
             if (canDash && (currentTime - lastDKeyPressTime) <= doubleTapTimeThreshold) {
@@ -285,10 +272,14 @@ private:
                 StopSound(runSound);
             }
             lastDKeyPressTime = currentTime;
-        }        
+        }     
         
         // Handle movement based on key press and dash state
         if ((IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) && !isDashing && state != ATTACK_STATE) {
+            if (!isRunning) {
+                PlaySound(runSound);
+                isRunning = true;
+            }
             velocity.x = -5.0f;  // Move left normally
             direction = LEFT;
             if (!wasInAir) {
@@ -299,6 +290,10 @@ private:
                 state = RUN_STATE;
             }
         } else if ((IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) && !isDashing && state != ATTACK_STATE) {
+            if (!isRunning) {
+                PlaySound(runSound);
+                isRunning = true;
+            }
             velocity.x = 5.0f;  // Move right normally
             direction = RIGHT;
             if (!wasInAir) {
@@ -310,19 +305,16 @@ private:
             }
         } else if (!isDashing && state != ATTACK_STATE) { // Only stop movement if not dashing
             velocity.x = 0;
-            if (state == RUN_STATE) {
+            if (isRunning) {
                 state = IDLE_STATE;
                 StopSound(runSound);
+                isRunning = false;
             }
         }
 
         // Apply dash movement
         if (isDashing) {
             velocity.x = (direction == RIGHT) ? dashSpeed : -dashSpeed;
-        }
-
-        if (wasInAir) {
-            StopSound(runSound);
         }
 
         // Check for attack input.
@@ -741,7 +733,8 @@ public:
         }
     }
 
-    void pauseSounds() {
+    // Pauses all character-related sounds
+    void pauseSounds() { 
         PauseSound(runSound);
         PauseSound(attackSound);
         PauseSound(hurtSound);
@@ -750,7 +743,8 @@ public:
         PauseSound(jumpSound);
     }
 
-    void resumeSound() {
+    // Resumes all character-related sounds
+    void resumeSound() { 
         ResumeSound(runSound);
         ResumeSound(attackSound);
         ResumeSound(hurtSound);
@@ -759,44 +753,52 @@ public:
         ResumeSound(jumpSound);
     }
 
-    void setRect(const Rectangle& newRect) { rect = newRect; }
+    // Sets the player's position and size (hitbox)
+    void setRect(const Rectangle& newRect) { 
+        rect = newRect;
+    }
 
-    void setVelocity(const Vector2& newVel) { velocity = newVel; }
+    // Sets the player's velocity
+    void setVelocity(const Vector2& newVel) { 
+        velocity = newVel;
+    }
 
-    Vector2 getVelocity() const {
+    // Returns the player's current velocity
+    Vector2 getVelocity() const { 
         return velocity;
     }
 
-    bool isJumping() {
+    // Checks if the player is currently jumping
+    bool isJumping() { 
         return state == JUMP_STATE;
     }
 
-    bool isFalling() {
+    // Checks if the player is in the air (falling)
+    bool isFalling() { 
         return wasInAir;
     }
 
-    void land() {
+    // Handles landing logic, resetting state when touching the ground
+    void land() { 
         if (isJumping() || isFalling()) {
             wasInAir = false;
             state = IDLE_STATE;
         }
     }
 
-    void setAnimationState(CurrentState type) {
-        state = type;
-    }
-
-    void deathBarrier() {
+    // Instantly kills the player if they fall below specific Y coordinates
+    void deathBarrier() { 
         if (rect.x >= 400 && rect.x <= 4096 && rect.y >= 2340) {
             takeDamage(1000000);
-        } else if(rect.x >= 4096 && rect.y >= 2639 && rect.x <= 5860) {
+        } else if (rect.x >= 4096 && rect.y >= 2639 && rect.x <= 5860) {
             takeDamage(1000000);
         } else if (rect.x >= 5860 && rect.y >= 4030) {
             takeDamage(1000000);
         }
     }
 
-    bool checkDeath() const { return isDead; }
-
-    bool isIdle() const { return state == IDLE_STATE; }
+    // Returns whether the player is dead
+    bool checkDeath() const { 
+        return isDead;
+    }
 };

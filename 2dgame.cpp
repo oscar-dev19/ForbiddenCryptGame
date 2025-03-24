@@ -69,7 +69,7 @@ void safeExit() {
     if (backgroundTexture.id != 0) {
         UnloadTexture(backgroundTexture);
     }
-    
+
     // Clean up Raylib
     CloseAudioDevice();
     CloseWindow();
@@ -348,7 +348,6 @@ int main() {
                     if (camera.target.y < halfScreenHeight) camera.target.y = halfScreenHeight;
     
                     // Camera zoom controls
-                    camera.zoom += ((float)GetMouseWheelMove() * 0.1f);
                     if (camera.target.x < halfScreenWidth) camera.target.x = halfScreenWidth;
                     if (camera.target.x > map->width * 16 - halfScreenWidth) camera.target.x = map->width * 16 - halfScreenWidth;
                     if (camera.target.y < halfScreenHeight) camera.target.y = halfScreenHeight;
@@ -400,10 +399,8 @@ int main() {
                 DrawText("A/D or Left/Right: Move", 10, instructionsY + lineHeight*2, 20, WHITE);
                 DrawText("Space: Attack", 10, instructionsY + lineHeight*3, 20, WHITE);
                 DrawText("Double-tap A/D: Dash", 10, instructionsY + lineHeight*4, 20, WHITE);
-                DrawText("F1: Toggle collision boxes", 10, instructionsY + lineHeight*5, 20, WHITE);
-                DrawText("M: Toggle music", 10, instructionsY + lineHeight*6, 20, WHITE);
-                DrawText("Mouse Wheel: Zoom", 10, instructionsY + lineHeight*7, 20, WHITE);
-                DrawText("P: Pause", 10, instructionsY + lineHeight*8, 20, WHITE);
+                DrawText("M: Toggle music", 10, instructionsY + lineHeight*5, 20, WHITE);
+                DrawText("P: Pause", 10, instructionsY + lineHeight*6, 20, WHITE);
 
                 if (isPaused) {
                     DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.5f));
