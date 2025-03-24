@@ -198,7 +198,7 @@ int main() {
 
     // Define floor level to match where the non-zero tiles (floor tiles) are in Room1.tmx
     // This value is used for all characters to ensure consistent vertical positioning
-    const float floorLevel = 5000.0f; // Exact floor level matching the non-zero floor tiles in TMX
+    const float floorLevel = 10000.0f; // Exact floor level matching the non-zero floor tiles in TMX
     const float floorHeight = 50.0f; // Height of the floor rectangle if needed
     
     // Loading the Background.
@@ -217,8 +217,8 @@ int main() {
     // Horizontal and Vertical Sliders for Background.
     int scaledW = background.width * scalebg;
     int scaledH = background.height * scalebg;
-    int tilesX = (screenWidth / scaledW) + 40;
-    int tilesY = (screenHeight / scaledH) + 10;
+    int tilesX = (screenWidth / scaledW) + 50;
+    int tilesY = (screenHeight / scaledH) + 15;
     
     // Initialize audio device before loading music
     InitAudioDevice();
@@ -360,32 +360,35 @@ int main() {
                 if(samurai.checkDeath()) {
                     gameover = true;
                 }
-
-                if(samurai.getRect().x >= 10980) {
+                
+                if(samurai.getRect().x >= 18880) {
                     isComplete = true;
                 }
-
+                
                 // Begin drawing
                 BeginDrawing();
                 ClearBackground(BLACK);
                 
                 // 2D camera mode for proper drawing
                 BeginMode2D(camera);
-
+                
                 // Draw Background.
                 for (int x = 0; x < tilesX; x++) {
                     for (int y = 0; y < tilesY; y++) {
                         float posX = x * scaledW;
                         float posY = y * scaledH;
-
+                        
                         DrawTextureEx(background, Vector2{posX + bgposX, posY + bgposY}, 0.0f, scalebg, GRAY);
                     }
                 }
                 
                 renderLevel();
-
+                
                 // Draw Samurai.
                 samurai.draw();
+
+                std::cout << "X: " << samurai.getRect().x << std::endl;
+                std::cout << "Y: " << samurai.getRect().y << std::endl;
 
                 // End camera mode and finalize drawing
                 EndMode2D();
@@ -401,7 +404,7 @@ int main() {
                 DrawText("Double-tap A/D: Dash", 10, instructionsY + lineHeight*4, 20, WHITE);
                 DrawText("M: Toggle music", 10, instructionsY + lineHeight*5, 20, WHITE);
                 DrawText("P: Pause", 10, instructionsY + lineHeight*6, 20, WHITE);
-
+                
                 if (isPaused) {
                     DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.5f));
                     DrawText("PAUSED", GetScreenWidth()/2 - 50, GetScreenHeight()/2 - 10, 30, WHITE);
@@ -494,6 +497,7 @@ int main() {
                 }
 
                 EndDrawing();
+
 
                 break;
             }

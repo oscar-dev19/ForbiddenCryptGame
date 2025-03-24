@@ -340,11 +340,11 @@ private:
         rect.y += velocity.y;  // Update vertical position.
 
         // Map Width.
-        const float mapWidth = 16700;
+        const float mapWidth = 25000;
         
         if (rect.x < 500) rect.x = 500;
-        if (rect.x > 10984) rect.x = 10984;
-        if (rect.x > mapWidth - rect.width) rect.x = mapWidth - rect.width;
+        if (rect.x > 18880) rect.x = 18880;
+        //if (rect.x > mapWidth - rect.width) rect.x = mapWidth - rect.width;
     }
 
     // Helper method to handle taking damage.
@@ -790,13 +790,13 @@ public:
 
     // Instantly kills the player if they fall below specific Y coordinates
     void deathBarrier() { 
-        if (rect.x >= 400 && rect.x <= 4096 && rect.y >= 2340) {
-            takeDamage(1000000);
-        } else if (rect.x >= 4096 && rect.y >= 2639 && rect.x <= 5860) {
-            takeDamage(1000000);
-        } else if (rect.x >= 5860 && rect.y >= 4030) {
-            takeDamage(1000000);
-        }
+        if (rect.x >= 500 && rect.x <= 3210 && rect.y >= 2340) {
+            takeDamage(100000);
+        } else if (rect.x >= 4065 && rect.x <= 4775 && rect.y >= 2850) {
+            takeDamage(100000);
+        } else if (rect.x >= 4800 && rect.x <= 18880 & rect.y >= 7000) {
+            takeDamage(100000);
+        } 
     }
 
     // Returns whether the player is dead
