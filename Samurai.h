@@ -330,6 +330,8 @@ private:
 
         // Apply velocity to position.
         applyVelocity();
+
+        if (rect.x >= 10980) { StopSound(runSound); }
     }
 
     // Helper method to apply velocity to position.
