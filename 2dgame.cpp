@@ -10,6 +10,8 @@
 #include <cstdio>
 #include "StartScreen.h"
 
+#include <functional>
+
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
@@ -36,6 +38,19 @@ enum GameState {START_SCREEN, MAIN_GAME, EXIT};
 bool isPaused = false;
 bool isComplete = false;
 bool gameover = false;
+
+// Fade transition on map switch
+bool isTransitioning = false;
+float transitionAlpha = 0.0f;
+bool transitionFadeIn = false;
+
+std::function<void()> transitionAction;
+void startTransition(std::function<void()> action) {
+    isTransitioning = true;
+    transitionAlpha = 0.0f;
+    transitionFadeIn = false;
+    transitionAction = action;
+}
 
 // Helper function to check collision between two collision boxes
 bool checkCharacterCollision(const CollisionBox& box1, const CollisionBox& box2) {
@@ -251,6 +266,9 @@ int main() {
     SetMusicVolume(menuMusic, 0.5f * masterVolume);
     bool isPlayingMenuMusic = true;
 
+    // Check which map are we in
+    bool mapSwitchedToRoom2 = false;
+
     // Game loop
     while (!WindowShouldClose()) {
         // Update currently playing music
@@ -333,6 +351,9 @@ int main() {
                 // Update camera to follow player, ensuring it stays within map boundaries
                 Rectangle samuraiRect = samurai.getRect();
                 
+                float samuraiCenterX = samuraiRect.x + samuraiRect.width / 2;
+                float samuraiCenterY = samuraiRect.y + samuraiRect.height / 2;
+                
                 if (!samurai.checkDeath()) {
                     camera.target = (Vector2){ samuraiPos.x, samuraiPos.y };
                     // Add some camera boundary checks to avoid the camera going out of bounds:
@@ -356,7 +377,61 @@ int main() {
                     // Stop moving the camera when the player is dead
                     camera.target = camera.target; // Keeps the camera locked in place
                 }
+                
+                // Switching map :o
+                if (!mapSwitchedToRoom2 && samuraiRect.x == 935 && samuraiRect.y == 1534) 
+                {
+                    startTransition([&]() 
+                    {
+                        mapSwitchedToRoom2 = true;
 
+                        if (map) 
+                        {
+                            UnloadTMX(map);
+                        }
+
+                    map = LoadTMX("maps/Room2.tmx");
+                    if (!map) 
+                    {
+                        std::cerr << "Failed to load Room2.tmx!" << std::endl;
+                    }
+
+                    Rectangle newPos = samurai.getRect();
+                    newPos.x = 550;
+                    newPos.y = 2222;
+                    samurai.setRect(newPos);
+
+                    camera.target = { newPos.x, newPos.y };
+                    });  
+                }
+                
+                if (mapSwitchedToRoom2 && samuraiRect.x == 550 && samuraiRect.y == 2207.25) 
+                {
+                    startTransition([&]() 
+                    {
+                        mapSwitchedToRoom2 = false;
+
+                        if (map) 
+                        {
+                            UnloadTMX(map);
+                        }
+
+                    map = LoadTMX("maps/LevelDesign.tmx");
+                    if (!map) 
+                    {
+                        std::cerr << "Failed to load LevelDesign.tmx!" << std::endl;
+                    }
+
+                    Rectangle newPos = samurai.getRect();
+                    newPos.x = 500;
+                    newPos.y = 2222;
+                    samurai.setRect(newPos);
+
+                    camera.target = { newPos.x, newPos.y };
+                    });  
+                }
+                
+                
                 if(samurai.checkDeath()) {
                     gameover = true;
                 }
@@ -492,10 +567,41 @@ int main() {
                     if (IsKeyPressed(KEY_E)) {
                         safeExit();
                     }
-                }else {
+                }
+                else 
+                {
                     samurai.resumeSound();
                 }
+                
+                if (isTransitioning) 
+                {
+                    DrawRectangle(0, 0, screenWidth, screenHeight, Fade(BLACK, transitionAlpha));
+                    if (!transitionFadeIn) 
+                    {
+                        transitionAlpha += 0.02f;
+                        if (transitionAlpha >= 1.0f) 
+                        {
+                            transitionAlpha = 1.0f;
 
+                            if (transitionAction) 
+                            {
+                                transitionAction();  // run the map change
+                            }
+
+                            transitionFadeIn = true;
+                        }
+                    } 
+                    else 
+                    {
+                        transitionAlpha -= 0.02f;
+                        if (transitionAlpha <= 0.0f) 
+                        {
+                            transitionAlpha = 0.0f;
+                            isTransitioning = false;
+                        }
+                    }
+                }
+                
                 EndDrawing();
 
 
