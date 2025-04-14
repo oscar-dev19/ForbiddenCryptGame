@@ -18,7 +18,8 @@ enum CurrentState {
     HURT_STATE = 2,
     IDLE_STATE = 3,
     JUMP_STATE = 4,
-    RUN_STATE = 5
+    RUN_STATE = 5,
+    BLOCK_STATE = 6
 };
 
 // Animation types.
@@ -47,11 +48,14 @@ private:
     std::vector<Animation> animations; // List of animations for different states.
     std::vector<Texture2D> sprites; // List of textures for each state.
     float groundLevel; // The Y-coordinate of the ground level.
+    float block_damage_reduction = 0.5; //half damage reduction when blocking.
 
     // Define Health Variables
     int maxHealth = 100; // Maximum health value.
     int currentHealth = 100; // Current health of the samurai.
     bool wasInAir = false; // Flag to indicate if the character was in the air.
+    bool canDoubleJump = false; // Flag to indicate if double jump is available
+    bool hasDoubleJumped = false; // Flag to indicate if double jump was used
     
     // Double dash variables
     float dashSpeed = 15.0f; // Speed multiplier when dashing
@@ -65,12 +69,15 @@ private:
     bool canDash = true; // Flag to determine if dash is available
     float dashSoundVolume = 0.8f; // Volume for dash sound (0.0 to 1.0)
     
+    // Blocking variables
+    bool isBlocking = false; // Flag to indicate if character is blocking
+    
     // Invincibility frames variables
     bool isInvincible = false; // Flag to indicate if the character is currently invincible
     float invincibilityTimer = 0.0f; // Timer to track invincibility duration
     const float invincibilityDuration = 1.5f; // 1.5 seconds of invincibility after taking damage
 
-    // Define Sound Varaibles.
+    // Define Sound Variables.
     Sound attackSound;
     Sound jumpSound;
     Sound hurtSound;
@@ -78,6 +85,7 @@ private:
     Sound deadSound;
     Sound landSound;
     Sound dashSound;
+    Sound blockSound;
 
     bool isRunning = false;
 
@@ -184,6 +192,7 @@ private:
             }
         }
         
+        
         // Update dash timer if currently dashing
         if (isDashing) {
             dashTimer -= deltaTime;
@@ -203,6 +212,8 @@ private:
                 state = IDLE_STATE;
                 animations[state].currentFrame = 0;  // Reset animation frame
                 wasInAir = false;
+                canDoubleJump = false;
+                hasDoubleJumped = false;
                 PlaySound(landSound);
             }
         }
@@ -216,11 +227,27 @@ private:
             StopSound(runSound);
 
             if (!wasInAir) {
-                velocity.y = -10.0f;  // Apply upward velocity.
+                // First jump
+                velocity.y = -12.0f;
                 if (jumpSound.frameCount > 0) {
                     PlaySound(jumpSound);
                 }
                 wasInAir = true;
+                canDoubleJump = true;
+                hasDoubleJumped = false;
+                
+                if (state != HURT_STATE && state != DEAD_STATE) {
+                    state = JUMP_STATE;
+                    animations[state].currentFrame = 0;
+                }
+            } else if (canDoubleJump && !hasDoubleJumped) {
+                // Double jump with slightly reduced height
+                velocity.y = -10.0f;  // Slightly less than first jump
+                if (jumpSound.frameCount > 0) {
+                    PlaySound(jumpSound);
+                }
+                hasDoubleJumped = true;
+                canDoubleJump = false;  // Prevent further jumps
                 
                 if (state != HURT_STATE && state != DEAD_STATE) {
                     state = JUMP_STATE;
@@ -317,8 +344,22 @@ private:
             velocity.x = (direction == RIGHT) ? dashSpeed : -dashSpeed;
         }
 
+        // Check for block input
+        if (IsKeyDown(KEY_B) && !isBlocking && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
+            isBlocking = true;
+            PlaySound(blockSound);
+            state = BLOCK_STATE;
+            if (blockSound.frameCount > 0) {
+                PlaySound(blockSound);
+            } else {
+                printf("Block sound not loaded!\n"); // Debug output
+            }
+            printf("Blocking activated!\n"); // Debug output
+            isBlocking = false; //reset blocking flag.
+        }
+        
         // Check for attack input.
-        if (IsKeyPressed(KEY_SPACE) && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
+        if (IsKeyPressed(KEY_SPACE) && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE && !isBlocking) {
             velocity.x = 0;
             state = ATTACK_STATE;  // Set to attack state.
             animations[state].currentFrame = 0;  // Reset animation frame.
@@ -330,8 +371,6 @@ private:
 
         // Apply velocity to position.
         applyVelocity();
-
-        if (rect.x >= 10980) { StopSound(runSound); }
     }
 
     // Helper method to apply velocity to position.
@@ -340,11 +379,11 @@ private:
         rect.y += velocity.y;  // Update vertical position.
 
         // Map Width.
-        const float mapWidth = 25000;
+        const float mapWidth = 16700;
         
         if (rect.x < 500) rect.x = 500;
-        if (rect.x > 18880) rect.x = 18880;
-        //if (rect.x > mapWidth - rect.width) rect.x = mapWidth - rect.width;
+        if (rect.x > 10984) rect.x = 10984;
+        if (rect.x > mapWidth - rect.width) rect.x = mapWidth - rect.width;
     }
 
     // Helper method to handle taking damage.
@@ -426,10 +465,6 @@ private:
             // Play the sound (volume already set through setSoundVolumes)
             PlaySound(dashSound);
             
-            // Debug output
-            printf("Playing dash sound (volume: %.2f)\n", dashSoundVolume);
-        } else {
-            printf("Dash sound not loaded properly!\n");
         }
     }
 
@@ -453,7 +488,7 @@ private:
     }
 
     void loadTextures() {
-        sprites.resize(6);
+        sprites.resize(7);
 
         // Load textures for different states (idle, attack, etc.).
         sprites[DEAD_STATE] = LoadTexture("assets/Samurai/Dead.png");
@@ -462,6 +497,7 @@ private:
         sprites[IDLE_STATE] = LoadTexture("assets/Samurai/Idle.png");
         sprites[JUMP_STATE] = LoadTexture("assets/Samurai/Jump.png");
         sprites[RUN_STATE] = LoadTexture("assets/Samurai/Run.png");
+        sprites[BLOCK_STATE] = LoadTexture("assets/Samurai/Shield.png");
     }
 
 public:
@@ -500,7 +536,8 @@ public:
             {0, 1, 0, 0, 0.1f, 0.1f, ONESHOT},  // HURT_STATE
             {0, 5, 0, 0, 0.1f, 0.1f, LOOP},     // IDLE_STATE
             {0, 11, 0, 0, 0.1f, 0.1f, ONESHOT}, // JUMP_STATE - 12 frames (0-11) based on 1536/128 = 12
-            {0, 7, 0, 0, 0.1f, 0.1f, LOOP}      // RUN_STATE
+            {0, 7, 0, 0, 0.1f, 0.1f, LOOP},     // RUN_STATE
+            {0, 1, 0, 0, 0.1f, 0.1f, ONESHOT}      // BLOCK_STATE
         };
 
         // Load sound effects with error checking
@@ -511,6 +548,7 @@ public:
         deadSound = LoadSound("sounds/samurai/female-death.wav");
         landSound = LoadSound("sounds/samurai/land2-43790.wav");
         dashSound = LoadSound("sounds/samurai/whoosh (phaser).wav");
+        blockSound = LoadSound("sounds/samurai/block-sound.mp3");
 
         // Initialize collision boxes with scaled dimensions
         float bodyOffsetX = 16.0f * SPRITE_SCALE;
@@ -539,6 +577,10 @@ public:
         canDash = true;
         dashCooldownTimer = 0.0f;
         dashSoundVolume = 0.8f; // Set default volume to 80%
+        
+        // Initialize block variables
+        isBlocking = false;
+        SetSoundVolume(blockSound, dashSoundVolume);
     }
 
     // Destructor to clean up resources
@@ -670,6 +712,7 @@ public:
             }
         }
         
+        
         // Only handle movement if the samurai is alive
         if (!isDead) {
             move(deltaTime);
@@ -707,8 +750,21 @@ public:
     void takeDamage(int damage) {
         // Skip damage if currently invincible
         if (isInvincible) return;
-            
+        
+        //if in blocking state.
         if (!isDead && state != HURT_STATE) {
+            if (isBlocking) {
+                // 50% chance to completely block damage
+                if (GetRandomValue(0, 1) == 0) {
+                    PlaySound(blockSound);
+                    //no damage.
+                    damage = 0;
+                    return;
+                }
+                // Otherwise reduce damage by 50%
+                damage *= block_damage_reduction;
+            }
+            
             currentHealth -= damage;
             if (currentHealth <= 0) {
                 currentHealth = 0;
@@ -790,13 +846,13 @@ public:
 
     // Instantly kills the player if they fall below specific Y coordinates
     void deathBarrier() { 
-        if (rect.x >= 500 && rect.x <= 3210 && rect.y >= 2340) {
-            takeDamage(100000);
-        } else if (rect.x >= 4065 && rect.x <= 4775 && rect.y >= 2850) {
-            takeDamage(100000);
-        } else if (rect.x >= 4800 && rect.x <= 18880 & rect.y >= 7000) {
-            takeDamage(100000);
-        } 
+        if (rect.x >= 400 && rect.x <= 4096 && rect.y >= 2340) {
+            takeDamage(1000000);
+        } else if (rect.x >= 4096 && rect.y >= 2639 && rect.x <= 5860) {
+            takeDamage(1000000);
+        } else if (rect.x >= 5860 && rect.y >= 4030) {
+            takeDamage(1000000);
+        }
     }
 
     // Returns whether the player is dead
