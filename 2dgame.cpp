@@ -2,6 +2,7 @@
 #include "raymath.h"
 #include "CollisionSystem.h"
 #include "Samurai.h"
+#include "Demon.h"
 #include <iostream>
 #include <vector>
 #include <stdlib.h> // For exit()
@@ -268,6 +269,9 @@ int main() {
 
     // Check which map are we in
     bool mapSwitchedToRoom2 = false;
+    
+    // Create a demon for Room2
+    Demon* demon = nullptr;
 
     // Game loop
     while (!WindowShouldClose()) {
@@ -379,8 +383,13 @@ int main() {
                 }
                 
                 // Switching map :o
-                if (!mapSwitchedToRoom2 && samuraiRect.x == 935 && samuraiRect.y == 1534) 
+                // Using a wider range check for the portal to make it easier to trigger
+                if (!mapSwitchedToRoom2 && 
+                    samuraiRect.x > 900 && samuraiRect.x < 970 && 
+                    samuraiRect.y > 1500 && samuraiRect.y < 1570) 
                 {
+                    // Debug output to confirm portal detection
+                    printf("Portal to Room2 detected! Player position: %.2f, %.2f\n", samuraiRect.x, samuraiRect.y);
                     startTransition([&]() 
                     {
                         mapSwitchedToRoom2 = true;
@@ -397,16 +406,28 @@ int main() {
                     }
 
                     Rectangle newPos = samurai.getRect();
-                    newPos.x = 550;
+                    newPos.x = 700;  // Moved further away from the portal (was 550)
                     newPos.y = 2222;
                     samurai.setRect(newPos);
 
                     camera.target = { newPos.x, newPos.y };
+                    
+                    // Create demon in Room2
+                    if (demon == nullptr) {
+                        Vector2 demonPos = { 1000.0f, 2150.0f }; // Position the demon in Room2 at same ground level as samurai
+                        demon = new Demon(demonPos, 150.0f, 100);
+                        std::cout << "Demon spawned in Room2" << std::endl;
+                    }
                     });  
                 }
                 
-                if (mapSwitchedToRoom2 && samuraiRect.x == 550 && samuraiRect.y == 2207.25) 
+                // Using a wider range check for the return portal to make it easier to trigger
+                if (mapSwitchedToRoom2 && 
+                    samuraiRect.x > 520 && samuraiRect.x < 580 && 
+                    samuraiRect.y > 2180 && samuraiRect.y < 2240) 
                 {
+                    // Debug output to confirm return portal detection
+                    printf("Return portal detected! Player position: %.2f, %.2f\n", samuraiRect.x, samuraiRect.y);
                     startTransition([&]() 
                     {
                         mapSwitchedToRoom2 = false;
@@ -428,6 +449,13 @@ int main() {
                     samurai.setRect(newPos);
 
                     camera.target = { newPos.x, newPos.y };
+                    
+                    // Clean up demon when leaving Room2
+                    if (demon != nullptr) {
+                        delete demon;
+                        demon = nullptr;
+                        std::cout << "Demon removed when leaving Room2" << std::endl;
+                    }
                     });  
                 }
                 
@@ -461,6 +489,84 @@ int main() {
                 
                 // Draw Samurai.
                 samurai.draw();
+                
+                // Update and draw demon if in Room2
+                if (mapSwitchedToRoom2 && demon != nullptr) {
+                    // Update demon animation
+                    demon->updateAnimation();
+                    
+                    // Update demon AI behavior
+                    if (!demon->isDead && !isPaused) {
+                        // Get distance to player
+                        Rectangle demonRect = demon->rect;
+                        Vector2 demonPos = { demonRect.x + demonRect.width/2, demonRect.y + demonRect.height/2 };
+                        Vector2 samuraiPos = { samuraiRect.x + samuraiRect.width/2, samuraiRect.y + samuraiRect.height/2 };
+                        float distance = Vector2Distance(demonPos, samuraiPos);
+                        
+                        // Chase player if within range
+                        if (distance < demon->chaseRange && distance > demon->attackRange) {
+                            demon->state = WALK_DEMON;
+                            demon->direction = (samuraiPos.x < demonPos.x) ? LEFT_DEMON : RIGHT_DEMON;
+                            
+                            // Move toward player
+                            float moveDir = (demon->direction == LEFT_DEMON) ? -1.0f : 1.0f;
+                            demon->velocity.x = moveDir * demon->moveSpeed * 100.0f;
+                        } 
+                        // Attack if close enough
+                        else if (distance <= demon->attackRange) {
+                            if (!demon->isAttacking) {
+                                demon->attack();
+                            }
+                        }
+                        // Idle if too far
+                        else {
+                            demon->state = IDLE_DEMON;
+                            demon->velocity.x = 0;
+                        }
+                        
+                        // Apply velocity
+                        demon->applyVelocity();
+                    }
+                    
+                    // Draw the demon
+                    demon->draw();
+                    
+                    // Check for collision between Samurai's attack and demon
+                    CollisionBox* samuraiAttack = samurai.getCollisionBox(ATTACK);
+                    if (samuraiAttack && samuraiAttack->active) {
+                        for (auto& box : demon->collisionBoxes) {
+                            if (box.type == HURTBOX && box.active) {
+                                if (checkCharacterCollision(*samuraiAttack, box)) {
+                                    demon->takeDamage(25); // Samurai deals 25 damage
+                                    samuraiAttack->active = false; // Prevent multiple hits
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Check for collision between demon's attack and Samurai
+                    CollisionBox* samuraiHurtbox = samurai.getCollisionBox(HURTBOX);
+                    for (auto& box : demon->collisionBoxes) {
+                        if (box.type == ATTACK && box.active) {
+                            if (samuraiHurtbox && samuraiHurtbox->active) {
+                                if (checkCharacterCollision(box, *samuraiHurtbox)) {
+                                    // Check if samurai is blocking to reduce damage
+                                    if (samurai.isBlocking()) {
+                                        // Apply damage reduction when blocking (half damage)
+                                        int reducedDamage = static_cast<int>(15 * samurai.getBlockDamageReduction());
+                                        samurai.takeDamage(reducedDamage);
+                                        std::cout << "Blocked attack! Reduced damage: " << reducedDamage << std::endl;
+                                    } else {
+                                        samurai.takeDamage(15); // Full damage when not blocking
+                                    }
+                                    box.active = false; // Prevent multiple hits
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
 
                 std::cout << "X: " << samurai.getRect().x << std::endl;
                 std::cout << "Y: " << samurai.getRect().y << std::endl;

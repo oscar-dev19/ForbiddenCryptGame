@@ -355,7 +355,14 @@ private:
                 printf("Block sound not loaded!\n"); // Debug output
             }
             printf("Blocking activated!\n"); // Debug output
-            isBlocking = false; //reset blocking flag.
+        } else if (!IsKeyDown(KEY_B) && state == BLOCK_STATE) {
+            isBlocking = false;
+            state = IDLE_STATE;
+        }
+        
+        // Keep blocking state active while B is held down
+        if (IsKeyDown(KEY_B) && state == BLOCK_STATE) {
+            isBlocking = true;
         }
         
         // Check for attack input.
@@ -734,6 +741,16 @@ public:
     // Get the Samurai's current health
     int getHealth() const {
         return currentHealth;
+    }
+    
+    // Check if the Samurai is currently blocking
+    bool isBlocking() const {
+        return isBlocking && state == BLOCK_STATE;
+    }
+    
+    // Get the block damage reduction factor
+    float getBlockDamageReduction() const {
+        return block_damage_reduction;
     }
 
     // Get a collision box of a specific type
