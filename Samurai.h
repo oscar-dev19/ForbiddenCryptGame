@@ -69,13 +69,14 @@ private:
     bool canDash = true; // Flag to determine if dash is available
     float dashSoundVolume = 0.8f; // Volume for dash sound (0.0 to 1.0)
     
-    // Blocking variables
-    bool isBlocking = false; // Flag to indicate if character is blocking
     
     // Invincibility frames variables
     bool isInvincible = false; // Flag to indicate if the character is currently invincible
     float invincibilityTimer = 0.0f; // Timer to track invincibility duration
     const float invincibilityDuration = 1.5f; // 1.5 seconds of invincibility after taking damage
+    
+    // Blocking variable
+    bool _isBlocking = false; // Flag to indicate if the character is blocking
 
     // Define Sound Variables.
     Sound attackSound;
@@ -345,8 +346,8 @@ private:
         }
 
         // Check for block input
-        if (IsKeyDown(KEY_B) && !isBlocking && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
-            isBlocking = true;
+        if (IsKeyDown(KEY_B) && !_isBlocking && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
+            _isBlocking = true;
             PlaySound(blockSound);
             state = BLOCK_STATE;
             if (blockSound.frameCount > 0) {
@@ -356,17 +357,17 @@ private:
             }
             printf("Blocking activated!\n"); // Debug output
         } else if (!IsKeyDown(KEY_B) && state == BLOCK_STATE) {
-            isBlocking = false;
+            _isBlocking = false;
             state = IDLE_STATE;
         }
         
         // Keep blocking state active while B is held down
         if (IsKeyDown(KEY_B) && state == BLOCK_STATE) {
-            isBlocking = true;
+            _isBlocking = true;
         }
         
         // Check for attack input.
-        if (IsKeyPressed(KEY_SPACE) && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE && !isBlocking) {
+        if (IsKeyPressed(KEY_SPACE) && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE && !_isBlocking) {
             velocity.x = 0;
             state = ATTACK_STATE;  // Set to attack state.
             animations[state].currentFrame = 0;  // Reset animation frame.
@@ -586,7 +587,7 @@ public:
         dashSoundVolume = 0.8f; // Set default volume to 80%
         
         // Initialize block variables
-        isBlocking = false;
+        _isBlocking = false;
         SetSoundVolume(blockSound, dashSoundVolume);
     }
 
@@ -745,7 +746,7 @@ public:
     
     // Check if the Samurai is currently blocking
     bool isBlocking() const {
-        return isBlocking && state == BLOCK_STATE;
+        return _isBlocking && state == BLOCK_STATE;
     }
     
     // Get the block damage reduction factor
@@ -768,19 +769,6 @@ public:
         // Skip damage if currently invincible
         if (isInvincible) return;
         
-        //if in blocking state.
-        if (!isDead && state != HURT_STATE) {
-            if (isBlocking) {
-                // 50% chance to completely block damage
-                if (GetRandomValue(0, 1) == 0) {
-                    PlaySound(blockSound);
-                    //no damage.
-                    damage = 0;
-                    return;
-                }
-                // Otherwise reduce damage by 50%
-                damage *= block_damage_reduction;
-            }
             
             currentHealth -= damage;
             if (currentHealth <= 0) {
@@ -805,7 +793,6 @@ public:
                 isInvincible = true;
                 invincibilityTimer = invincibilityDuration;
             }
-        }
     }
 
     // Pauses all character-related sounds
