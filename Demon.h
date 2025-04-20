@@ -186,20 +186,24 @@ class Demon {
                 } else {
                     if (anim.type == REPEATING_DEMON) {
                         anim.currentFrame = 0;
-                    } else if (state == ATTACK_DEMON) {
-                        state = IDLE_DEMON;
-                        isAttacking = false;
-                        hasFinishedAttack = true;
-                    } else if (state == HURT_DEMON) {
-                        state = IDLE_DEMON;
-                    } else if (state == DEAD_DEMON) {
-                        // Stay on the last frame if dead
-                        anim.currentFrame = anim.lastFrame;
+                    } else {
+                        if (state == DEAD_DEMON) {
+                            // Stay on the last frame if dead
+                            anim.currentFrame = anim.lastFrame;
+                        } else {
+                            // For all other one-shot animations, go back to idle
+                            state = IDLE_DEMON;
+                            anim.currentFrame = 0;
+                
+                            if (state == ATTACK_DEMON) {
+                                isAttacking = false;
+                                hasFinishedAttack = true;
+                            }
+                        }
                     }
                 }
-            }
+            }      
         }
-        
         Rectangle getAnimationFrame() const {
             // Safety check for valid state
             if (state < 0 || state >= animations.size()) {
@@ -303,6 +307,7 @@ class Demon {
                 state = ATTACK_DEMON;
                 isAttacking = true;
                 hasFinishedAttack = false;
+                velocity.x = 0;
                 
                 // Activate attack collision box
                 for (auto& box : collisionBoxes) {
@@ -495,6 +500,8 @@ class Demon {
                     state = IDLE_DEMON;
                     velocity.x = 0;
                 }
+            } else if (isAttacking) {
+                velocity.x = 0;
             }
             
             // Apply velocity
