@@ -22,7 +22,7 @@
 #include "raytmx.h"
 
 // Define the global variable for collision box visibility
-bool showCollisionBoxes = false;
+bool showCollisionBoxes = true;
 
 // Global audio variables
 Music backgroundMusic = { 0 };

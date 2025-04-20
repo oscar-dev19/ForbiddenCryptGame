@@ -62,6 +62,7 @@ class Demon {
         Sound deadSound;
         Sound chantSound;
         Sound explosionSound;
+        Sound walkSound;
         float chantTimer = 0.0f;
         float chantInterval = 10.0f; // Play chant every 10 seconds
 
@@ -149,6 +150,7 @@ class Demon {
             deadSound = LoadSound("sounds/demon/demonic-roar-40349.wav"); 
             explosionSound = LoadSound("sounds/demon/large-explosion-100420.wav");
             attackSound = LoadSound("sounds/demon/sword-clash-1-6917.wav");
+            walkSound = LoadSound("sounds/demon/stompwav-14753.wav");
 
             // Set sound volume
             SetSoundVolume(chantSound, 0.7f);
@@ -156,6 +158,7 @@ class Demon {
             SetSoundVolume(deadSound, 0.7f);
             SetSoundVolume(explosionSound, 0.7f);
             SetSoundVolume(attackSound, 0.7f);
+            SetSoundVolume(walkSound, 0.7f);
         }
 
         // Destructor to clean up resources
@@ -173,6 +176,7 @@ class Demon {
             if (chantSound.frameCount > 0) UnloadSound(chantSound);
             if (explosionSound.frameCount > 0) UnloadSound(explosionSound);
             if (attackSound.frameCount > 0) UnloadSound(attackSound);
+            if (walkSound.frameCount > 0) UnloadSound(walkSound);
         }
 
         void updateAnimation() {
@@ -284,7 +288,7 @@ class Demon {
         void move() {
             // Simple AI movement logic
             if (!isAttacking && hasFinishedAttack && !isDead) {
-                // Random movement
+                // Random movement logic
                 if (GetRandomValue(0, 100) < 2) {
                     direction = (DirectionDemon)GetRandomValue(-1, 1);
                     if (direction == 0) direction = RIGHT_DEMON;
@@ -293,25 +297,31 @@ class Demon {
                     state = (GetRandomValue(0, 1) == 0) ? IDLE_DEMON : WALK_DEMON;
                 }
                 
-                // Random attack
+                // Random attack logic
                 if (GetRandomValue(0, 200) < 1) {
                     attack();
                 }
-                
-                // Apply movement based on direction and state
+            
+                // Apply movement
                 if (state == WALK_DEMON) {
                     velocity.x = 50.0f * (float)direction;
+            
+                    // ✅ Only play if walking and not already playing
+                    if (!IsSoundPlaying(walkSound)) {
+                        PlaySound(walkSound);
+                    }
                 } else {
                     velocity.x = 0;
                 }
             } else {
-                velocity.x = 0; // Stop moving when attacking or dead
-            }
+                velocity.x = 0;
+            }            
         }
 
         void attack() {
             if (!isAttacking && !isDead) {
                 PlaySound(attackSound);
+                //StopSound(walkSound);
                 state = ATTACK_DEMON;
                 isAttacking = true;
                 hasFinishedAttack = false;
@@ -426,6 +436,7 @@ class Demon {
                     if (deadSound.frameCount > 0) {
                         PlaySound(deadSound);
                         PlaySound(explosionSound);
+                        StopSound(walkSound);
                     }
                 } else {
                     state = HURT_DEMON;
