@@ -145,15 +145,17 @@ class Demon {
 
             // Load sounds
             chantSound = LoadSound("sounds/misc/demon-chant-latin-14489.mp3");
-            hurtSound = LoadSound("sounds/samurai/female-hurt-2-94301.wav"); // Using samurai hurt sound as fallback
-            deadSound = LoadSound("sounds/demon/demonic-roar-40349.wav"); // Using samurai death sound as fallback
+            hurtSound = LoadSound("sounds/samurai/female-hurt-2-94301.wav"); 
+            deadSound = LoadSound("sounds/demon/demonic-roar-40349.wav"); 
             explosionSound = LoadSound("sounds/demon/large-explosion-100420.wav");
+            attackSound = LoadSound("sounds/demon/sword-clash-1-6917.wav");
 
             // Set sound volume
             SetSoundVolume(chantSound, 0.7f);
             SetSoundVolume(hurtSound, 0.7f);
             SetSoundVolume(deadSound, 0.7f);
             SetSoundVolume(explosionSound, 0.7f);
+            SetSoundVolume(attackSound, 0.7f);
         }
 
         // Destructor to clean up resources
@@ -170,6 +172,7 @@ class Demon {
             if (deadSound.frameCount > 0) UnloadSound(deadSound);
             if (chantSound.frameCount > 0) UnloadSound(chantSound);
             if (explosionSound.frameCount > 0) UnloadSound(explosionSound);
+            if (attackSound.frameCount > 0) UnloadSound(attackSound);
         }
 
         void updateAnimation() {
@@ -308,6 +311,7 @@ class Demon {
 
         void attack() {
             if (!isAttacking && !isDead) {
+                PlaySound(attackSound);
                 state = ATTACK_DEMON;
                 isAttacking = true;
                 hasFinishedAttack = false;
