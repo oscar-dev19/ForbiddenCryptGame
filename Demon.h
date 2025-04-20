@@ -61,6 +61,7 @@ class Demon {
         Sound hurtSound;
         Sound deadSound;
         Sound chantSound;
+        Sound explosionSound;
         float chantTimer = 0.0f;
         float chantInterval = 10.0f; // Play chant every 10 seconds
 
@@ -145,12 +146,14 @@ class Demon {
             // Load sounds
             chantSound = LoadSound("sounds/misc/demon-chant-latin-14489.mp3");
             hurtSound = LoadSound("sounds/samurai/female-hurt-2-94301.wav"); // Using samurai hurt sound as fallback
-            deadSound = LoadSound("sounds/samurai/female-death.wav"); // Using samurai death sound as fallback
-            
+            deadSound = LoadSound("sounds/demon/demonic-roar-40349.wav"); // Using samurai death sound as fallback
+            explosionSound = LoadSound("sounds/demon/large-explosion-100420.wav");
+
             // Set sound volume
             SetSoundVolume(chantSound, 0.7f);
             SetSoundVolume(hurtSound, 0.7f);
             SetSoundVolume(deadSound, 0.7f);
+            SetSoundVolume(explosionSound, 0.7f);
         }
 
         // Destructor to clean up resources
@@ -166,6 +169,7 @@ class Demon {
             if (hurtSound.frameCount > 0) UnloadSound(hurtSound);
             if (deadSound.frameCount > 0) UnloadSound(deadSound);
             if (chantSound.frameCount > 0) UnloadSound(chantSound);
+            if (explosionSound.frameCount > 0) UnloadSound(explosionSound);
         }
 
         void updateAnimation() {
@@ -417,6 +421,7 @@ class Demon {
                     // Play death sound if available
                     if (deadSound.frameCount > 0) {
                         PlaySound(deadSound);
+                        PlaySound(explosionSound);
                     }
                 } else {
                     state = HURT_DEMON;
