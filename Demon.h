@@ -347,6 +347,7 @@ class Demon {
                 // Play attack sound if available
                 if (attackSound.frameCount > 0) {
                     PlaySound(attackSound);
+                    StopSound(walkSound);
                 }
             }
         }
@@ -440,6 +441,7 @@ class Demon {
                         PlaySound(deadSound);
                         PlaySound(explosionSound);
                         StopSound(walkSound);
+                        StopSound(attackSound);
                     }
                 } else {
                     state = HURT_DEMON;
@@ -448,6 +450,8 @@ class Demon {
                     // Play hurt sound if available
                     if (hurtSound.frameCount > 0) {
                         PlaySound(hurtSound);
+                        StopSound(attackSound);
+                        StopSound(walkSound);
                     }
                 }
             }
