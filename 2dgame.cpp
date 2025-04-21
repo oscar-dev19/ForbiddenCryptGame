@@ -538,7 +538,7 @@ int main() {
                             if (box.type == HURTBOX && box.active) {
                                 if (checkCharacterCollision(*samuraiAttack, box)) {
                                     demon->takeDamage(25); // Samurai deals 25 damage
-                                    samuraiAttack->active = false; // Prevent multiple hits
+                                    //samuraiAttack->active = false; // Prevent multiple hits
                                     break;
                                 }
                             }

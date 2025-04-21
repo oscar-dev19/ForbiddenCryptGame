@@ -146,7 +146,7 @@ class Demon {
 
             // Load sounds
             chantSound = LoadSound("sounds/misc/demon-chant-latin-14489.mp3");
-            hurtSound = LoadSound("sounds/samurai/female-hurt-2-94301.wav"); 
+            hurtSound = LoadSound("sounds/demon/mixkit-fantasy-monster-grunt-1977.wav"); 
             deadSound = LoadSound("sounds/demon/demonic-roar-40349.wav"); 
             explosionSound = LoadSound("sounds/demon/large-explosion-100420.wav");
             attackSound = LoadSound("sounds/demon/sword-clash-1-6917.wav");
@@ -422,7 +422,7 @@ class Demon {
 
         void takeDamage(int damage) {
             if (!isDead) {
-                health -= damage;
+                health -= damage / 30;
                 if (health <= 0) {
                     health = 0;
                     isDead = true;
