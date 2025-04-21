@@ -13,7 +13,7 @@
  */
 
 // Global scale factor for all sprites and collision boxes
-const float SPRITE_SCALE = 1.0f;
+const float SPRITE_SCALE = 1.5f;
 
 // Global flag to toggle collision box visibility
 extern bool showCollisionBoxes;
