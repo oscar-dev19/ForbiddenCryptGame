@@ -200,7 +200,9 @@ class Demon {
                     } else {
                         if (state == DEAD_DEMON) {
                             // Stay on the last frame if dead
-                            anim.currentFrame = anim.lastFrame;
+                            if (anim.currentFrame != 21) {
+                                anim.currentFrame = anim.lastFrame;
+                            }
                         } else {
                             // For all other one-shot animations, go back to idle
                             state = IDLE_DEMON;
@@ -215,6 +217,7 @@ class Demon {
                 }
             }      
         }
+
         Rectangle getAnimationFrame() const {
             // Safety check for valid state
             if (state < 0 || state >= animations.size()) {
