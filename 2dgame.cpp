@@ -14,6 +14,7 @@
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
+
 #endif
 
 // Define RAYTMX_IMPLEMENTATION to include the implementation of the library
@@ -268,6 +269,8 @@ int main() {
 
     // Check which map are we in
     bool mapSwitchedToRoom2 = false;
+    bool mapSwitchedToRoom3 = false;
+    bool mapSwitchedToRoom4 = false;
 
     // Game loop
     while (!WindowShouldClose()) {
@@ -379,6 +382,7 @@ int main() {
                 }
                 
                 // Switching map :o
+                // Main Room ==> Room 2
                 if (!mapSwitchedToRoom2 && samuraiRect.x == 935 && samuraiRect.y == 1534) 
                 {
                     startTransition([&]() 
@@ -405,6 +409,7 @@ int main() {
                     });  
                 }
                 
+                // Room 2 ==> Main Room 
                 if (mapSwitchedToRoom2 && samuraiRect.x == 550 && samuraiRect.y == 2207.25) 
                 {
                     startTransition([&]() 
@@ -423,13 +428,120 @@ int main() {
                     }
 
                     Rectangle newPos = samurai.getRect();
-                    newPos.x = 500;
+                    newPos.x = 935;
+                    newPos.y = 1551.25;
+                    samurai.setRect(newPos);
+
+                    camera.target = { newPos.x, newPos.y };
+                    });  
+                }
+                
+                // Main Room ==> Room 3 
+                if (!mapSwitchedToRoom3 && samuraiRect.x >= 5440 && samuraiRect.x <= 5450 && samuraiRect.y >= 909.00 && samuraiRect.y <= 910.00) 
+                {
+                    startTransition([&]() 
+                    {
+                        mapSwitchedToRoom3 = true;
+
+                        if (map) 
+                        {
+                            UnloadTMX(map);
+                        }
+
+                    map = LoadTMX("maps/Room3.tmx");
+                    if (!map) 
+                    {
+                        std::cerr << "Failed to load Room3.tmx!" << std::endl;
+                    }
+
+                    Rectangle newPos = samurai.getRect();
+                    newPos.x = 1575;
+                    newPos.y = 2222.25;
+                    samurai.setRect(newPos);
+
+                    camera.target = { newPos.x, newPos.y };
+                    });  
+                }
+                // Room 3 ==> Main Room 
+                if (mapSwitchedToRoom3 && samuraiRect.x >= 1570 && samuraiRect.x <= 1580 && samuraiRect.y >= 2200.00 && samuraiRect.y <= 2210.00) 
+                {
+                    startTransition([&]() 
+                    {
+                        mapSwitchedToRoom3 = false;
+
+                        if (map) 
+                        {
+                            UnloadTMX(map);
+                        }
+
+                    map = LoadTMX("maps/LevelDesign.tmx");
+                    if (!map) 
+                    {
+                        std::cerr << "Failed to load LevelDesign.tmx!" << std::endl;
+                    }
+
+                    Rectangle newPos = samurai.getRect();
+                    newPos.x = 5910;
+                    newPos.y = 910.25;
+                    samurai.setRect(newPos);
+
+                    camera.target = { newPos.x, newPos.y };
+                    });  
+                }
+                
+                // Main Room ==> Room 4 
+                if (!mapSwitchedToRoom4 && samuraiRect.x == 8330 && samuraiRect.y == 2207.5) 
+                {
+                    startTransition([&]() 
+                    {
+                        mapSwitchedToRoom4 = true;
+
+                        if (map) 
+                        {
+                            UnloadTMX(map);
+                        }
+
+                    map = LoadTMX("maps/Room4.tmx");
+                    if (!map) 
+                    {
+                        std::cerr << "Failed to load Room4.tmx!" << std::endl;
+                    }
+
+                    Rectangle newPos = samurai.getRect();
+                    newPos.x = 665;
                     newPos.y = 2222;
                     samurai.setRect(newPos);
 
                     camera.target = { newPos.x, newPos.y };
                     });  
                 }
+                // Room 4 ==> Main Room 
+                if (mapSwitchedToRoom4 && samuraiRect.x >= 3075 && samuraiRect.x <= 3085 && samuraiRect.y >= 2200.00 && samuraiRect.y <= 2210.00) 
+                {
+                    startTransition([&]() 
+                    {
+                        mapSwitchedToRoom4 = false;
+
+                        if (map) 
+                        {
+                            UnloadTMX(map);
+                        }
+
+                    map = LoadTMX("maps/LevelDesign.tmx");
+                    if (!map) 
+                    {
+                        std::cerr << "Failed to load LevelDesign.tmx!" << std::endl;
+                    }
+
+                    Rectangle newPos = samurai.getRect();
+                    newPos.x = 9385;
+                    newPos.y = 2062.25;
+                    samurai.setRect(newPos);
+
+                    camera.target = { newPos.x, newPos.y };
+                    });  
+                }
+                
                 
                 
                 if(samurai.checkDeath()) {
