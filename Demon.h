@@ -443,6 +443,7 @@ class Demon {
                     }
                 } else {
                     state = HURT_DEMON;
+                    velocity.x = 0;
                     
                     // Play hurt sound if available
                     if (hurtSound.frameCount > 0) {
