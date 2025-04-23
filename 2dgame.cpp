@@ -452,7 +452,6 @@ int main() {
                     
                     // Clean up demon when leaving Room2
                     if (demon != nullptr) {
-                        delete demon;
                         demon = nullptr;
                         std::cout << "Demon removed when leaving Room2" << std::endl;
                     }
