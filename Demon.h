@@ -145,7 +145,7 @@ class Demon {
 
             // Load sounds
             chantSound = LoadSound("sounds/misc/demon-chant-latin-14489.mp3");
-            hurtSound = LoadSound("sounds/samurai/female-hurt-2-94301.wav"); 
+            hurtSound = LoadSound("sounds/demon/mixkit-fantasy-monster-grunt-1977.wav"); 
             deadSound = LoadSound("sounds/demon/demonic-roar-40349.wav"); 
             explosionSound = LoadSound("sounds/demon/large-explosion-100420.wav");
             attackSound = LoadSound("sounds/demon/sword-clash-1-6917.wav");
@@ -196,7 +196,9 @@ class Demon {
                     } else {
                         if (state == DEAD_DEMON) {
                             // Stay on the last frame if dead
-                            anim.currentFrame = anim.lastFrame;
+                            if (anim.currentFrame != 21) {
+                                anim.currentFrame = anim.lastFrame;
+                            }
                         } else {
                             // For all other one-shot animations, go back to idle
                             state = IDLE_DEMON;
@@ -211,6 +213,7 @@ class Demon {
                 }
             }      
         }
+
         Rectangle getAnimationFrame() const {
             // Safety check for valid state
             if (state < 0 || state >= animations.size()) {
@@ -334,6 +337,7 @@ class Demon {
                 // Play attack sound if available
                 if (attackSound.frameCount > 0) {
                     PlaySound(attackSound);
+                    StopSound(walkSound);
                 }
             }
         }
@@ -409,7 +413,7 @@ class Demon {
 
         void takeDamage(int damage) {
             if (!isDead) {
-                health -= damage;
+                health -= damage / 30;
                 if (health <= 0) {
                     health = 0;
                     isDead = true;
@@ -426,13 +430,17 @@ class Demon {
                     if (deadSound.frameCount > 0) {
                         PlaySound(deadSound);
                         PlaySound(explosionSound);
+                        StopSound(attackSound);
                     }
                 } else {
                     state = HURT_DEMON;
+                    velocity.x = 0;
                     
                     // Play hurt sound if available
                     if (hurtSound.frameCount > 0) {
                         PlaySound(hurtSound);
+                        StopSound(attackSound);
+                        StopSound(walkSound);
                     }
                 }
             }
