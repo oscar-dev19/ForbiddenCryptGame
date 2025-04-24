@@ -15,7 +15,6 @@
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
-
 #endif
 
 // Define RAYTMX_IMPLEMENTATION to include the implementation of the library
@@ -40,6 +39,9 @@ enum GameState {START_SCREEN, MAIN_GAME, EXIT};
 bool isPaused = false;
 bool isComplete = false;
 bool gameover = false;
+
+float debugTimer = 0.0f;
+float debugInterval = 2.0f; 
 
 // Fade transition on map switch
 bool isTransitioning = false;
@@ -269,7 +271,7 @@ int main() {
     bool isPlayingMenuMusic = true;
 
     // Check which map are we in
-    bool mapSwitchedToRoom2 = false
+    bool mapSwitchedToRoom2 = false;
     bool mapSwitchedToRoom3 = false;
     bool mapSwitchedToRoom4 = false;
     
@@ -358,6 +360,7 @@ int main() {
                 // Update camera to follow player, ensuring it stays within map boundaries
                 Rectangle samuraiRect = samurai.getRect();
                 
+                // NOTE: Maybe delete this?
                 float samuraiCenterX = samuraiRect.x + samuraiRect.width / 2;
                 float samuraiCenterY = samuraiRect.y + samuraiRect.height / 2;
                 
@@ -386,9 +389,6 @@ int main() {
                 }
                 
                 // Switching map :o
-
-                // Main Room ==> Room 2
-                if (!mapSwitchedToRoom2 && samuraiRect.x == 935 && samuraiRect.y == 1534) 
                 // Using a wider range check for the portal to make it easier to trigger
                 if (!mapSwitchedToRoom2 && 
                     samuraiRect.x > 900 && samuraiRect.x < 970 && 
@@ -427,8 +427,6 @@ int main() {
                     });  
                 }
                 
-                // Room 2 ==> Main Room 
-                if (mapSwitchedToRoom2 && samuraiRect.x == 550 && samuraiRect.y == 2207.25) 
                 // Using a wider range check for the return portal to make it easier to trigger
                 if (mapSwitchedToRoom2 && 
                     samuraiRect.x > 520 && samuraiRect.x < 580 && 
@@ -452,11 +450,18 @@ int main() {
                     }
 
                     Rectangle newPos = samurai.getRect();
-                    newPos.x = 935;
-                    newPos.y = 1551.25;
+                    newPos.x = 500;
+                    newPos.y = 2222;
                     samurai.setRect(newPos);
 
                     camera.target = { newPos.x, newPos.y };
+                    
+                    // Clean up demon when leaving Room2
+                    if (demon != nullptr) {
+                        delete demon;
+                        demon = nullptr;
+                        std::cout << "Demon removed when leaving Room2" << std::endl;
+                    }
                     });  
                 }
                 
@@ -537,13 +542,6 @@ int main() {
                     samurai.setRect(newPos);
 
                     camera.target = { newPos.x, newPos.y };
-                    
-                    // Clean up demon when leaving Room2
-                    if (demon != nullptr) {
-                        delete demon;
-                        demon = nullptr;
-                        std::cout << "Demon removed when leaving Room2" << std::endl;
-                    }
                     });  
                 }
                 // Room 4 ==> Main Room 
@@ -572,8 +570,6 @@ int main() {
                     camera.target = { newPos.x, newPos.y };
                     });  
                 }
-                
-                
                 
                 if(samurai.checkDeath()) {
                     gameover = true;
@@ -606,42 +602,17 @@ int main() {
                 samurai.draw();
                 
                 // Update and draw demon if in Room2
-                if (mapSwitchedToRoom2 && demon != nullptr) {
-                    // Update demon animation
-                    demon->updateAnimation();
+                if (mapSwitchedToRoom2 && demon != nullptr) 
+                {
                     
                     // Update demon AI behavior
-                    if (!demon->isDead && !isPaused) {
-                        // Get distance to player
-                        Rectangle demonRect = demon->rect;
-                        Vector2 demonPos = { demonRect.x + demonRect.width/2, demonRect.y + demonRect.height/2 };
-                        Vector2 samuraiPos = { samuraiRect.x + samuraiRect.width/2, samuraiRect.y + samuraiRect.height/2 };
-                        float distance = Vector2Distance(demonPos, samuraiPos);
-                        
-                        // Chase player if within range
-                        if (distance < demon->chaseRange && distance > demon->attackRange) {
-                            demon->state = WALK_DEMON;
-                            demon->direction = (samuraiPos.x < demonPos.x) ? LEFT_DEMON : RIGHT_DEMON;
-                            
-                            // Move toward player
-                            float moveDir = (demon->direction == LEFT_DEMON) ? -1.0f : 1.0f;
-                            demon->velocity.x = moveDir * demon->moveSpeed * 100.0f;
-                        } 
-                        // Attack if close enough
-                        else if (distance <= demon->attackRange) {
-                            if (!demon->isAttacking) {
-                                demon->attack();
-                            }
-                        }
-                        // Idle if too far
-                        else {
-                            demon->state = IDLE_DEMON;
-                            demon->velocity.x = 0;
-                        }
-                        
-                        // Apply velocity
-                        demon->applyVelocity();
+                    if (!demon->isDead && !isPaused) 
+                    {
+                        demon->update(deltaTime, samuraiPos);
                     }
+                    // Update demon animation
+                    demon->updateAnimation();
+                    demon->updateCollisionBoxes();
                     
                     // Draw the demon
                     demon->draw();
@@ -653,7 +624,7 @@ int main() {
                             if (box.type == HURTBOX && box.active) {
                                 if (checkCharacterCollision(*samuraiAttack, box)) {
                                     demon->takeDamage(25); // Samurai deals 25 damage
-                                    samuraiAttack->active = false; // Prevent multiple hits
+                                    //samuraiAttack->active = false; // Prevent multiple hits
                                     break;
                                 }
                             }
@@ -683,8 +654,13 @@ int main() {
                     }
                 }
 
-                std::cout << "X: " << samurai.getRect().x << std::endl;
-                std::cout << "Y: " << samurai.getRect().y << std::endl;
+                debugTimer += deltaTime;
+                if (debugTimer >= debugInterval) 
+                {
+                    std::cout << "X: " << samurai.getRect().x << std::endl;
+                    std::cout << "Y: " << samurai.getRect().y << std::endl;
+                    debugTimer = 0.0f;
+                }
 
                 // End camera mode and finalize drawing
                 EndMode2D();
