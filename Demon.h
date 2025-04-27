@@ -75,7 +75,7 @@ class Demon {
         std::vector<CollisionBox> collisionBoxes;
 
         // Constructor initializing the Demon's properties and animations
-        Demon(Vector2 position, float baseSpeed = 150.0f, int startingHealth = 100) {
+        Demon(Vector2 position, float baseSpeed = 150.0f, int startingHealth = 500) {
             std::cout << "Initializing Demon at position: " << position.x << ", " << position.y << std::endl;
             rect = { position.x, position.y, 144.0f * SPRITE_SCALE, 80.0f * SPRITE_SCALE };
             velocity = { 0, 0 };
@@ -412,7 +412,7 @@ class Demon {
 
         void takeDamage(int damage) {
             if (!isDead) {
-                health -= damage / 30;
+                health -= (damage - 24);
                 if (health <= 0) {
                     health = 0;
                     isDead = true;

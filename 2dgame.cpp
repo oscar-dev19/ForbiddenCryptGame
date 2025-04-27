@@ -416,7 +416,7 @@ int main() {
                     // Create demon in Room2
                     if (demon == nullptr) {
                         Vector2 demonPos = { 1000.0f, 2165.0f }; // Position the demon in Room2 at same ground level as samurai
-                        demon = new Demon(demonPos, 50.0f, 100);
+                        demon = new Demon(demonPos, 50.0f, 500);
                         std::cout << "Demon spawned in Room2" << std::endl;
                     }
                     });
