@@ -337,7 +337,6 @@ class Demon {
                 // Play attack sound if available
                 if (attackSound.frameCount > 0) {
                     PlaySound(attackSound);
-                    StopSound(walkSound);
                 }
             }
         }
@@ -440,7 +439,6 @@ class Demon {
                     if (hurtSound.frameCount > 0) {
                         PlaySound(hurtSound);
                         StopSound(attackSound);
-                        StopSound(walkSound);
                     }
                 }
             }
