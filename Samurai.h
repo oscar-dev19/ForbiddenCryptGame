@@ -351,6 +351,7 @@ private:
             state = BLOCK_STATE;
             if (blockSound.frameCount > 0) {
                 PlaySound(blockSound);
+                blocking = false; //reset block flag.
             } else {
                 printf("Block sound not loaded!\n"); // Debug output
             }
