@@ -123,7 +123,7 @@ class Demon {
             
             float attackOffsetX = rect.width - (20.0f * SPRITE_SCALE);
             float attackOffsetY = 30.0f * SPRITE_SCALE;
-            float attackWidth = 60.0f * SPRITE_SCALE;
+            float attackWidth = 32.0f * SPRITE_SCALE;
             float attackHeight = 50.0f * SPRITE_SCALE;
             
             float hurtboxOffsetX = 40.0f * SPRITE_SCALE;
@@ -385,22 +385,50 @@ class Demon {
             float hurtboxOffsetX = 45.0f * SPRITE_SCALE;
             float hurtboxOffsetY = 25.0f * SPRITE_SCALE;
             
-            for (auto& box : collisionBoxes) {
-                if (box.type == BODY) {
+            CollisionBox* hurtbox = getCollisionBox(HURTBOX);
+            for (auto& box : collisionBoxes) 
+            {
+                if (box.type == BODY) 
+                {
                     box.rect.x = rect.x + bodyOffsetX;
                     box.rect.y = rect.y + bodyOffsetY;
-                } else if (box.type == ATTACK) {
-                    // Position attack box based on direction
-                    if (direction == RIGHT_DEMON) {
-                        box.rect.x = rect.x + attackOffsetX;
-                    } else {
-                        box.rect.x = rect.x - box.rect.width;
+                } 
+                else if (box.type == ATTACK) 
+                {
+                    if (hurtbox)
+                    {
+                        // Moving the red attack box either closer or farther
+                        float attackOffset = 0.0f * SPRITE_SCALE;
+                        
+                        if (direction == RIGHT_DEMON) 
+                        {
+                            box.rect.x = hurtbox->rect.x + hurtbox->rect.width + attackOffset;
+                        } 
+                        else 
+                        {
+                            box.rect.x = hurtbox->rect.x - box.rect.width - attackOffset;
+                        }
                     }
-                    box.rect.y = rect.y + attackOffsetY;
+                    box.rect.y = hurtbox->rect.y + 5.0f * SPRITE_SCALE;
                     
-                    // Only active during attack animation
-                    box.active = isAttacking;
-                } else if (box.type == HURTBOX) {
+                    if (box.type == ATTACK) 
+                    {
+                        // Make the attack box always visible regardless of frame or state
+                        box.active = true;
+
+                        if (hurtbox) {
+                            float attackOffset = 0.0f * SPRITE_SCALE;
+                            if (direction == RIGHT_DEMON) {
+                                box.rect.x = hurtbox->rect.x + hurtbox->rect.width + attackOffset;
+                            } else {
+                                box.rect.x = hurtbox->rect.x - box.rect.width - attackOffset;
+                            }
+                            box.rect.y = hurtbox->rect.y + 5.0f * SPRITE_SCALE;
+                            }
+                    }
+                } 
+                else if (box.type == HURTBOX) 
+                {
                     box.rect.x = rect.x + hurtboxOffsetX;
                     box.rect.y = rect.y + hurtboxOffsetY;
                     
