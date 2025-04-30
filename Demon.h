@@ -89,8 +89,8 @@ class Demon {
                 { 0, 5, 0, 0.1f, 0.1f, REPEATING_DEMON }, // IDLE_DEMON - 6 frames
                 { 0, 11, 0, 0.1f, 0.1f, REPEATING_DEMON },  // WALK_DEMON - 12 frames
                 { 0, 14, 0, 0.1f, 0.1f, ONESHOT_DEMON },   // ATTACK_DEMON - 15 frames
-                { 0, 4, 0, 0.2f, 0.2f, ONESHOT_DEMON },    // HURT_DEMON - 5 frames
-                { 0, 21, 0, 0.2f, 0.2f, ONESHOT_DEMON }    // DEAD_DEMON - 22 frames
+                { 0, 4, 0, 0.1f, 0.1f, ONESHOT_DEMON },    // HURT_DEMON - 5 frames
+                { 0, 21, 0, 0.1f, 0.1f, ONESHOT_DEMON }    // DEAD_DEMON - 22 frames
             };
 
             // Load textures for each state
