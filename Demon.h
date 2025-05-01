@@ -495,7 +495,7 @@ class Demon {
             
             // Define a minimum distance to keep from the target
             // The Demon is larger, so it needs a bigger minimum distance
-            float minDistance = 100.0f;
+            float minDistance = 100.0;
             
             // Update state based on AI behavior
             if (!isAttacking && hasFinishedAttack) {
