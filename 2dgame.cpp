@@ -30,6 +30,35 @@ Music menuMusic = { 0 };
 float masterVolume = 0.7f;
 
 // Global background texture
+
+// Dialogue System for Room3
+bool showDialogue = false;
+std::string dialogueText;
+float dialogueTimer = 0.0f;
+float dialogueDuration = 4.0f; // seconds
+
+std::vector<std::string> randomDialogues = {
+    "Sorry, the demon you seek is in another portal!",
+    "You've reached the wrong realm, try again!",
+    "Wrong portal, warrior. Your demon lies elsewhere.",
+    "Nope, no demons here. Just regrets.",
+    "You must seek the next portal, brave samurai."
+};
+
+void triggerRoom3Dialogue() {
+    // Set dialogue state
+    showDialogue = true;
+    
+    // Select a random dialogue message
+    dialogueText = randomDialogues[GetRandomValue(0, randomDialogues.size() - 1)];
+    
+    // Reset timer to start counting up
+    dialogueTimer = 0.0f;
+    
+    // Print debug information
+    printf("Dialogue triggered: %s\n", dialogueText.c_str());
+}
+
 Texture2D backgroundTexture = { 0 };
 Camera2D camera = { 0 };
 
@@ -195,7 +224,8 @@ void checkTileCollisions(TmxMap* map, Samurai& player) {
     return;
 } 
 
-int main() {
+int main() 
+{
     // Print current working directory
     char cwd[PATH_MAX];
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
@@ -281,6 +311,12 @@ int main() {
 
         // Handle game state updates based on current game state
         switch(gameState) {
+
+            case EXIT: {
+                // Handle exit (save state, cleanup, etc.)
+                safeExit();
+                break;
+            }
             case START_SCREEN: {
                 if (!isPlayingMenuMusic) {
                     PlayMusicStream(menuMusic);
@@ -461,18 +497,17 @@ int main() {
                         {
                             UnloadTMX(map);
                         }
-                        map = LoadTMX("maps/Room3.tmx"); // Load Room 3
+                        map = LoadTMX("maps/Room3.tmx");
                         if (!map) {
                             fprintf(stderr, "Failed to load Room3.tmx\n");
-                            // Handle error appropriately, maybe exit or load a default map
                         } else {
                             printf("Loaded Room3.tmx successfully.\n");
                         }
-                        
                         Rectangle newPos = samurai.getRect();
                         newPos.x = 100; // Reset player position for Room3 (adjust as needed)
                         newPos.y = 2223;
                         samurai.setRect(newPos);
+                        camera.target = { newPos.x, newPos.y };
                         
                         // Reset or remove enemies from previous room if necessary
                         if (demon) {
@@ -480,7 +515,11 @@ int main() {
                             demon = nullptr;
                             printf("Demon deleted when entering Room3.\n");
                         }
-                        // Add logic for enemies specific to Room 3 here if needed
+                        
+                        // Trigger the dialogue immediately after entering Room3
+                        triggerRoom3Dialogue();
+                        printf("Room3 dialogue triggered. Text: %s\n", dialogueText.c_str());
+                        showDialogue = true; // Ensure dialogue flag is set
                     });
                 }
                 // Portal back from Room 3 to LevelDesign
@@ -660,6 +699,44 @@ int main() {
 
                 // End camera mode and finalize drawing
                 EndMode2D();
+                
+                // Draw dialogue textbox after 2D mode
+                if (showDialogue) {
+                    // Update dialogue timer
+                    dialogueTimer += GetFrameTime();
+                    
+                    // Create a visually appealing dialogue box with fixed screen coordinates (not affected by camera)
+                    int boxWidth = 800;
+                    int boxHeight = 120; // Slightly taller for better visibility
+                    int boxX = GetScreenWidth() / 2 - boxWidth / 2;
+                    int boxY = 100; // Position at top of screen for better visibility
+
+                    // Draw the dialogue box with a semi-transparent background and thicker border
+                    DrawRectangle(boxX, boxY, boxWidth, boxHeight, Fade(BLACK, 0.9f));
+                    DrawRectangleLines(boxX, boxY, boxWidth, boxHeight, WHITE);
+                    DrawRectangleLines(boxX+1, boxY+1, boxWidth-2, boxHeight-2, WHITE); // Double border for emphasis
+                    
+                    // Draw a title for the dialogue box
+                    DrawText("RESIDENT GNOME", boxX + boxWidth/2 - MeasureText("MYSTERIOUS VOICE", 20)/2, boxY + 15, 20, GOLD);
+                    
+                    // Draw the dialogue text centered in the box
+                    DrawText(dialogueText.c_str(), boxX + 20, boxY + 50, 24, WHITE);
+
+                    // Print debug info when F2 is pressed
+                    if (IsKeyPressed(KEY_F2)) {
+                        printf("Dialogue active: %s (Timer: %.2f/%.2f)\n", 
+                               dialogueText.c_str(), dialogueTimer, dialogueDuration);
+                    }
+
+                    // Hide dialogue after duration expires
+                    if (dialogueTimer >= dialogueDuration) {
+                        showDialogue = false;
+                        dialogueTimer = 0.0f;
+                        printf("Dialogue ended.\n");
+                    }
+                }
+
+
 
                 // UI controls instructions
                 int instructionsY = screenHeight - 1050;
@@ -791,6 +868,12 @@ int main() {
                         {
                             transitionAlpha = 0.0f;
                             isTransitioning = false;
+                            
+                            // Check if we just entered Room3 and trigger dialogue if needed
+                            if (mapSwitchedToRoom3 && !showDialogue) {
+                                triggerRoom3Dialogue();
+                                printf("Dialogue triggered after transition: %s\n", dialogueText.c_str());
+                            }
                         }
                     }
                 }
@@ -800,15 +883,6 @@ int main() {
 
                 break;
             }
-
-            case EXIT: {
-                // Handle exit (save state, cleanup, etc.)
-                safeExit();
-                break;
-            }
         }
     }
-
-    // This code should never be reached because we call safeExit() when WindowShouldClose() is true
-    return 0;
 }
