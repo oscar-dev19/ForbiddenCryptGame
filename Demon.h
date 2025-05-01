@@ -89,8 +89,8 @@ class Demon {
                 { 0, 5, 0, 0.1f, 0.1f, REPEATING_DEMON }, // IDLE_DEMON - 6 frames
                 { 0, 11, 0, 0.1f, 0.1f, REPEATING_DEMON },  // WALK_DEMON - 12 frames
                 { 0, 14, 0, 0.1f, 0.1f, ONESHOT_DEMON },   // ATTACK_DEMON - 15 frames
-                { 0, 4, 0, 0.2f, 0.2f, ONESHOT_DEMON },    // HURT_DEMON - 5 frames
-                { 0, 21, 0, 0.2f, 0.2f, ONESHOT_DEMON }    // DEAD_DEMON - 22 frames
+                { 0, 4, 0, 0.1f, 0.1f, ONESHOT_DEMON },    // HURT_DEMON - 5 frames
+                { 0, 21, 0, 0.1f, 0.1f, ONESHOT_DEMON }    // DEAD_DEMON - 22 frames
             };
 
             // Load textures for each state
@@ -123,7 +123,7 @@ class Demon {
             
             float attackOffsetX = rect.width - (20.0f * SPRITE_SCALE);
             float attackOffsetY = 30.0f * SPRITE_SCALE;
-            float attackWidth = 60.0f * SPRITE_SCALE;
+            float attackWidth = 32.0f * SPRITE_SCALE;
             float attackHeight = 50.0f * SPRITE_SCALE;
             
             float hurtboxOffsetX = 40.0f * SPRITE_SCALE;
@@ -316,20 +316,36 @@ class Demon {
             if (!isAttacking && !isDead) {
                 PlaySound(attackSound);
                 state = ATTACK_DEMON;
+                animations[state].currentFrame = 0;
                 isAttacking = true;
                 hasFinishedAttack = false;
                 velocity.x = 0;
                 
                 // Activate attack collision box
-                for (auto& box : collisionBoxes) {
-                    if (box.type == ATTACK) {
+                for (auto& box : collisionBoxes) 
+                {
+                    if (box.type == ATTACK) 
+                    {
                         // Position the attack box based on direction
-                        if (direction == RIGHT_DEMON) {
-                            box.rect.x = rect.x + rect.width - (36.0f * SPRITE_SCALE);
-                        } else {
-                            box.rect.x = rect.x - (72.0f * SPRITE_SCALE);
-                        }
+                        CollisionBox* hurtbox = getCollisionBox(HURTBOX);
+                        float attackOffset = 0.0f * SPRITE_SCALE; // Adjust this value to bring the box closer/farther
+
+                        if (hurtbox) 
+                        {
+                            if (direction == RIGHT_DEMON)
+                            {
+                                // Place attack box just to the right of hurtbox
+                                box.rect.x = hurtbox->rect.x + hurtbox->rect.width + attackOffset;
+                            } 
+                            else 
+                            {
+                                // Place attack box just to the left of hurtbox
+                                box.rect.x = hurtbox->rect.x - box.rect.width - attackOffset;
+                            }
+                        
+                        box.rect.y = hurtbox->rect.y + 5.0f * SPRITE_SCALE; // Optional: slight vertical offset
                         box.active = true;
+                        }
                         break;
                     }
                 }
@@ -385,22 +401,50 @@ class Demon {
             float hurtboxOffsetX = 45.0f * SPRITE_SCALE;
             float hurtboxOffsetY = 25.0f * SPRITE_SCALE;
             
-            for (auto& box : collisionBoxes) {
-                if (box.type == BODY) {
+            CollisionBox* hurtbox = getCollisionBox(HURTBOX);
+            for (auto& box : collisionBoxes) 
+            {
+                if (box.type == BODY) 
+                {
                     box.rect.x = rect.x + bodyOffsetX;
                     box.rect.y = rect.y + bodyOffsetY;
-                } else if (box.type == ATTACK) {
-                    // Position attack box based on direction
-                    if (direction == RIGHT_DEMON) {
-                        box.rect.x = rect.x + attackOffsetX;
-                    } else {
-                        box.rect.x = rect.x - box.rect.width;
+                } 
+                else if (box.type == ATTACK) 
+                {
+                    if (hurtbox)
+                    {
+                        // Moving the red attack box either closer or farther
+                        float attackOffset = 0.0f * SPRITE_SCALE;
+                        
+                        if (direction == RIGHT_DEMON) 
+                        {
+                            box.rect.x = hurtbox->rect.x + hurtbox->rect.width + attackOffset;
+                        } 
+                        else 
+                        {
+                            box.rect.x = hurtbox->rect.x - box.rect.width - attackOffset;
+                        }
                     }
-                    box.rect.y = rect.y + attackOffsetY;
+                    box.rect.y = hurtbox->rect.y + 5.0f * SPRITE_SCALE;
                     
-                    // Only active during attack animation
-                    box.active = isAttacking;
-                } else if (box.type == HURTBOX) {
+                    if (box.type == ATTACK) 
+                    {
+                        // Make the attack box always visible regardless of frame or state
+                        box.active = true;
+
+                        if (hurtbox) {
+                            float attackOffset = 0.0f * SPRITE_SCALE;
+                            if (direction == RIGHT_DEMON) {
+                                box.rect.x = hurtbox->rect.x + hurtbox->rect.width + attackOffset;
+                            } else {
+                                box.rect.x = hurtbox->rect.x - box.rect.width - attackOffset;
+                            }
+                            box.rect.y = hurtbox->rect.y + 5.0f * SPRITE_SCALE;
+                            }
+                    }
+                } 
+                else if (box.type == HURTBOX) 
+                {
                     box.rect.x = rect.x + hurtboxOffsetX;
                     box.rect.y = rect.y + hurtboxOffsetY;
                     
@@ -467,7 +511,7 @@ class Demon {
             
             // Define a minimum distance to keep from the target
             // The Demon is larger, so it needs a bigger minimum distance
-            float minDistance = 100.0f;
+            float minDistance = 100.0;
             
             // Update state based on AI behavior
             if (!isAttacking && hasFinishedAttack) {
