@@ -67,7 +67,7 @@ class Demon {
 
         // AI system
         CharacterAI ai;
-        float attackRange = 150.0f;
+        float attackRange = 80.0f;
         float chaseRange = 500.0f;
         float moveSpeed = 0.8f;  // Demon is slower but more powerful
 
@@ -511,7 +511,7 @@ class Demon {
             
             // Define a minimum distance to keep from the target
             // The Demon is larger, so it needs a bigger minimum distance
-            float minDistance = 100.0;
+            float minDistance = 1.0;
             
             // Update state based on AI behavior
             if (!isAttacking && hasFinishedAttack) {
