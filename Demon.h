@@ -316,20 +316,36 @@ class Demon {
             if (!isAttacking && !isDead) {
                 PlaySound(attackSound);
                 state = ATTACK_DEMON;
+                animations[state].currentFrame = 0;
                 isAttacking = true;
                 hasFinishedAttack = false;
                 velocity.x = 0;
                 
                 // Activate attack collision box
-                for (auto& box : collisionBoxes) {
-                    if (box.type == ATTACK) {
+                for (auto& box : collisionBoxes) 
+                {
+                    if (box.type == ATTACK) 
+                    {
                         // Position the attack box based on direction
-                        if (direction == RIGHT_DEMON) {
-                            box.rect.x = rect.x + rect.width - (36.0f * SPRITE_SCALE);
-                        } else {
-                            box.rect.x = rect.x - (72.0f * SPRITE_SCALE);
-                        }
+                        CollisionBox* hurtbox = getCollisionBox(HURTBOX);
+                        float attackOffset = 0.0f * SPRITE_SCALE; // Adjust this value to bring the box closer/farther
+
+                        if (hurtbox) 
+                        {
+                            if (direction == RIGHT_DEMON)
+                            {
+                                // Place attack box just to the right of hurtbox
+                                box.rect.x = hurtbox->rect.x + hurtbox->rect.width + attackOffset;
+                            } 
+                            else 
+                            {
+                                // Place attack box just to the left of hurtbox
+                                box.rect.x = hurtbox->rect.x - box.rect.width - attackOffset;
+                            }
+                        
+                        box.rect.y = hurtbox->rect.y + 5.0f * SPRITE_SCALE; // Optional: slight vertical offset
                         box.active = true;
+                        }
                         break;
                     }
                 }
