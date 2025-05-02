@@ -299,7 +299,12 @@ int main()
 
     // Check which map are we in
     bool mapSwitchedToRoom2 = false;
-    bool mapSwitchedToRoom3 = false; // Flag for Room 3 transition
+
+    bool mapSwitchedToRoom3 = false;
+    bool mapSwitchedToRoom4 = false;
+    
+    bool mapSwitchedToMainLevel2 = false;
+
     
     // Create a demon for Room2
     Demon* demon = nullptr;
@@ -420,10 +425,9 @@ int main()
                 }
                 
                 // Switching map :o
-                // Using a wider range check for the portal to make it easier to trigger
-                if (!mapSwitchedToRoom2 && 
-                    samuraiRect.x > 900 && samuraiRect.x < 970 && 
-                    samuraiRect.y > 1500 && samuraiRect.y < 1570) 
+
+                // Main Level to Room2
+                if (!mapSwitchedToRoom2 && samuraiRect.x >= 920 && samuraiRect.x <= 930 && samuraiRect.y == 1502) 
                 {
                     // Debug output to confirm portal detection
                     printf("Portal to Room2 detected! Player position: %.2f, %.2f\n", samuraiRect.x, samuraiRect.y);
@@ -443,7 +447,8 @@ int main()
                     }
 
                     Rectangle newPos = samurai.getRect();
-                    newPos.x = 700;  // Moved further away from the portal (was 550)
+
+                    newPos.x = 540;  
                     newPos.y = 2222;
                     samurai.setRect(newPos);
 
@@ -457,107 +462,135 @@ int main()
                     }
                     });
                 }
-                // Portal back from Room 3 to LevelDesign
-                else if (mapSwitchedToRoom3 && 
-                         samuraiRect.x > 1550 && samuraiRect.x < 1575 && 
-                         samuraiRect.y > 2174 && samuraiRect.y < 2180)
-                {
-                    printf("Portal back to LevelDesign detected! Player position: %.2f, %.2f\n", samuraiRect.x, samuraiRect.y);
-                    startTransition([&]() 
-                    {
-                        mapSwitchedToRoom3 = false; // Exiting Room 3
-                        UnloadTMX(map); // Unload current map (Room3)
-                        map = LoadTMX("maps/LevelDesign.tmx"); // Load the main level
-                        if (!map) {
-                            printf("Failed to Load TMX File: LevelDesign.tmx\n");
-                            safeExit(); // Exit if loading fails
-                        } else {
-                            printf("Loaded TMX File: LevelDesign.tmx\n");
-                        }
-                        Rectangle newPos = samurai.getRect();
-                        newPos.x = 400;
-                        newPos.y = 2223;
-                        samurai.setRect(newPos); // Reset samurai position to a known point in LevelDesign
-                        // Immediately update camera target to prevent visual jump
-                        camera.target = (Vector2){ samurai.getRect().x + samurai.getRect().width / 2, samurai.getRect().y + samurai.getRect().height / 2 };
-                    });
-                }
-                // Portal to Room 3
-                else if (!mapSwitchedToRoom3 && 
-                         samuraiRect.x > 2500 && samuraiRect.x < 2510 && 
-                         samuraiRect.y > 2185 && samuraiRect.y < 2195) // Check Y coordinate around 2190
-                {
-                    printf("Portal to Room3 detected! Player position: %.2f, %.2f\n", samuraiRect.x, samuraiRect.y);
-                    startTransition([&]() 
-                    {
-                        mapSwitchedToRoom3 = true; // Set flag for Room 3
-                        mapSwitchedToRoom2 = false; // Reset Room 2 flag if needed
 
-                        if (map) 
-                        {
-                            UnloadTMX(map);
-                        }
-                        map = LoadTMX("maps/Room3.tmx");
-                        if (!map) {
-                            fprintf(stderr, "Failed to load Room3.tmx\n");
-                        } else {
-                            printf("Loaded Room3.tmx successfully.\n");
-                        }
-                        Rectangle newPos = samurai.getRect();
-                        newPos.x = 100; // Reset player position for Room3 (adjust as needed)
-                        newPos.y = 2223;
-                        samurai.setRect(newPos);
-                        camera.target = { newPos.x, newPos.y };
-                        
-                        // Reset or remove enemies from previous room if necessary
-                        if (demon) {
-                            delete demon;
-                            demon = nullptr;
-                            printf("Demon deleted when entering Room3.\n");
-                        }
-                        
-                        // Trigger the dialogue immediately after entering Room3
-                        triggerRoom3Dialogue();
-                        printf("Room3 dialogue triggered. Text: %s\n", dialogueText.c_str());
-                        showDialogue = true; // Ensure dialogue flag is set
-                    });
-                }
-                // Portal back from Room 3 to LevelDesign
-                else if (mapSwitchedToRoom3 && 
-                         samuraiRect.x > 1550 && samuraiRect.x < 1555 && 
-                         samuraiRect.y > 2170 && samuraiRect.y < 2180)
-                {
-                    printf("Portal back to LevelDesign detected! Player position: %.2f, %.2f\n", samuraiRect.x, samuraiRect.y);
-                    startTransition([&]() 
-                    {
-                        mapSwitchedToRoom3 = false; // Exiting Room 3
-                        UnloadTMX(map); // Unload current map (Room3)
-                        map = LoadTMX("maps/LevelDesign.tmx"); // Load the main level
-                        if (!map) {
-                            printf("Failed to Load TMX File: LevelDesign.tmx\n");
-                            safeExit(); // Exit if loading fails
-                        } else {
-                            printf("Loaded TMX File: LevelDesign.tmx\n");
-                        }
-                        Rectangle newPos = samurai.getRect();
-                        newPos.x = 400;
-                        newPos.y = 2223;
-                        samurai.setRect(newPos); // Reset samurai position to a known point in LevelDesign
-                        // Immediately update camera target to prevent visual jump
-                        camera.target = (Vector2){ samurai.getRect().x + samurai.getRect().width / 2, samurai.getRect().y + samurai.getRect().height / 2 };
-                    });
-                }
                 
-                // Using a wider range check for the return portal to make it easier to trigger
-                if (mapSwitchedToRoom2 && 
-                    samuraiRect.x > 520 && samuraiRect.x < 580 && 
-                    samuraiRect.y > 2180 && samuraiRect.y < 2240) 
+                // Room2 to Main Level 
+                if (mapSwitchedToRoom2 && samuraiRect.x >= 530 && samuraiRect.x <= 540 && samuraiRect.y >= 2170 && samuraiRect.y <= 2180) 
                 {
                     // Debug output to confirm return portal detection
                     printf("Return portal detected! Player position: %.2f, %.2f\n", samuraiRect.x, samuraiRect.y);
                     startTransition([&]() 
                     {
                         mapSwitchedToRoom2 = false;
+                        if (map) 
+                        {
+                            UnloadTMX(map);
+                        }
+
+                        map = LoadTMX("maps/LevelDesign.tmx");
+                        if (!map) 
+                        {
+                            std::cerr << "Failed to load LevelDesign.tmx!" << std::endl;
+                        }
+
+                        Rectangle newPos = samurai.getRect();
+                        newPos.x = 920;
+                        newPos.y = 1519.5;
+                        samurai.setRect(newPos);
+
+                        camera.target = { newPos.x, newPos.y };
+
+                    });  
+                }
+                
+                // Main Level to Room 3
+                if (!mapSwitchedToRoom3 && samuraiRect.x >= 5415 && samuraiRect.x <= 5435 && samuraiRect.y >= 877 && samuraiRect.y <= 878)
+
+                {
+                    printf("Portal to Room3 detected! Player position: %.2f, %.2f\n", samuraiRect.x, samuraiRect.y);
+                    startTransition([&]() 
+                    {
+
+                        mapSwitchedToRoom3 = true; 
+
+                        if (map) 
+                        {
+                            UnloadTMX(map);
+                        }
+
+                        map = LoadTMX("maps/Room3.tmx"); // Load Room 3
+                        if (!map) 
+                        {
+                            printf("Failed to load Room3.tmx\n");
+                            safeExit(); // Exit if loading fails
+                        } 
+                        else 
+                        {
+                            printf("Loaded Room3.tmx successfully.\n");
+                        }
+                        
+                        Rectangle newPos = samurai.getRect();
+                        newPos.x = 1560; 
+                        newPos.y = 2190.25;
+                        samurai.setRect(newPos);
+                    });
+                }
+                
+                // Room 3 to Main Level 
+                if (mapSwitchedToRoom3 && samuraiRect.x >= 1540 && samuraiRect.x <= 1570 && samuraiRect.y >= 2173 && samuraiRect.y <= 2175) 
+                {
+                    printf("Portal back to LevelDesign detected! Player position: %.2f, %.2f\n", samuraiRect.x, samuraiRect.y);
+                    startTransition([&]() 
+                    {
+
+                        mapSwitchedToRoom3 = false;
+                        if (map) 
+                        {
+                            UnloadTMX(map);
+                        }
+                        map = LoadTMX("maps/LevelDesign.tmx"); // Load the main level
+                        if (!map) 
+                        {
+                            printf("Failed to Load TMX File: LevelDesign.tmx\n");
+                            safeExit(); 
+                        } 
+                        else 
+                        {
+                            printf("Loaded TMX File: LevelDesign.tmx\n");
+                        }
+
+                        Rectangle newPos = samurai.getRect();
+                        newPos.x = 5895;
+                        newPos.y = 892;
+                        samurai.setRect(newPos);
+
+                        camera.target = { newPos.x, newPos.y };
+                    });  
+                }
+                
+                // Main Level to Room 4 
+                if (!mapSwitchedToRoom4 && samuraiRect.x >= 8300 && samuraiRect.x <= 8320 && samuraiRect.y >= 2173 && samuraiRect.y <= 2176) 
+                {
+                    startTransition([&]() 
+                    {
+                        mapSwitchedToRoom4 = true;
+
+                        if (map) 
+                        {
+                            UnloadTMX(map);
+                        }
+
+                    map = LoadTMX("maps/Room4.tmx");
+                    if (!map) 
+                    {
+                        std::cerr << "Failed to load Room4.tmx!" << std::endl;
+                    }
+
+                    Rectangle newPos = samurai.getRect();
+                    newPos.x = 665;
+                    newPos.y = 2222;
+                    samurai.setRect(newPos);
+
+                    camera.target = { newPos.x, newPos.y };
+                    });  
+                }
+                
+                // Room 4 to Main Level
+                if (mapSwitchedToRoom4 && samuraiRect.x >= 3050 && samuraiRect.x <= 3070 && samuraiRect.y >= 2170.00) 
+                {
+                    startTransition([&]() 
+                    {
+                        mapSwitchedToRoom4 = false;
 
                         if (map) 
                         {
@@ -571,26 +604,48 @@ int main()
                     }
 
                     Rectangle newPos = samurai.getRect();
-                    newPos.x = 500;
-                    newPos.y = 2222;
+
+                    newPos.x = 9385;
+                    newPos.y = 2062.25;
                     samurai.setRect(newPos);
 
                     camera.target = { newPos.x, newPos.y };
-                    
-                    // Clean up demon when leaving Room2
-                    if (demon != nullptr) {
-                        demon = nullptr;
-                        std::cout << "Demon removed when leaving Room2" << std::endl;
-                    }
                     });  
                 }
-                
+
+                // Main Level to Main Level 2
+                if (!mapSwitchedToMainLevel2 && samuraiRect.x >= 18760 && samuraiRect.x <= 18840 && samuraiRect.y >= 3660) 
+                {
+                    startTransition([&]() 
+                    {
+                        mapSwitchedToMainLevel2 = true;
+
+                        if (map) 
+                        {
+                            UnloadTMX(map);
+                        }
+
+                    map = LoadTMX("maps/LevelDesign2.tmx");
+                    if (!map) 
+                    {
+                        std::cerr << "Failed to load LevelDesign2.tmx!" << std::endl;
+                    }
+
+                    Rectangle newPos = samurai.getRect();
+                    newPos.x = 200;
+                    newPos.y = 1500;
+                    samurai.setRect(newPos);
+
+                    camera.target = { newPos.x, newPos.y };
+                    });  
+                }
                 
                 if(samurai.checkDeath()) {
                     gameover = true;
                 }
                 
-                if(samurai.getRect().x >= 18880) {
+
+                if(mapSwitchedToMainLevel2 && samurai.getRect().x >= 18880) {
                     isComplete = true;
                 }
                 
