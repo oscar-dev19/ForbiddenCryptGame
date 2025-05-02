@@ -379,11 +379,13 @@ private:
         rect.y += velocity.y;  // Update vertical position.
 
         // Map Width.
-        const float mapWidth = 16700;
+        //const float mapWidth = 16700;
         
-        if (rect.x < 500) rect.x = 500;
-        if (rect.x > 10984) rect.x = 10984;
-        if (rect.x > mapWidth - rect.width) rect.x = mapWidth - rect.width;
+        
+        if (rect.x < 100) rect.x = 100;
+        //if (rect.x > 10984) rect.x = 10984;
+        //if (rect.x > mapWidth - rect.width) rect.x = mapWidth - rect.width;
+        
     }
 
     // Helper method to handle taking damage.

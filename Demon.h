@@ -67,7 +67,7 @@ class Demon {
 
         // AI system
         CharacterAI ai;
-        float attackRange = 150.0f;
+        float attackRange = 80.0f;
         float chaseRange = 500.0f;
         float moveSpeed = 0.8f;  // Demon is slower but more powerful
         
@@ -98,10 +98,10 @@ class Demon {
             // Initialize animations for different states with correct frame counts
             animations = {
                 { 0, 5, 0, 0.1f, 0.1f, REPEATING_DEMON }, // IDLE_DEMON - 6 frames
-                { 0, 11, 0, 0.15f, 0.15f, REPEATING_DEMON },  // WALK_DEMON - 12 frames
+                { 0, 11, 0, 0.1f, 0.1f, REPEATING_DEMON },  // WALK_DEMON - 12 frames
                 { 0, 14, 0, 0.1f, 0.1f, ONESHOT_DEMON },   // ATTACK_DEMON - 15 frames
-                { 0, 4, 0, 0.2f, 0.2f, ONESHOT_DEMON },    // HURT_DEMON - 5 frames
-                { 0, 21, 0, 0.2f, 0.2f, ONESHOT_DEMON }    // DEAD_DEMON - 22 frames
+                { 0, 4, 0, 0.1f, 0.1f, ONESHOT_DEMON },    // HURT_DEMON - 5 frames
+                { 0, 21, 0, 0.1f, 0.1f, ONESHOT_DEMON }    // DEAD_DEMON - 22 frames
             };
 
             // Load textures for each state
@@ -332,8 +332,6 @@ class Demon {
                 PlaySound(attackSound);
                 state = ATTACK_DEMON;
                 animations[state].currentFrame = 0;
-                animations[state].timeLeft = animations[state].speed;
-                std::cout << "[DEBUG] Demon starts ATTACK animation!\n";
                 isAttacking = true;
                 hasFinishedAttack = false;
                 velocity.x = 0;
@@ -370,7 +368,6 @@ class Demon {
                 // Play attack sound if available
                 if (attackSound.frameCount > 0) {
                     PlaySound(attackSound);
-                    StopSound(walkSound);
                 }
             }
         }
@@ -413,14 +410,13 @@ class Demon {
             float bodyOffsetX = 36.0f * SPRITE_SCALE;
             float bodyOffsetY = 20.0f * SPRITE_SCALE;
             
-            float attackOffsetX = rect.width - (36.0f * SPRITE_SCALE);
-            float attackOffsetY = 30.0f * SPRITE_SCALE;
+            //float attackOffsetX = rect.width - (36.0f * SPRITE_SCALE);
+            //float attackOffsetY = 30.0f * SPRITE_SCALE;
             
             float hurtboxOffsetX = 45.0f * SPRITE_SCALE;
             float hurtboxOffsetY = 25.0f * SPRITE_SCALE;
             
             CollisionBox* hurtbox = getCollisionBox(HURTBOX);
-            
             for (auto& box : collisionBoxes) 
             {
                 if (box.type == BODY) 
@@ -554,7 +550,7 @@ class Demon {
             
             // Define a minimum distance to keep from the target
             // The Demon is larger, so it needs a bigger minimum distance
-            float minDistance = 100.0f;
+            float minDistance = 1.0;
             
             direction = (targetPos.x < demonCenter.x) ? LEFT_DEMON : RIGHT_DEMON;
             
