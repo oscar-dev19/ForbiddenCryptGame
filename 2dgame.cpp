@@ -299,10 +299,12 @@ int main()
 
     // Check which map are we in
     bool mapSwitchedToRoom2 = false;
+
     bool mapSwitchedToRoom3 = false;
     bool mapSwitchedToRoom4 = false;
     
     bool mapSwitchedToMainLevel2 = false;
+
     
     // Create a demon for Room2
     Demon* demon = nullptr;
@@ -423,6 +425,7 @@ int main()
                 }
                 
                 // Switching map :o
+
                 // Main Level to Room2
                 if (!mapSwitchedToRoom2 && samuraiRect.x >= 920 && samuraiRect.x <= 930 && samuraiRect.y == 1502) 
                 {
@@ -444,6 +447,7 @@ int main()
                     }
 
                     Rectangle newPos = samurai.getRect();
+
                     newPos.x = 540;  
                     newPos.y = 2222;
                     samurai.setRect(newPos);
@@ -458,6 +462,7 @@ int main()
                     }
                     });
                 }
+
                 
                 // Room2 to Main Level 
                 if (mapSwitchedToRoom2 && samuraiRect.x >= 530 && samuraiRect.x <= 540 && samuraiRect.y >= 2170 && samuraiRect.y <= 2180) 
@@ -490,15 +495,19 @@ int main()
                 
                 // Main Level to Room 3
                 if (!mapSwitchedToRoom3 && samuraiRect.x >= 5415 && samuraiRect.x <= 5435 && samuraiRect.y >= 877 && samuraiRect.y <= 878)
+
                 {
                     printf("Portal to Room3 detected! Player position: %.2f, %.2f\n", samuraiRect.x, samuraiRect.y);
                     startTransition([&]() 
                     {
+
                         mapSwitchedToRoom3 = true; 
+
                         if (map) 
                         {
                             UnloadTMX(map);
                         }
+
                         map = LoadTMX("maps/Room3.tmx"); // Load Room 3
                         if (!map) 
                         {
@@ -523,6 +532,7 @@ int main()
                     printf("Portal back to LevelDesign detected! Player position: %.2f, %.2f\n", samuraiRect.x, samuraiRect.y);
                     startTransition([&]() 
                     {
+
                         mapSwitchedToRoom3 = false;
                         if (map) 
                         {
@@ -594,6 +604,7 @@ int main()
                     }
 
                     Rectangle newPos = samurai.getRect();
+
                     newPos.x = 9385;
                     newPos.y = 2062.25;
                     samurai.setRect(newPos);
@@ -629,12 +640,11 @@ int main()
                     });  
                 }
                 
-                
-                
                 if(samurai.checkDeath()) {
                     gameover = true;
                 }
                 
+
                 if(mapSwitchedToMainLevel2 && samurai.getRect().x >= 18880) {
                     isComplete = true;
                 }
