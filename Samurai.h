@@ -382,7 +382,7 @@ private:
         const float mapWidth = 16700;
         
         if (rect.x < 500) rect.x = 500;
-        if (rect.x > 10984) rect.x = 10984;
+        if (rect.x > 16000) rect.x = 16000;
         if (rect.x > mapWidth - rect.width) rect.x = mapWidth - rect.width;
     }
 
