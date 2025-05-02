@@ -70,17 +70,6 @@ class Demon {
         float attackRange = 80.0f;
         float chaseRange = 500.0f;
         float moveSpeed = 0.8f;  // Demon is slower but more powerful
-        
-        // Make animation great again
-        float attackCooldown = 0.0f;
-        float attackCooldownMax = 1.0f;
-
-        float attackRecoveryTimer = 0.0f;
-        float attackRecoveryTime = 0.5f;
-        
-        int currentAttackFrameStart = 5;
-        int currentAttackFrameEnd = 10;
-
 
         // Collision boxes for different purposes
         std::vector<CollisionBox> collisionBoxes;
@@ -197,30 +186,32 @@ class Demon {
 
             anim.timeLeft -= deltaTime;
             if (anim.timeLeft <= 0) {
-    anim.timeLeft = anim.speed;
+                anim.timeLeft = anim.speed;
 
-    if (anim.currentFrame < anim.lastFrame) {
-        anim.currentFrame++;
-    } else {
-        if (anim.type == REPEATING_DEMON) {
-            anim.currentFrame = anim.firstFrame;
-        } else {
-            if (state == ATTACK_DEMON) {
-                std::cout << "[DEBUG] Demon attack animation finished\n";
-                isAttacking = false;
-                hasFinishedAttack = true;
-                attackRecoveryTimer = attackRecoveryTime;
-                attackCooldown = attackCooldownMax;
-                state = IDLE_DEMON;
-            } else if (state == HURT_DEMON) {
-                state = IDLE_DEMON;
-            } else if (state == DEAD_DEMON) {
-                // Freeze on last frame
-                anim.currentFrame = anim.lastFrame;
-            }
-        }
-    }
-}      
+                if (anim.currentFrame < anim.lastFrame) {
+                    anim.currentFrame++;
+                } else {
+                    if (anim.type == REPEATING_DEMON) {
+                        anim.currentFrame = 0;
+                    } else {
+                        if (state == DEAD_DEMON) {
+                            // Stay on the last frame if dead
+                            if (anim.currentFrame != 21) {
+                                anim.currentFrame = anim.lastFrame;
+                            }
+                        } else {
+                            // For all other one-shot animations, go back to idle
+                            state = IDLE_DEMON;
+                            anim.currentFrame = 0;
+                
+                            if (state == ATTACK_DEMON) {
+                                isAttacking = false;
+                                hasFinishedAttack = true;
+                            }
+                        }
+                    }
+                }
+            }      
         }
 
         Rectangle getAnimationFrame() const {
@@ -271,14 +262,8 @@ class Demon {
 
             if (direction == LEFT_DEMON) {
                 DrawTexturePro(sprites[0], source, dest, origin, rotation, WHITE);
-            } 
-            else 
-            {
-                float maxWidth = static_cast<float>(sprites[0].width);
-                float safeX = fmin(source.x + source.width - 1, maxWidth - 1);  // Clamp to prevent overflow
-
-                Rectangle flippedSource = {safeX, source.y, -source.width, source.height};
-
+            } else {
+                Rectangle flippedSource = { source.x + source.width, source.y, -source.width, source.height };
                 DrawTexturePro(sprites[0], flippedSource, dest, origin, rotation, WHITE);
             }
 
@@ -410,8 +395,8 @@ class Demon {
             float bodyOffsetX = 36.0f * SPRITE_SCALE;
             float bodyOffsetY = 20.0f * SPRITE_SCALE;
             
-            //float attackOffsetX = rect.width - (36.0f * SPRITE_SCALE);
-            //float attackOffsetY = 30.0f * SPRITE_SCALE;
+            float attackOffsetX = rect.width - (36.0f * SPRITE_SCALE);
+            float attackOffsetY = 30.0f * SPRITE_SCALE;
             
             float hurtboxOffsetX = 45.0f * SPRITE_SCALE;
             float hurtboxOffsetY = 25.0f * SPRITE_SCALE;
@@ -471,9 +456,7 @@ class Demon {
 
         void takeDamage(int damage) {
             if (!isDead) {
-
                 health -= (damage - 24);
-
                 if (health <= 0) {
                     health = 0;
                     isDead = true;
@@ -490,8 +473,6 @@ class Demon {
                     if (deadSound.frameCount > 0) {
                         PlaySound(deadSound);
                         PlaySound(explosionSound);
-
-
                         StopSound(attackSound);
                     }
                 } else {
@@ -502,16 +483,13 @@ class Demon {
                     if (hurtSound.frameCount > 0) {
                         PlaySound(hurtSound);
                         StopSound(attackSound);
-
-
                     }
                 }
             }
         }
 
         // Update with targeting behavior
-        void update(float deltaTime, Vector2 targetPos) 
-        {
+        void update(float deltaTime, Vector2 targetPos) {
             // Update chanting sound timer
             chantTimer += deltaTime;
             if (chantTimer >= chantInterval) {
@@ -526,24 +504,7 @@ class Demon {
                 updateAnimation();
                 return;
             }
-            
-            if (attackRecoveryTimer > 0) 
-            {
-                attackRecoveryTimer -= deltaTime;
-                velocity.x = 0;
-                updateAnimation();
-                updateCollisionBoxes();
-                return; // pause here
-            }
 
-
-            // Decrease attack cooldown and recovery timers
-            if (attackCooldown > 0.0f)
-            {
-                attackCooldown -= deltaTime;
-            }
-
-            
             // Calculate distance to target
             Vector2 demonCenter = {rect.x + rect.width/2, rect.y + rect.height/2};
             float distance = Vector2Distance(demonCenter, targetPos);
@@ -552,46 +513,64 @@ class Demon {
             // The Demon is larger, so it needs a bigger minimum distance
             float minDistance = 1.0;
             
-            direction = (targetPos.x < demonCenter.x) ? LEFT_DEMON : RIGHT_DEMON;
-            
             // Update state based on AI behavior
-            bool canAttack = !isDead && !isAttacking && attackCooldown <= 0.0f && distance <= attackRange;
-
-            if (canAttack) {
-                std::cout << "[DEBUG] Demon attack triggered again\n";
-                attack();
-            }
-            else if (!isAttacking && hasFinishedAttack) 
-            {
-                if (distance < minDistance) 
-                {
+            if (!isAttacking && hasFinishedAttack) {
+                // Update direction based on target position
+                if (targetPos.x < demonCenter.x) {
+                    direction = LEFT_DEMON;
+                } else {
+                    direction = RIGHT_DEMON;
+                }
+                
+                if (distance <= attackRange && distance >= minDistance) {
+                    // Attack when in range and not too close
+                    state = ATTACK_DEMON;
+                    isAttacking = true;
+                    hasFinishedAttack = false;
+                    animations[state].currentFrame = 0;
+                    
+                    // Play attack sound
+                    if (!IsSoundPlaying(attackSound)) {
+                        PlaySound(attackSound);
+                    }
+                }
+                else if (distance < minDistance) {
+                    // Too close, take a step back
                     state = WALK_DEMON;
-                    Vector2 away = Vector2Normalize(Vector2Subtract(demonCenter, targetPos));
-                    velocity.x = away.x * moveSpeed * 0.5f;
-                } 
-                else if (distance <= chaseRange) 
-                {
+                    Vector2 directionVector = Vector2Normalize(Vector2Subtract(demonCenter, targetPos));
+                    velocity.x = directionVector.x * moveSpeed * 0.5f; // Move back slowly
+                }
+                else if (distance <= chaseRange) {
+                    // Chase the target but maintain minimum distance
                     state = WALK_DEMON;
-                    Vector2 toward = Vector2Normalize(Vector2Subtract(targetPos, demonCenter));
-                    velocity.x = toward.x * moveSpeed;
-                } 
-                else 
-                {
+                    
+                    // Only move if we're outside the minimum distance
+                    if (distance > minDistance) {
+                        // Calculate direction vector towards target
+                        Vector2 directionVector = Vector2Normalize(Vector2Subtract(targetPos, demonCenter));
+                        velocity.x = directionVector.x * moveSpeed;
+                    } else {
+                        velocity.x = 0;
+                        state = IDLE_DEMON;
+                    }
+                }
+                else {
+                    // Idle when out of range
                     state = IDLE_DEMON;
                     velocity.x = 0;
                 }
-            } 
-            else 
-            {
+            } else if (isAttacking) {
                 velocity.x = 0;
             }
-
-            // Movement + updates
+            
+            // Apply velocity
             rect.x += velocity.x;
+            
+            // Map boundaries
             const float mapWidth = 128 * 16;
             if (rect.x < 0) rect.x = 0;
             if (rect.x > mapWidth - rect.width) rect.x = mapWidth - rect.width;
-
+            
             updateAnimation();
             updateCollisionBoxes();
         }
