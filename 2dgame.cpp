@@ -69,9 +69,6 @@ bool isPaused = false;
 bool isComplete = false;
 bool gameover = false;
 
-float debugTimer = 0.0f;
-float debugInterval = 2.0f; 
-
 // Fade transition on map switch
 bool isTransitioning = false;
 float transitionAlpha = 0.0f;
@@ -181,8 +178,7 @@ void loadLevel() {
     }
 
     // Loop through tilesets (assuming map->tilesets is a pointer to an array of TmxTileset)
-    for (uint32_t i = 0; i < map->tilesetsLength; i++) 
-    {
+    for (int i = 0; i < map->tilesetsLength; i++) {
         TmxTileset* tileset = &map->tilesets[i];  // Accessing tileset by pointer
 
         // Check if the image source is valid (not empty)
@@ -249,7 +245,7 @@ int main()
     // Define floor level to match where the non-zero tiles (floor tiles) are in Room1.tmx
     // This value is used for all characters to ensure consistent vertical positioning
     const float floorLevel = 10000.0f; // Exact floor level matching the non-zero floor tiles in TMX
-    // const float floorHeight = 50.0f; // Height of the floor rectangle if needed
+    const float floorHeight = 50.0f; // Height of the floor rectangle if needed
     
     // Loading the Background.
     Texture2D background = LoadTexture("maps/Dungeon_brick_wall_purple.png.png");
@@ -286,15 +282,7 @@ int main()
     camera.zoom = 3.3f;  // Zoom in for better visibility.
 
     // Initialize characters using stack allocation - all characters now use the same floorLevel
-    Samurai samurai(500, 2223, floorLevel);
-    
-    Vector2 samuraiStartPos = 
-    {
-        samurai.getRect().x + samurai.getRect().width / 2,
-        samurai.getRect().y + samurai.getRect().height / 2
-    };
-
-    camera.target = samuraiStartPos;
+    Samurai samurai(400, 2223, floorLevel);
     
     // Initialize dash sound volume to match master volume
     samurai.setDashSoundVolume(0.8f * masterVolume);
@@ -397,26 +385,38 @@ int main()
                 }
                 
                 // Check for collisions between Samurai's attack and enemies
-                //CollisionBox* samuraiAttack = samurai.getCollisionBox(ATTACK);
+                CollisionBox* samuraiAttack = samurai.getCollisionBox(ATTACK);
                 
                 // Check for enemy attacks hitting Samurai
-                //CollisionBox* samuraiHurtbox = samurai.getCollisionBox(HURTBOX);
+                CollisionBox* samuraiHurtbox = samurai.getCollisionBox(HURTBOX);
 
                 checkTileCollisions(map, samurai);
 
                 // Update camera to follow player, ensuring it stays within map boundaries
                 Rectangle samuraiRect = samurai.getRect();
                 
-                if (!samurai.checkDeath()) 
-                {
-                    float mapWidth = map->width * map->tileWidth * 16;
-                    float mapHeight = map->height * map->tileHeight;
+                float samuraiCenterX = samuraiRect.x + samuraiRect.width / 2;
+                float samuraiCenterY = samuraiRect.y + samuraiRect.height / 2;
+                
+                if (!samurai.checkDeath()) {
+                    camera.target = (Vector2){ samuraiPos.x, samuraiPos.y };
+                    // Add some camera boundary checks to avoid the camera going out of bounds:
                     float halfScreenWidth = screenWidth / (2.0f * camera.zoom);
                     float halfScreenHeight = screenHeight / (2.0f * camera.zoom);
-
-                    // Camera very smooth now. WOW!!!
-                    camera.target.x = Lerp(camera.target.x, Clamp(samuraiPos.x, halfScreenWidth, mapWidth - halfScreenWidth), 0.1f);
-                    camera.target.y = Lerp(camera.target.y, Clamp(samuraiPos.y, halfScreenHeight, mapHeight - halfScreenHeight), 0.1f);
+    
+                    // Clamp X and Y positions with easing towards boundaries
+                    camera.target.x = Lerp(camera.target.x, Clamp(camera.target.x, halfScreenWidth, map->width * map->tileWidth - halfScreenWidth), 0.1f);
+                    camera.target.y = Lerp(camera.target.y, Clamp(camera.target.y, halfScreenHeight, map->height * map->tileHeight - halfScreenHeight), 0.1f);
+    
+                    // Ensure camera doesn't go out of bounds
+                    if (camera.target.x < halfScreenWidth) camera.target.x = halfScreenWidth + 100;
+                    if (camera.target.y < halfScreenHeight) camera.target.y = halfScreenHeight;
+    
+                    // Camera zoom controls
+                    if (camera.target.x < halfScreenWidth) camera.target.x = halfScreenWidth;
+                    if (camera.target.x > map->width * 16 - halfScreenWidth) camera.target.x = map->width * 16 - halfScreenWidth;
+                    if (camera.target.y < halfScreenHeight) camera.target.y = halfScreenHeight;
+                    if (camera.target.y > map->height * 16 - halfScreenHeight) camera.target.y = map->height * 16 - halfScreenHeight;
                 } else {
                     // Stop moving the camera when the player is dead
                     camera.target = camera.target; // Keeps the camera locked in place
@@ -629,11 +629,12 @@ int main()
                     });  
                 }
                 
+                
+                
                 if(samurai.checkDeath()) {
                     gameover = true;
                 }
                 
-      
                 if(mapSwitchedToMainLevel2 && samurai.getRect().x >= 18880) {
                     isComplete = true;
                 }
@@ -661,17 +662,42 @@ int main()
                 samurai.draw();
                 
                 // Update and draw demon if in Room2
-                if (mapSwitchedToRoom2 && demon != nullptr) 
-                {
-                    
-                    // Update demon AI behavior
-                    if (!demon->isDead && !isPaused) 
-                    {
-                        demon->update(deltaTime, samuraiPos);
-                    }
+                if (mapSwitchedToRoom2 && demon != nullptr) {
                     // Update demon animation
                     demon->updateAnimation();
-                    demon->updateCollisionBoxes();
+                    
+                    // Update demon AI behavior
+                    if (!demon->isDead && !isPaused) {
+                        // Get distance to player
+                        Rectangle demonRect = demon->rect;
+                        Vector2 demonPos = { demonRect.x + demonRect.width/2, demonRect.y + demonRect.height/2 };
+                        Vector2 samuraiPos = { samuraiRect.x + samuraiRect.width/2, samuraiRect.y + samuraiRect.height/2 };
+                        float distance = Vector2Distance(demonPos, samuraiPos);
+                        
+                        // Chase player if within range
+                        if (distance < demon->chaseRange && distance > demon->attackRange) {
+                            demon->state = WALK_DEMON;
+                            demon->direction = (samuraiPos.x < demonPos.x) ? LEFT_DEMON : RIGHT_DEMON;
+                            
+                            // Move toward player
+                            float moveDir = (demon->direction == LEFT_DEMON) ? -1.0f : 1.0f;
+                            demon->velocity.x = moveDir * demon->moveSpeed * 100.0f;
+                        } 
+                        // Attack if close enough
+                        else if (distance <= demon->attackRange) {
+                            if (!demon->isAttacking) {
+                                demon->attack();
+                            }
+                        }
+                        // Idle if too far
+                        else {
+                            demon->state = IDLE_DEMON;
+                            demon->velocity.x = 0;
+                        }
+                        
+                        // Apply velocity
+                        demon->applyVelocity();
+                    }
                     
                     // Draw the demon
                     demon->draw();
@@ -713,13 +739,8 @@ int main()
                     }
                 }
 
-                debugTimer += deltaTime;
-                if (debugTimer >= debugInterval) 
-                {
-                    std::cout << "X: " << samurai.getRect().x << std::endl;
-                    std::cout << "Y: " << samurai.getRect().y << std::endl;
-                    debugTimer = 0.0f;
-                }
+                std::cout << "X: " << samurai.getRect().x << std::endl;
+                std::cout << "Y: " << samurai.getRect().y << std::endl;
 
                 // End camera mode and finalize drawing
                 EndMode2D();
