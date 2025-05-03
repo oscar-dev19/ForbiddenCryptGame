@@ -4,6 +4,9 @@
 #include "CollisionSystem.h"
 #include <vector>
 #include <cstdio>
+#include <thread>
+#include <chrono>
+#include <iostream>
 
 // Direction of the Character.
 enum Direction {
@@ -88,9 +91,25 @@ private:
     Sound blockSound;
 
     bool isRunning = false;
+    bool startsAttacking = false;
 
     // Collision boxes for different purposes
     std::vector<CollisionBox> collisionBoxes;
+
+    void startTimer() {
+        int secondsElapsed = 0;
+    
+        while (true) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            secondsElapsed++;
+            std::cout << "Timer tick: " << secondsElapsed << "s\n";
+            // You can trigger logic here every second
+            if (secondsElapsed >= 5) {
+                secondsElapsed = 0;
+            }
+        }
+    }
+
 
     // Helper method to update the animation frame.
     void updateAnimation(float deltaTime) {
@@ -346,8 +365,10 @@ private:
 
         // Check for block input
         if (IsKeyDown(KEY_B) && !blocking && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
+            velocity.x = 0;
             blocking = true;
             PlaySound(blockSound);
+            StopSound(runSound);
             state = BLOCK_STATE;
             if (blockSound.frameCount > 0) {
                 PlaySound(blockSound);
@@ -359,7 +380,8 @@ private:
         }
         
         // Check for attack input.
-        if (IsKeyPressed(KEY_SPACE) && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE && !isBlocking()) {
+        if (IsKeyPressed(KEY_SPACE) && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE && !isBlocking() && canAttack()) {
+            startsAttacking = true;
             velocity.x = 0;
             state = ATTACK_STATE;  // Set to attack state.
             animations[state].currentFrame = 0;  // Reset animation frame.
@@ -367,10 +389,21 @@ private:
                 PlaySound(attackSound);
                 StopSound(runSound);
             }
+            lastAttackTime = Clock::now();
         }
 
         // Apply velocity to position.
         applyVelocity();
+    }
+
+    using Clock = std::chrono::steady_clock;
+    std::chrono::time_point<Clock> lastAttackTime = Clock::now();
+    const float attackCooldownSeconds = 2.0f;  // Change to however many seconds you want
+
+    bool canAttack() {
+        auto now = Clock::now();
+        float secondsSinceLastAttack = std::chrono::duration<float>(now - lastAttackTime).count();
+        return secondsSinceLastAttack >= attackCooldownSeconds;
     }
 
     // Helper method to apply velocity to position.
