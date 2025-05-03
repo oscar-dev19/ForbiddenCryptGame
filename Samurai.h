@@ -346,8 +346,10 @@ private:
 
         // Check for block input
         if (IsKeyDown(KEY_B) && !blocking && state != ATTACK_STATE && state != HURT_STATE && state != DEAD_STATE) {
+            velocity.x = 0;
             blocking = true;
             PlaySound(blockSound);
+            StopSound(runSound);
             state = BLOCK_STATE;
             if (blockSound.frameCount > 0) {
                 PlaySound(blockSound);
