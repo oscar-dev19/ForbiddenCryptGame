@@ -176,6 +176,7 @@ class Demon {
         }
 
         void updateAnimation() {
+            std::cout << "Demon Animation State: " << state << std::endl;
             // Safety check for valid state
             if (state < 0 || state >= animations.size()) {
                 state = IDLE_DEMON; // Reset to idle if state is invalid
@@ -200,13 +201,18 @@ class Demon {
                                 anim.currentFrame = anim.lastFrame;
                             }
                         } else {
-                            // For all other one-shot animations, go back to idle
-                            state = IDLE_DEMON;
-                            anim.currentFrame = 0;
-                
                             if (state == ATTACK_DEMON) {
                                 isAttacking = false;
                                 hasFinishedAttack = true;
+                            } else if(state == HURT_DEMON) {
+                                if (anim.currentFrame == anim.lastFrame) {
+                                    state = ATTACK_DEMON;
+                                    AnimationDemon& attackAnim = animations[ATTACK_DEMON];
+                                    attackAnim.currentFrame = attackAnim.firstFrame;
+                                    attackAnim.timeLeft = attackAnim.speed;
+                                    isAttacking = true;
+                                    hasFinishedAttack = false;
+                                }
                             }
                         }
                     }
