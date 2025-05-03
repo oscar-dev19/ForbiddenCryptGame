@@ -212,6 +212,10 @@ class Demon {
                                     attackAnim.timeLeft = attackAnim.speed;
                                     isAttacking = true;
                                     hasFinishedAttack = false;
+
+                                    if (attackAnim.currentFrame >= attackAnim.lastFrame - 1) {
+                                        
+                                    }
                                 }
                             }
                         }
@@ -433,21 +437,31 @@ class Demon {
                     }
                     box.rect.y = hurtbox->rect.y + 5.0f * SPRITE_SCALE;
                     
-                    if (box.type == ATTACK) 
-                    {
-                        // Make the attack box always visible regardless of frame or state
-                        box.active = true;
+                    if (box.type == ATTACK) {
+                        // Only activate the attack box in the last two frames of the attack animation
+                        if (state == ATTACK_DEMON) {
+                            AnimationDemon& attackAnim = animations[ATTACK_DEMON];
 
-                        if (hurtbox) {
-                            float attackOffset = 0.0f * SPRITE_SCALE;
-                            if (direction == RIGHT_DEMON) {
-                                box.rect.x = hurtbox->rect.x + hurtbox->rect.width + attackOffset;
+                            if (attackAnim.currentFrame >= attackAnim.lastFrame - 4) {
+                                box.active = true;
+
+                                if (hurtbox) {
+                                    float attackOffset = 0.0f * SPRITE_SCALE;
+                                    if (direction == RIGHT_DEMON) {
+                                        box.rect.x = hurtbox->rect.x + hurtbox->rect.width + attackOffset;
+                                    } else {
+                                        box.rect.x = hurtbox->rect.x - box.rect.width - attackOffset;
+                                    }
+                                    box.rect.y = hurtbox->rect.y + 5.0f * SPRITE_SCALE;
+                                }
                             } else {
-                                box.rect.x = hurtbox->rect.x - box.rect.width - attackOffset;
+                                box.active = false;  // Disable hitbox outside of hit frames
                             }
-                            box.rect.y = hurtbox->rect.y + 5.0f * SPRITE_SCALE;
-                            }
+                        } else {
+                            box.active = false;  // Disable if not attacking
+                        }
                     }
+
                 } 
                 else if (box.type == HURTBOX) 
                 {
