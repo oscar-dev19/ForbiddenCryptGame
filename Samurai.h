@@ -906,10 +906,10 @@ public:
         if (rect.x >= 995 && rect.x <= 2385 && rect.y >= 2305) {
             takeDamage(1000000);
         }
-        else if (rect.x >= 995 && rect.x <= 4730 && rect.y >= 2771) {
+        else if (rect.x >= 4125 && rect.x <= 4730 && rect.y >= 2771) {
             takeDamage(1000000);
         }
-        else if (rect.x >= 2871 && rect.x <= 4730 && rect.y >= 4404) {
+        else if (rect.x >= 5440 && rect.y >= 4404) {
             takeDamage(1000000);
         }  
     }
@@ -950,6 +950,7 @@ public:
         else if (rect.x >= 11295 && rect.x <= 12495 && rect.y >= 2576 && rect.y >= 2659) {
             takeDamage(1000000);
         }
+        
         
         
     }
