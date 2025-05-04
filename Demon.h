@@ -201,20 +201,22 @@ class Demon {
                                 anim.currentFrame = anim.lastFrame;
                             }
                         } else {
-                            if (state == ATTACK_DEMON) {
-                                isAttacking = false;
-                                hasFinishedAttack = true;
-                            } else if(state == HURT_DEMON) {
-                                if (anim.currentFrame == anim.lastFrame) {
-                                    state = ATTACK_DEMON;
-                                    AnimationDemon& attackAnim = animations[ATTACK_DEMON];
-                                    attackAnim.currentFrame = attackAnim.firstFrame;
-                                    attackAnim.timeLeft = attackAnim.speed;
-                                    isAttacking = true;
-                                    hasFinishedAttack = false;
-
-                                    if (attackAnim.currentFrame >= attackAnim.lastFrame - 1) {
-                                        
+                            if (state != DEAD_DEMON) {
+                                if (state == ATTACK_DEMON) {
+                                    isAttacking = false;
+                                    hasFinishedAttack = true;
+                                } else if(state == HURT_DEMON) {
+                                    if (anim.currentFrame == anim.lastFrame) {
+                                        state = ATTACK_DEMON;
+                                        AnimationDemon& attackAnim = animations[ATTACK_DEMON];
+                                        attackAnim.currentFrame = attackAnim.firstFrame;
+                                        attackAnim.timeLeft = attackAnim.speed;
+                                        isAttacking = true;
+                                        hasFinishedAttack = false;
+    
+                                        if (attackAnim.currentFrame >= attackAnim.lastFrame - 1) {
+                                            
+                                        }
                                     }
                                 }
                             }
