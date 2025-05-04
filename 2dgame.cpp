@@ -308,6 +308,12 @@ int main()
     bool mapSwitchedToRoom4 = false;
     
     bool mapSwitchedToMainLevel2 = false;
+    
+    //New map for main level 2
+    bool mapSwitchedToRoom5 = false;
+    bool mapSwitchedToRoom6 = false;
+    bool mapSwitchedToRoom7 = false;
+    bool mapSwitchedToRoom8 = false;
 
     
     // Create a demon for Room2
@@ -652,6 +658,193 @@ int main()
 
                     camera.target = { newPos.x, newPos.y };
                     });  
+                }
+                
+                if (mapSwitchedToMainLevel2 && !mapSwitchedToRoom5 && 
+                    samuraiRect.x > 4400 && samuraiRect.x < 4430 && 
+                    samuraiRect.y > 2760 && samuraiRect.y < 2780) 
+                   {
+                    startTransition([&]() {
+                    mapSwitchedToRoom5 = true;
+
+                    // Unload current map
+                    if (map) {
+                     UnloadTMX(map);
+                    }
+
+                    // Load new TMX map (e.g., Room5)
+                    
+                    map = LoadTMX("maps/Lv2RoomOne.tmx");
+                    if (!map) {
+                        std::cerr << "Failed to load Room5.tmx!" << std::endl;
+                    }
+                    
+
+                    // Set Samurai position to destination portal
+                    Rectangle newPos = samurai.getRect();
+                    newPos.x = 0;  // Adjust to coordinates of portal in Room5
+                    newPos.y = 224;
+                    samurai.setRect(newPos);
+
+                     // Recenter camera
+                    camera.target = { newPos.x, newPos.y };
+                     });
+                }
+
+                // New portal (e.g., Room5 -> Level2)
+                if (mapSwitchedToMainLevel2 && mapSwitchedToRoom5 &&
+                    samuraiRect.x > 1000 && samuraiRect.x < 1100 &&
+                    samuraiRect.y > 1200 && samuraiRect.y < 1300) 
+                {
+             
+                    startTransition([&]() {
+                    mapSwitchedToRoom5 = false;
+
+                 if (map) {
+                    UnloadTMX(map);
+                }
+
+                    map = LoadTMX("maps/LevelDesign2.tmx");
+
+                    Rectangle newPos = samurai.getRect();
+                    newPos.x = 3820;   // back to original portal
+                    newPos.y = 1218.77;
+                    samurai.setRect(newPos);
+
+                    camera.target = { newPos.x, newPos.y };
+                    });
+                }
+
+
+                // New portal (e.g., Level2 -> Room6)
+                if (mapSwitchedToMainLevel2 && !mapSwitchedToRoom6 && 
+                    samuraiRect.x > 5600 && samuraiRect.x < 5700 && 
+                    samuraiRect.y > 3300 && samuraiRect.y < 3400) 
+                   {
+                    startTransition([&]() {
+                    mapSwitchedToRoom6 = true;
+
+                    // Unload current map
+                    if (map) {
+                     UnloadTMX(map);
+                    }
+
+                    // Load new TMX map 
+                    
+                    map = LoadTMX("maps/Lv2RoomTwo.tmx");
+                    if (!map) {
+                        std::cerr << "Failed to load Lv2RoomTwo.tmx!" << std::endl;
+                    }
+                    
+
+                    // Set Samurai position to destination portal
+                    Rectangle newPos = samurai.getRect();
+                    newPos.x = 0;  // Adjust to coordinates of portal in Room5
+                    newPos.y = 224;
+                    samurai.setRect(newPos);
+
+                     // Recenter camera
+                    camera.target = { newPos.x, newPos.y };
+                     });
+                }
+
+
+               // New portal (e.g., Room6 -> Level2)
+                if (mapSwitchedToMainLevel2 && mapSwitchedToRoom6 && 
+                    samuraiRect.x > 1600 && samuraiRect.x < 1610 && 
+                    samuraiRect.y > 3300 && samuraiRect.y < 3500) 
+                   {
+                    startTransition([&]() {
+                    mapSwitchedToRoom6 = false;
+
+                    // Unload current map
+                    if (map) {
+                     UnloadTMX(map);
+                    }
+
+                    // Load new TMX map 
+                    
+                    map = LoadTMX("maps/LevelDesign2.tmx");
+                    if (!map) {
+                        std::cerr << "Failed to load Room5.tmx!" << std::endl;
+                    }
+                    
+
+                    // Set Samurai position to destination portal
+                    Rectangle newPos = samurai.getRect();
+                    newPos.x = 8390;  // Adjust to coordinates of portal in Room6
+                    newPos.y = 1313.78;
+                    samurai.setRect(newPos);
+
+                     // Recenter camera
+                    camera.target = { newPos.x, newPos.y };
+                     });
+                }
+
+                                
+                                   
+                // New portal (e.g., Level2 -> Room7)
+                if (mapSwitchedToMainLevel2 && !mapSwitchedToRoom7 && 
+                    samuraiRect.x > 7500 && samuraiRect.x < 7580 && 
+                    samuraiRect.y > 2900 && samuraiRect.y < 3000) 
+                   {
+                    startTransition([&]() {
+                    mapSwitchedToRoom5 = true;
+
+                    // Unload current map
+                    if (map) {
+                     UnloadTMX(map);
+                    }
+
+                    // Load new TMX map (e.g., Room5)
+                    
+                    map = LoadTMX("maps/Lv2Room3.tmx");
+                    if (!map) {
+                        std::cerr << "Failed to load Room5.tmx!" << std::endl;
+                    }
+                    
+
+                    // Set Samurai position to destination portal
+                    Rectangle newPos = samurai.getRect();
+                    newPos.x = 0;  // Adjust to coordinates of portal in Room5
+                    newPos.y = 224;
+                    samurai.setRect(newPos);
+
+                     // Recenter camera
+                    camera.target = { newPos.x, newPos.y };
+                     });
+                }
+
+                // New portal (e.g., Level2 -> Room8)
+                if (mapSwitchedToMainLevel2 && !mapSwitchedToRoom7 && 
+                    samuraiRect.x > 9100 && samuraiRect.x < 9200 && 
+                    samuraiRect.y > 2000 && samuraiRect.y < 2100) 
+                   {
+                    startTransition([&]() {
+                    mapSwitchedToRoom5 = true;
+
+                    // Unload current map
+                    if (map) {
+                     UnloadTMX(map);
+                    }
+
+                    // Load new TMX map (e.g., Room5)
+                    
+                    map = LoadTMX("maps/Lv2Room4.tmx");
+                    if (!map) {
+                        std::cerr << "Failed to load Room5.tmx!" << std::endl;
+                    }
+                    
+
+                    // Set Samurai position to destination portal
+                    Rectangle newPos = samurai.getRect();
+                    newPos.x = 0;  // Adjust to coordinates of portal in Room5
+                    newPos.y = 224;
+                    samurai.setRect(newPos);
+
+                     // Recenter camera
+                    camera.target = { newPos.x, newPos.y };
+                     });
                 }
                 
                 if(samurai.checkDeath()) {

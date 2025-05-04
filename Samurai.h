@@ -224,6 +224,7 @@ private:
         
         
         // Reset velocity if not jumping.
+        
         if (rect.y >= groundLevel) {
             velocity.y = 0;
             rect.y = groundLevel;  // Ensure character is on ground.
@@ -239,11 +240,20 @@ private:
             }
         }
         
+        
+        /*
+        if (IsKeyDown(KEY_UP)) {
+            rect.y -= 5.0f;
+        }
+        if (IsKeyDown(KEY_DOWN)) {
+            rect.y += 5.0f;
+        }
 
         if (wasInAir || isDashing) {
             StopSound(runSound);
         }
-
+        */
+        
         // Check for jump input.
         
         if (IsKeyPressed(KEY_W) && state != ATTACK_STATE) {
@@ -280,6 +290,7 @@ private:
         }        
         
         // Apply gravity.
+        
         if (rect.y < groundLevel) {
             velocity.y += 0.5f;  // Gravity effect.
             
@@ -892,24 +903,15 @@ public:
     }
 
     // Instantly kills the player if they fall below specific Y coordinates
-    void deathBarrier() { 
-        /*
-        if (rect.x >= 400 && rect.x <= 4096 && rect.y >= 2340) {
-            takeDamage(1000000);
-        } else if (rect.x >= 4096 && rect.y >= 2639 && rect.x <= 5860) {
-            takeDamage(1000000);
-        } else if (rect.x >= 5860 && rect.y >= 4030) {
-            takeDamage(1000000);
-        }
-        */
-        
+    void deathBarrier() 
+    { 
         if (rect.x >= 995 && rect.x <= 2385 && rect.y >= 2305) {
             takeDamage(1000000);
         }
         else if (rect.x >= 4125 && rect.x <= 4730 && rect.y >= 2771) {
             takeDamage(1000000);
         }
-        else if (rect.x >= 5440 && rect.y >= 4404) {
+        else if (rect.y >= 4404) {
             takeDamage(1000000);
         }  
     }
@@ -926,19 +928,19 @@ public:
         else if (rect.x >= 1975 && rect.x <= 2850 && rect.y >= 1762 && rect.y <= 1797) {
             takeDamage(1000000);
         }
-        else if (rect.x >= 4100 && rect.x <= 4235 && rect.y >= 1522 && rect.y >= 1572) {
+        else if (rect.x >= 4100 && rect.x <= 4235 && rect.y >= 1522 && rect.y <= 1572) {
             takeDamage(1000000);
         }
         else if (rect.x >= 3755 && rect.x <= 3855 && rect.y >= 2320 && rect.y <= 2359) {
             takeDamage(1000000);
         }
-        else if (rect.x >= 5565 && rect.x <= 5950 && rect.y >= 1426 && rect.y >= 1447) {
+        else if (rect.x >= 5565 && rect.x <= 5950 && rect.y >= 1426 && rect.y <= 1447) {
             takeDamage(1000000);
         }
         else if (rect.x >= 6325 && rect.x <= 6385 && rect.y >= 3283 && rect.y <= 3323) {
             takeDamage(1000000);
         }
-        else if (rect.y >= 3738) {
+        else if (rect.y >= 4538) {
             takeDamage(1000000);
         }
         else if (rect.x >= 9515 && rect.x <= 10205 && rect.y >= 2573 && rect.y <= 2655) {
@@ -947,13 +949,12 @@ public:
         else if (rect.x >= 12375 && rect.x <= 12525 && rect.y >= 3197) {
             takeDamage(1000000);
         }
-        else if (rect.x >= 11295 && rect.x <= 12495 && rect.y >= 2576 && rect.y >= 2659) {
+        else if (rect.x >= 11295 && rect.x <= 12495 && rect.y >= 2576 && rect.y <= 2659) {
             takeDamage(1000000);
-        }
-        
-        
-        
+        }  
     }
+    
+    
 
     // Returns whether the player is dead
     bool checkDeath() const { 
