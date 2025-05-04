@@ -176,6 +176,7 @@ class Demon {
         }
 
         void updateAnimation() {
+            std::cout << "Demon Animation State: " << state << std::endl;
             // Safety check for valid state
             if (state < 0 || state >= animations.size()) {
                 state = IDLE_DEMON; // Reset to idle if state is invalid
@@ -200,13 +201,22 @@ class Demon {
                                 anim.currentFrame = anim.lastFrame;
                             }
                         } else {
-                            // For all other one-shot animations, go back to idle
-                            state = IDLE_DEMON;
-                            anim.currentFrame = 0;
-                
                             if (state == ATTACK_DEMON) {
                                 isAttacking = false;
                                 hasFinishedAttack = true;
+                            } else if(state == HURT_DEMON) {
+                                if (anim.currentFrame == anim.lastFrame) {
+                                    state = ATTACK_DEMON;
+                                    AnimationDemon& attackAnim = animations[ATTACK_DEMON];
+                                    attackAnim.currentFrame = attackAnim.firstFrame;
+                                    attackAnim.timeLeft = attackAnim.speed;
+                                    isAttacking = true;
+                                    hasFinishedAttack = false;
+
+                                    if (attackAnim.currentFrame >= attackAnim.lastFrame - 1) {
+                                        
+                                    }
+                                }
                             }
                         }
                     }
@@ -427,21 +437,31 @@ class Demon {
                     }
                     box.rect.y = hurtbox->rect.y + 5.0f * SPRITE_SCALE;
                     
-                    if (box.type == ATTACK) 
-                    {
-                        // Make the attack box always visible regardless of frame or state
-                        box.active = true;
+                    if (box.type == ATTACK) {
+                        // Only activate the attack box in the last two frames of the attack animation
+                        if (state == ATTACK_DEMON) {
+                            AnimationDemon& attackAnim = animations[ATTACK_DEMON];
 
-                        if (hurtbox) {
-                            float attackOffset = 0.0f * SPRITE_SCALE;
-                            if (direction == RIGHT_DEMON) {
-                                box.rect.x = hurtbox->rect.x + hurtbox->rect.width + attackOffset;
+                            if (attackAnim.currentFrame >= attackAnim.lastFrame - 4) {
+                                box.active = true;
+
+                                if (hurtbox) {
+                                    float attackOffset = 0.0f * SPRITE_SCALE;
+                                    if (direction == RIGHT_DEMON) {
+                                        box.rect.x = hurtbox->rect.x + hurtbox->rect.width + attackOffset;
+                                    } else {
+                                        box.rect.x = hurtbox->rect.x - box.rect.width - attackOffset;
+                                    }
+                                    box.rect.y = hurtbox->rect.y + 5.0f * SPRITE_SCALE;
+                                }
                             } else {
-                                box.rect.x = hurtbox->rect.x - box.rect.width - attackOffset;
+                                box.active = false;  // Disable hitbox outside of hit frames
                             }
-                            box.rect.y = hurtbox->rect.y + 5.0f * SPRITE_SCALE;
-                            }
+                        } else {
+                            box.active = false;  // Disable if not attacking
+                        }
                     }
+
                 } 
                 else if (box.type == HURTBOX) 
                 {
