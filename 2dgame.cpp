@@ -282,7 +282,11 @@ int main()
     camera.zoom = 3.3f;  // Zoom in for better visibility.
 
     // Initialize characters using stack allocation - all characters now use the same floorLevel
-    Samurai samurai(400, 2223, floorLevel);
+    Samurai samurai(510, 2223, floorLevel);
+    
+    // Don't delete this. This is for teleporting to the second main level.
+    //samuraiRect.x >= 18760 && samuraiRect.x <= 18840 && samuraiRect.y >= 3660
+    //Samurai samurai(18760, 3660, floorLevel);
     
     // Initialize dash sound volume to match master volume
     samurai.setDashSoundVolume(0.8f * masterVolume);
@@ -376,7 +380,17 @@ int main()
                     samurai.updateSamurai();
                 }
 
-                samurai.deathBarrier();
+                // You are in the first main level
+                if(!mapSwitchedToMainLevel2)
+                {
+                    samurai.deathBarrier();
+                }
+       
+                // You are now in the second main level. Wow.
+                if (mapSwitchedToMainLevel2)
+                {
+                    samurai.secondDeathBarrier();
+                }
 
                 // Get samurai position for collision detection
                 Vector2 samuraiPos = {0, 0};
@@ -427,7 +441,7 @@ int main()
                 // Switching map :o
 
                 // Main Level to Room2
-                if (!mapSwitchedToRoom2 && samuraiRect.x >= 920 && samuraiRect.x <= 930 && samuraiRect.y == 1502) 
+                if (!mapSwitchedToMainLevel2 && !mapSwitchedToRoom2 && samuraiRect.x >= 920 && samuraiRect.x <= 930 && samuraiRect.y == 1502) 
                 {
                     // Debug output to confirm portal detection
                     printf("Portal to Room2 detected! Player position: %.2f, %.2f\n", samuraiRect.x, samuraiRect.y);
@@ -465,7 +479,7 @@ int main()
 
                 
                 // Room2 to Main Level 
-                if (mapSwitchedToRoom2 && samuraiRect.x >= 530 && samuraiRect.x <= 540 && samuraiRect.y >= 2170 && samuraiRect.y <= 2180) 
+                if (!mapSwitchedToMainLevel2 && mapSwitchedToRoom2 && samuraiRect.x >= 530 && samuraiRect.x <= 540 && samuraiRect.y >= 2170 && samuraiRect.y <= 2180) 
                 {
                     // Debug output to confirm return portal detection
                     printf("Return portal detected! Player position: %.2f, %.2f\n", samuraiRect.x, samuraiRect.y);
@@ -494,7 +508,7 @@ int main()
                 }
                 
                 // Main Level to Room 3
-                if (!mapSwitchedToRoom3 && samuraiRect.x >= 5415 && samuraiRect.x <= 5435 && samuraiRect.y >= 877 && samuraiRect.y <= 878)
+                if (!mapSwitchedToMainLevel2 && !mapSwitchedToRoom3 && samuraiRect.x >= 5415 && samuraiRect.x <= 5435 && samuraiRect.y >= 877 && samuraiRect.y <= 878)
 
                 {
                     printf("Portal to Room3 detected! Player position: %.2f, %.2f\n", samuraiRect.x, samuraiRect.y);
@@ -527,7 +541,7 @@ int main()
                 }
                 
                 // Room 3 to Main Level 
-                if (mapSwitchedToRoom3 && samuraiRect.x >= 1540 && samuraiRect.x <= 1570 && samuraiRect.y >= 2173 && samuraiRect.y <= 2175) 
+                if (!mapSwitchedToMainLevel2 && mapSwitchedToRoom3 && samuraiRect.x >= 1540 && samuraiRect.x <= 1570 && samuraiRect.y >= 2173 && samuraiRect.y <= 2175) 
                 {
                     printf("Portal back to LevelDesign detected! Player position: %.2f, %.2f\n", samuraiRect.x, samuraiRect.y);
                     startTransition([&]() 
@@ -559,7 +573,7 @@ int main()
                 }
                 
                 // Main Level to Room 4 
-                if (!mapSwitchedToRoom4 && samuraiRect.x >= 8300 && samuraiRect.x <= 8320 && samuraiRect.y >= 2173 && samuraiRect.y <= 2176) 
+                if (!mapSwitchedToMainLevel2 && !mapSwitchedToRoom4 && samuraiRect.x >= 8300 && samuraiRect.x <= 8320 && samuraiRect.y >= 2173 && samuraiRect.y <= 2176) 
                 {
                     startTransition([&]() 
                     {
@@ -586,7 +600,7 @@ int main()
                 }
                 
                 // Room 4 to Main Level
-                if (mapSwitchedToRoom4 && samuraiRect.x >= 3050 && samuraiRect.x <= 3070 && samuraiRect.y >= 2170.00) 
+                if (!mapSwitchedToMainLevel2 && mapSwitchedToRoom4 && samuraiRect.x >= 3050 && samuraiRect.x <= 3070 && samuraiRect.y >= 2170.00) 
                 {
                     startTransition([&]() 
                     {
@@ -645,7 +659,7 @@ int main()
                 }
                 
 
-                if(mapSwitchedToMainLevel2 && samurai.getRect().x >= 18880) {
+                if(mapSwitchedToMainLevel2 && samurai.getRect().x >= 12610 && samurai.getRect().x <= 12655 && samuraiRect.y >= 2304) {
                     isComplete = true;
                 }
                 

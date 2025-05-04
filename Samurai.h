@@ -212,6 +212,7 @@ private:
         }
         
         
+        
         // Update dash timer if currently dashing
         if (isDashing) {
             dashTimer -= deltaTime;
@@ -220,6 +221,7 @@ private:
                 dashTimer = 0.0f;
             }
         }
+        
         
         // Reset velocity if not jumping.
         if (rect.y >= groundLevel) {
@@ -236,12 +238,14 @@ private:
                 PlaySound(landSound);
             }
         }
+        
 
         if (wasInAir || isDashing) {
             StopSound(runSound);
         }
 
         // Check for jump input.
+        
         if (IsKeyPressed(KEY_W) && state != ATTACK_STATE) {
             StopSound(runSound);
 
@@ -274,7 +278,7 @@ private:
                 }
             }
         }        
-
+        
         // Apply gravity.
         if (rect.y < groundLevel) {
             velocity.y += 0.5f;  // Gravity effect.
@@ -285,6 +289,7 @@ private:
                 animations[state].currentFrame = 0;  // Reset animation frame
             }
         }
+        
         
         // Current time for double tap detection
         float currentTime = GetTime();
@@ -412,10 +417,10 @@ private:
         rect.y += velocity.y;  // Update vertical position.
 
         // Map Width.
-        const float mapWidth = 16700;
+        const float mapWidth = 25000;
         
-        if (rect.x < 500) rect.x = 500;
-        if (rect.x > 16000) rect.x = 16000;
+        if (rect.x < 200) rect.x = 200;
+        if (rect.x > 25000) rect.x = 25000;
         if (rect.x > mapWidth - rect.width) rect.x = mapWidth - rect.width;
     }
 
@@ -888,6 +893,7 @@ public:
 
     // Instantly kills the player if they fall below specific Y coordinates
     void deathBarrier() { 
+        /*
         if (rect.x >= 400 && rect.x <= 4096 && rect.y >= 2340) {
             takeDamage(1000000);
         } else if (rect.x >= 4096 && rect.y >= 2639 && rect.x <= 5860) {
@@ -895,6 +901,57 @@ public:
         } else if (rect.x >= 5860 && rect.y >= 4030) {
             takeDamage(1000000);
         }
+        */
+        
+        if (rect.x >= 995 && rect.x <= 2385 && rect.y >= 2305) {
+            takeDamage(1000000);
+        }
+        else if (rect.x >= 995 && rect.x <= 4730 && rect.y >= 2771) {
+            takeDamage(1000000);
+        }
+        else if (rect.x >= 2871 && rect.x <= 4730 && rect.y >= 4404) {
+            takeDamage(1000000);
+        }  
+    }
+    
+    // This is for the second main level
+    void secondDeathBarrier()
+    { 
+        if (rect.x >= 1735 && rect.x <= 1880 && rect.y >= 2322) {
+            takeDamage(1000000);
+        }
+        else if (rect.x >= 2480 && rect.x <= 2722 && rect.y >= 2722) {
+            takeDamage(1000000);
+        }
+        else if (rect.x >= 1975 && rect.x <= 2850 && rect.y >= 1762 && rect.y <= 1797) {
+            takeDamage(1000000);
+        }
+        else if (rect.x >= 4100 && rect.x <= 4235 && rect.y >= 1522 && rect.y >= 1572) {
+            takeDamage(1000000);
+        }
+        else if (rect.x >= 3755 && rect.x <= 3855 && rect.y >= 2320 && rect.y <= 2359) {
+            takeDamage(1000000);
+        }
+        else if (rect.x >= 5565 && rect.x <= 5950 && rect.y >= 1426 && rect.y >= 1447) {
+            takeDamage(1000000);
+        }
+        else if (rect.x >= 6325 && rect.x <= 6385 && rect.y >= 3283 && rect.y <= 3323) {
+            takeDamage(1000000);
+        }
+        else if (rect.y >= 3738) {
+            takeDamage(1000000);
+        }
+        else if (rect.x >= 9515 && rect.x <= 10205 && rect.y >= 2573 && rect.y <= 2655) {
+            takeDamage(1000000);
+        }
+        else if (rect.x >= 12375 && rect.x <= 12525 && rect.y >= 3197) {
+            takeDamage(1000000);
+        }
+        else if (rect.x >= 11295 && rect.x <= 12495 && rect.y >= 2576 && rect.y >= 2659) {
+            takeDamage(1000000);
+        }
+        
+        
     }
 
     // Returns whether the player is dead
