@@ -1,6 +1,7 @@
 # The Forsaken Crypt
+![](csusm_logo.jpg)
 
-A Dark Souls-inspired dungeon crawler game where a samurai warrior battles demons in a mysterious crypt. Navigate through multiple rooms, engage in combat with enemies, and survive the challenges that await.
+A simple  Dark Souls-inspired dungeon crawler game where a samurai warrior battles demons in a mysterious crypt. Navigate through multiple rooms, engage in combat with enemies, and survive the challenges that await. This is an expanded game project from CS 485 at CSUSM.
 
 ## Table of Contents
 - [Game Overview](#game-overview)
