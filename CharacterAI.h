@@ -6,10 +6,6 @@
 #include <memory>
 #include <cmath>
 
-// We don't need to define these functions as they're already in raymath.h
-// which is included in the files that include this header
-
-
 // AI States
 enum class AIState {
     IDLE,
