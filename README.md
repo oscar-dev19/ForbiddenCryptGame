@@ -17,6 +17,9 @@ A simple  Dark Souls-inspired dungeon crawler game where a samurai warrior battl
 
 The Forsaken Crypt is an atmospheric 2D action game where players control a samurai character navigating through a series of dungeon rooms while battling demon enemies. The game features a Dark Souls-inspired aesthetic with challenging combat and exploration elements.
 
+## Screenshots
+![](game_screenshot.png)
+
 ## Features
 
 - **Atmospheric Start Screen**: Dark Souls-inspired menu with interactive buttons that change appearance on hover
