@@ -18,7 +18,7 @@
 
 # Ignore Makefiles
 Makefiles
-makefile
+Makefile
 
 # Ignore Oscar Files.
 /game
