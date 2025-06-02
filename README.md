@@ -40,7 +40,7 @@ The Forsaken Crypt is an atmospheric 2D action game where players control a samu
 
 1. Clone the repository:
    ```
-   git clone [repository-url]
+   git clone https://github.com/oscar-dev19/ForbiddenCryptGame.git
    cd ForbiddenCryptGame
    ```
 
